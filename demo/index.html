@@ -54,6 +54,16 @@
     }
     #buttons button:hover { background: #43475a; }
     #edge { position: absolute; width: 0; height: 0; }
+    #hint {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 10;
+      font-size: 13px;
+      opacity: 0.6;
+      user-select: none;
+      pointer-events: none;
+    }
     #status {
       position: fixed;
       bottom: 12px;
@@ -91,18 +101,7 @@
       <label for="items">items</label>
       <input id="items" type="number" min="1" max="12" value="6" />
     </div>
-    <div id="buttons">
-      <button data-point="center">Center</button>
-      <button data-point="top">Top</button>
-      <button data-point="bottom">Bottom</button>
-      <button data-point="left">Left</button>
-      <button data-point="right">Right</button>
-      <button data-point="top-left">Top-left</button>
-      <button data-point="top-right">Top-right</button>
-      <button data-point="bottom-left">Bottom-left</button>
-      <button data-point="bottom-right">Bottom-right</button>
-      <button data-point="random">Random</button>
-    </div>
+    <div id="hint">click anywhere to open the menu</div>
     <div id="status"></div>
   </div>
   <script type="module" src="./main.js"></script>

@@ -148,6 +148,16 @@ test('menu larger than viewport still opens centered without errors', async ({ p
   expect(box.y + box.height / 2).toBeCloseTo(200, 1);
 });
 
+test('clicking the page opens the menu under the cursor (demo behavior)', async ({ page }) => {
+  await page.mouse.move(411, 263);
+  await page.mouse.down();
+  await page.mouse.up();
+  await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
+  const box = await page.locator('.pielet').boundingBox();
+  expect(box.x + box.width / 2).toBeCloseTo(411, 1);
+  expect(box.y + box.height / 2).toBeCloseTo(263, 1);
+});
+
 test('context menu is suppressed while the menu is open', async ({ page }) => {
   await openMenu(page, 400, 400);
   const event = await page.evaluate(async () => {

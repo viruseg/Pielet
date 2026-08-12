@@ -1,7 +1,6 @@
 import Pielet from '../src/index.js';
 import '../src/styles/pielet.css';
 
-const stage = document.getElementById('stage');
 const statusEl = document.getElementById('status');
 const controls = {
   size: document.getElementById('size'),
@@ -16,9 +15,8 @@ const controls = {
 
 const labels = ['Open', 'Save', 'Copy', 'Cut', 'Rename', 'Delete', 'Share', 'Print', 'Zoom', 'Flip', 'Rotate', 'Pin'];
 
-function buildMenu() {
-  const itemCount = Number(controls.items.value);
-  const items = Array.from({ length: itemCount }, (_, i) => ({
+function assembleItems(count) {
+  return Array.from({ length: count }, (_, i) => ({
     typeContent: i % 6 === 3 ? 'none' : 'text',
     content: labels[i % labels.length],
     action: () => {
@@ -26,19 +24,18 @@ function buildMenu() {
       statusEl.textContent = `action: ${labels[i % labels.length]} (${i}) — ${new Date().toLocaleTimeString()}`;
     }
   }));
-  return new Pielet({
-    size: Number(controls.size.value),
-    centerSize: Number(controls.centerSize.value),
-    gap: Number(controls.gap.value),
-    startAngle: Number(controls.startAngle.value),
-    direction: controls.direction.value,
-    interactionMode: controls.mode.value,
-    closeDistance: Number(controls.closeDistance.value),
-    items
-  });
 }
 
-let menu = buildMenu();
+const menu = new Pielet({
+  size: Number(controls.size.value),
+  centerSize: Number(controls.centerSize.value),
+  gap: Number(controls.gap.value),
+  startAngle: Number(controls.startAngle.value),
+  direction: controls.direction.value,
+  interactionMode: controls.mode.value,
+  closeDistance: Number(controls.closeDistance.value),
+  items: assembleItems(Number(controls.items.value))
+});
 window.__menu = menu;
 window.__menuEl = null;
 window.Pielet = Pielet;
@@ -58,30 +55,34 @@ function readState() {
   return state;
 }
 
-const points = {
-  center: () => [innerWidth / 2, innerHeight / 2],
-  top: () => [innerWidth / 2, 80],
-  bottom: () => [innerWidth / 2, innerHeight - 80],
-  left: () => [80, innerHeight / 2],
-  right: () => [innerWidth - 80, innerHeight / 2],
-  'top-left': () => [80, 80],
-  'top-right': () => [innerWidth - 80, 80],
-  'bottom-left': () => [80, innerHeight - 80],
-  'bottom-right': () => [innerWidth - 80, innerHeight - 80],
-  random: () => [Math.floor(80 + Math.random() * (innerWidth - 160)), Math.floor(80 + Math.random() * (innerHeight - 160))]
-};
-
-document.querySelectorAll('#buttons button').forEach((button) => {
-  button.addEventListener('click', () => {
-    menu.close();
-    readState();
-    menu = buildMenu();
-    window.__menu = menu;
-    const [x, y] = points[button.dataset.point]();
-    menu.open(x, y);
-    window.__menuEl = document.querySelector('.pielet');
-    statusEl.textContent = `open(${x}, ${y}) — ${menu.config.items.length} items`;
+function openAt(x, y) {
+  const state = readState();
+  Object.assign(menu.config, {
+    size: state.size,
+    centerSize: state.centerSize,
+    gap: state.gap,
+    startAngle: state.startAngle,
+    direction: state.direction,
+    interactionMode: state.mode,
+    closeDistance: state.closeDistance,
+    items: assembleItems(state.items)
   });
+  menu.open(x, y);
+  window.__menuEl = document.querySelector('.pielet');
+  statusEl.textContent = `open(${Math.round(x)}, ${Math.round(y)}) — ${menu.config.items.length} items`;
+}
+
+document.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('#controls')) return;
+  if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
+  // меню открыто — оно само обрабатывает pointerdown/up (выбор пункта)
+  if (document.querySelector('.pielet')) return;
+  e.preventDefault();
+  openAt(e.clientX, e.clientY);
+});
+
+document.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
 });
 
 menu.addEventListener('open', () => {
@@ -94,3 +95,5 @@ menu.addEventListener('select', () => {
 window.addEventListener('resize', () => {
   window.__demoState = readState();
 });
+
+window.__openAt = openAt;
