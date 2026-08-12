@@ -78,8 +78,9 @@ describe('InteractionController — hover (pointermove)', () => {
   });
 
   it('clears selection when moving over a none sector', () => {
+    controller.detach();
     const geometry = makeGeometry({ selectable: [true, false, true, true] });
-    const controller = new InteractionController({
+    const localController = new InteractionController({
       interactionMode: 'click',
       button: 0,
       geometry,
@@ -88,7 +89,8 @@ describe('InteractionController — hover (pointermove)', () => {
       onClose,
       onSelect
     });
-    controller.attach();
+    localController.attach();
+    fire(window, 'pointermove', pointAt(0.3));
     const angle = (geometry.sectors[1].start + geometry.sectors[1].end) / 2;
     fire(window, 'pointermove', pointAt(angle));
     expect(onHover).toHaveBeenLastCalledWith(null);
@@ -118,6 +120,7 @@ describe('InteractionController — pointerup (click mode)', () => {
   let controller, onClose, onSelect;
 
   function make(mode = 'click', button = 0) {
+    if (controller) controller.detach();
     onClose = vi.fn();
     onSelect = vi.fn();
     controller = new InteractionController({
@@ -161,20 +164,22 @@ describe('InteractionController — pointerup (click mode)', () => {
   });
 
   it('closes on pointerup over a none sector', () => {
+    controller.detach();
     const geometry = makeGeometry({ selectable: [false, true, true, true] });
-    const controller = new InteractionController({
+    const localOnClose = vi.fn();
+    const localController = new InteractionController({
       interactionMode: 'click',
       button: 0,
       geometry,
       ...CENTER,
       onHover: vi.fn(),
-      onClose,
-      onSelect
+      onClose: localOnClose,
+      onSelect: vi.fn()
     });
-    controller.attach();
+    localController.attach();
     const angle = (geometry.sectors[0].start + geometry.sectors[0].end) / 2;
     fire(window, 'pointerup', pointAt(angle));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(localOnClose).toHaveBeenCalledTimes(1);
   });
 
   it('closes on pointerup outside the menu', () => {

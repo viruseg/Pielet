@@ -54,7 +54,7 @@ export class MenuRenderer {
      * @param {Array<object>} options.items - пункты меню
      * @param {number} options.baseFontSize - базовый размер шрифта для text-пунктов
      */
-    mount({ centerX, centerY, geometry, items, baseFontSize }) {
+    mount({ centerX, centerY, geometry, items, baseFontSize: baseFontSizeOption }) {
         const { outerRadius, innerRadius, sectors } = geometry;
         const size = outerRadius * 2;
         const meanRadius = (outerRadius + innerRadius) / 2;
@@ -66,6 +66,15 @@ export class MenuRenderer {
         el.style.top = `${centerY - outerRadius}px`;
         el.style.width = `${size}px`;
         el.style.height = `${size}px`;
+
+        if (this._el) this._el.remove();
+        document.body.appendChild(el);
+        this._el = el;
+        this._closeDuration = parseDuration(this.getComputedDuration());
+
+        const baseFontSize = baseFontSizeOption !== undefined
+            ? baseFontSizeOption
+            : this.getBaseFontSize();
 
         this._itemEls = [];
         for (let i = 0; i < items.length; i++) {
@@ -94,14 +103,26 @@ export class MenuRenderer {
             this._itemEls.push(itemEl);
         }
 
-        document.body.appendChild(el);
-        this._el = el;
         this._selectable = items.map((item) => item.typeContent !== 'none');
-        this._closeDuration = parseDuration(this.getComputedDuration());
 
         setTimeout(() => {
-            if (this._el) this._el.classList.add('pielet--open');
+            if (this._el === el) el.classList.add('pielet--open');
         }, 0);
+    }
+
+    /**
+     * Базовый размер шрифта text-пунктов из CSS переменной
+     * `--pielet-font-size` (в px), иначе 14.
+     * @returns {number}
+     */
+    getBaseFontSize() {
+        try {
+            const value = this._el && window.getComputedStyle(this._el).getPropertyValue('--pielet-font-size');
+            const parsed = value && parseFloat(value);
+            return Number.isFinite(parsed) && parsed > 0 ? parsed : 14;
+        } catch {
+            return 14;
+        }
     }
 
     /**
@@ -143,9 +164,11 @@ export class MenuRenderer {
             if (finished) return;
             finished = true;
             el.removeEventListener('transitionend', onTransitionEnd);
+            if (this._el === el) {
+                this._el = null;
+                this._itemEls = [];
+            }
             el.remove();
-            this._el = null;
-            this._itemEls = [];
             onDone();
         };
         const onTransitionEnd = (event) => {
