@@ -1,0 +1,48 @@
+/*
+ * Pielet — тёмная тема по умолчанию.
+ * Все селекторы ограничены namespace .pielet, глобальных стилей нет.
+ * Цвета и размеры настраиваются через CSS custom properties
+ * (объявлены на :root для удобства переопределения).
+ */
+
+:root {
+    --pielet-background: #2d2f36;
+    --pielet-background-hover: #43475a;
+    --pielet-opacity: 0.97;
+    --pielet-color: #f2f2f4;
+    --pielet-font-size: 14px;
+    --pielet-transition-duration: 150ms;
+    --pielet-transition-easing: cubic-bezier(0.2, 0.6, 0.3, 1);
+    --pielet-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+.pielet {
+    position: fixed;
+    pointer-events: none;
+    z-index: 2147483000;
+    opacity: 0;
+    will-change: opacity;
+    transition: opacity var(--pielet-transition-duration) var(--pielet-transition-easing);
+}
+
+.pielet--open {
+    opacity: var(--pielet-opacity);
+}
+
+.pielet__item {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.pielet__item-caption {
+    pointer-events: none;
+}
+
+.pielet__item--hover {
+    background: var(--pielet-background-hover);
+    box-shadow: var(--pielet-shadow);
+}

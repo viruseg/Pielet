@@ -16,7 +16,7 @@
   },
   "scripts": {
     "dev:demo": "vite",
-    "build": "vite build && tsc -p tsconfig.dts.json",
+    "build": "vite build && tsc -p tsconfig.dts.json && node -e \"require('fs').copyFileSync('src/styles/pielet.css','dist/pielet.css')\"",
     "test": "vitest run",
     "test:e2e": "playwright test"
   },
