@@ -26,13 +26,19 @@
       border-radius: 10px;
       padding: 12px 14px;
       display: grid;
-      grid-template-columns: auto minmax(60px, 120px);
+      grid-template-columns: auto minmax(60px, 120px) 40px;
       gap: 6px 12px;
       font-size: 13px;
       align-items: center;
     }
     #controls label { opacity: 0.85; }
     #controls input[type='range'], #controls select, #controls input[type='number'] { width: 100%; }
+    #controls .value {
+      text-align: right;
+      font-family: monospace;
+      font-size: 12px;
+      opacity: 0.8;
+    }
     #buttons {
       position: fixed;
       right: 12px;
@@ -80,12 +86,16 @@
     <div id="controls">
       <label for="size">size</label>
       <input id="size" type="range" min="120" max="420" step="10" value="240" />
+      <output class="value" data-for="size"></output>
       <label for="centerSize">centerSize</label>
       <input id="centerSize" type="range" min="24" max="180" step="4" value="72" />
+      <output class="value" data-for="centerSize"></output>
       <label for="gap">gap</label>
       <input id="gap" type="range" min="0" max="24" step="1" value="4" />
+      <output class="value" data-for="gap"></output>
       <label for="startAngle">startAngle</label>
       <input id="startAngle" type="range" min="-180" max="180" step="1" value="-90" />
+      <output class="value" data-for="startAngle"></output>
       <label for="direction">direction</label>
       <select id="direction">
         <option value="clockwise" selected>clockwise</option>
@@ -98,8 +108,10 @@
       </select>
       <label for="closeDistance">closeDistance</label>
       <input id="closeDistance" type="range" min="0" max="200" step="4" value="48" />
+      <output class="value" data-for="closeDistance"></output>
       <label for="items">items</label>
       <input id="items" type="number" min="1" max="12" value="6" />
+      <output class="value" data-for="items"></output>
     </div>
     <div id="hint">click anywhere to open the menu</div>
     <div id="status"></div>

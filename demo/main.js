@@ -40,6 +40,15 @@ window.__menu = menu;
 window.__menuEl = null;
 window.Pielet = Pielet;
 
+function syncValueLabels() {
+  document.querySelectorAll('#controls output.value').forEach((out) => {
+    const input = document.getElementById(out.dataset.for);
+    if (input) out.textContent = input.value;
+  });
+}
+Object.values(controls).forEach((el) => el.addEventListener('input', syncValueLabels));
+syncValueLabels();
+
 function readState() {
   const state = {
     size: Number(controls.size.value),
