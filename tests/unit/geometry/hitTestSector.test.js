@@ -20,6 +20,7 @@ function makeGeometry({
     itemCount: n,
     arcStart,
     arcLength,
+    outerRadius,
     meanRadius: (outerRadius + innerRadius) / 2,
     ringWidth: outerRadius - innerRadius,
     gap,

@@ -24,7 +24,9 @@ describe('calculateMenuGeometry', () => {
 });
 
 describe('calculateSectorLayout', () => {
-  const base = { arcStart: 0, arcLength: TAU, meanRadius: 78, ringWidth: 84, gap: 4, direction: 'clockwise' };
+  const base = {
+    arcStart: 0, arcLength: TAU, meanRadius: 78, outerRadius: 120, ringWidth: 84, gap: 4, direction: 'clockwise'
+  };
 
   it('distributes 4 items evenly over the full circle', () => {
     const { sectors, gapAngle } = calculateSectorLayout({ ...base, itemCount: 4 });
@@ -73,9 +75,11 @@ describe('calculateSectorLayout', () => {
     expect(sectors[0].start).toBeLessThan(sectors[0].end);
   });
 
-  it('converts gap in px to angle via mean radius', () => {
-    const { gapAngle } = calculateSectorLayout({ ...base, itemCount: 4 });
-    near(gapAngle, 4 / 78, 1e-9);
+  it('converts gap in px to angle via the OUTER radius so the outer arc distance equals gap', () => {
+    const { gapAngle, sectors } = calculateSectorLayout({ ...base, itemCount: 4 });
+    near(gapAngle, 4 / 120, 1e-9);
+    // точки на внешней дуге ровно на gap px друг от друга
+    near((sectors[1].start - sectors[0].end) * 120, 4, 1e-9);
   });
 
   it('shrinks gap proportionally when it does not fit', () => {

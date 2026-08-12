@@ -10,6 +10,7 @@ function makeGeometry({ n = 4, gap = 8, selectable = null } = {}) {
     itemCount: n,
     arcStart: 0,
     arcLength: TAU,
+    outerRadius: 100,
     meanRadius: 65,
     ringWidth: 70,
     gap,

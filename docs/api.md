@@ -57,7 +57,7 @@
 {
   size?: number;                        // 240, > 0
   centerSize?: number;                  // 72, 0 < centerSize < size
-  gap?: number;                         // 4, >= 0
+  gap?: number;                         // 4, >= 0 — расстояние между пунктами по внешней дуге
   startAngle?: number;                  // -90 (градусы)
   direction?: 'clockwise' | 'counterclockwise';
   interactionMode?: 'click' | 'hold'; // см. описание ниже

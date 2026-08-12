@@ -47,15 +47,17 @@ const MAX_SEGMENTS = 96;
  * @param {number} options.itemCount - количество пунктов (N > 0)
  * @param {number} options.arcStart - начало дуги в радианах
  * @param {number} options.arcLength - длина доступной дуги в радианах (0 < arcLength <= 2π)
- * @param {number} options.meanRadius - средний радиус кольца
+ * @param {number} options.outerRadius - внешний радиус кольца (gap в px переводится в угол по нему,
+ *   чтобы точки на внешней дуге были ровно на `gap` px друг от друга)
+ * @param {number} options.meanRadius - средний радиус кольца (для области контента)
  * @param {number} options.ringWidth - ширина кольца
  * @param {number} options.gap - зазор в CSS-пикселях (>= 0)
  * @param {'clockwise' | 'counterclockwise'} options.direction - порядок распределения
  * @returns {{ sectors: Array<{ start: number, end: number, relStart: number, span: number, mid: number, availWidth: number, availHeight: number }>, gapAngle: number }}
  */
-export function calculateSectorLayout({ itemCount, arcStart, arcLength, meanRadius, ringWidth, gap, direction }) {
+export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRadius, meanRadius, ringWidth, gap, direction }) {
     const nominalSpan = arcLength / itemCount;
-    const requestedGapAngle = gap / meanRadius;
+    const requestedGapAngle = gap / outerRadius;
     const maxGapAngle = nominalSpan * MAX_GAP_FRACTION;
     const gapAngle = Math.min(requestedGapAngle, maxGapAngle);
     const span = nominalSpan - gapAngle;
