@@ -158,6 +158,15 @@ test('clicking the page opens the menu under the cursor (demo behavior)', async 
   expect(box.y + box.height / 2).toBeCloseTo(263, 1);
 });
 
+test('click mode: releasing the mouse button does not close the menu', async ({ page }) => {
+  await openMenu(page, 400, 300);
+  await page.mouse.move(400, 300);
+  await page.mouse.down();
+  await page.mouse.up();
+  await page.waitForTimeout(30);
+  await expect(page.locator('.pielet')).toHaveCount(1);
+});
+
 test('context menu is suppressed while the menu is open', async ({ page }) => {
   await openMenu(page, 400, 400);
   const event = await page.evaluate(async () => {

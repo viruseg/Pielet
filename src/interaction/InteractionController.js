@@ -87,7 +87,7 @@ export class InteractionController {
         const hit = this._hit(event);
         if (hit.region === 'sector') {
             this._onSelect(hit.itemIndex);
-        } else {
+        } else if (this._mode === 'hold') {
             this._onClose();
         }
     }

@@ -148,22 +148,22 @@ describe('InteractionController — pointerup (click mode)', () => {
     expect(onSelect).toHaveBeenCalledWith(0);
   });
 
-  it('closes on pointerup in the center', () => {
+  it('does NOT close on pointerup in the center (click mode)', () => {
     make();
     fire(window, 'pointerup', pointAt(0, 10));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  it('closes on pointerup in a gap', () => {
+  it('does NOT close on pointerup in a gap (click mode)', () => {
     make();
     const geometry = makeGeometry();
     const gapMid = (geometry.sectors[0].end + geometry.sectors[1].start) / 2;
     fire(window, 'pointerup', pointAt(gapMid));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('closes on pointerup over a none sector', () => {
+  it('does NOT close on pointerup over a none sector (click mode)', () => {
     controller.detach();
     const geometry = makeGeometry({ selectable: [false, true, true, true] });
     const localOnClose = vi.fn();
@@ -179,13 +179,13 @@ describe('InteractionController — pointerup (click mode)', () => {
     localController.attach();
     const angle = (geometry.sectors[0].start + geometry.sectors[0].end) / 2;
     fire(window, 'pointerup', pointAt(angle));
-    expect(localOnClose).toHaveBeenCalledTimes(1);
+    expect(localOnClose).not.toHaveBeenCalled();
   });
 
-  it('closes on pointerup outside the menu', () => {
+  it('does NOT close on pointerup outside the menu (click mode)', () => {
     make();
     fire(window, 'pointerup', pointAt(0.3, 300));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
 
@@ -284,6 +284,7 @@ describe('InteractionController — attach/detach', () => {
 
   it('attaching twice does not duplicate handlers', () => {
     const onClose = vi.fn();
+    const onSelect = vi.fn();
     const controller = new InteractionController({
       interactionMode: 'click',
       button: 0,
@@ -291,11 +292,12 @@ describe('InteractionController — attach/detach', () => {
       ...CENTER,
       onHover: vi.fn(),
       onClose,
-      onSelect: vi.fn()
+      onSelect
     });
     controller.attach();
     controller.attach();
-    fire(window, 'pointerup', pointAt(0, 10));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    fire(window, 'pointerup', pointAt(0.3));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

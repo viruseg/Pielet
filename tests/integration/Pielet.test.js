@@ -189,15 +189,25 @@ describe('Pielet selection pipeline', () => {
     expect(document.body.querySelector('.pielet')).toBeNull();
   });
 
-  it('closes (no select) on pointerup in the center or gap', async () => {
-    const log = [];
+  it('click mode: pointerup in the center does NOT close the menu', () => {
+    menu = makeMenu();
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 300, clientY: 300 }));
+    expect(document.querySelector('.pielet')).toBeTruthy();
+    menu.close();
+  });
+
+  it('hold mode: pointerup in the center closes the menu without select', async () => {
     const action = vi.fn();
     menu = new Pielet({
+      interactionMode: 'hold',
+      button: 0,
       items: [
         { typeContent: 'text', content: 'A', action },
         { typeContent: 'text', content: 'B' }
       ]
     });
+    const log = [];
     menu.addEventListener('select', () => log.push('select'));
     menu.open(300, 300);
     window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 300, clientY: 300 }));
@@ -205,7 +215,6 @@ describe('Pielet selection pipeline', () => {
     expect(log).toEqual([]);
     await sleep(400);
     expect(document.body.querySelector('.pielet')).toBeNull();
-    expect(menu.close).toBeDefined();
   });
 
   it('does not swallow exceptions from user action; menu closes and stays closed', () => {

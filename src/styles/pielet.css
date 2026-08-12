@@ -40,6 +40,19 @@
 
 .pielet__item-caption {
     pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pielet__content--text {
+    text-align: center;
+    line-height: 1.35;
+}
+
+.pielet__content--image,
+.pielet__content--node {
+    display: block;
 }
 
 .pielet__item--hover {
