@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pielet — demo</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #17181c;
+      color: #dfe0e4;
+    }
+    #stage {
+      position: relative;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #controls {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 10;
+      background: rgba(40, 42, 48, 0.92);
+      border: 1px solid #33363f;
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: grid;
+      grid-template-columns: auto minmax(60px, 120px);
+      gap: 6px 12px;
+      font-size: 13px;
+      align-items: center;
+    }
+    #controls label { opacity: 0.85; }
+    #controls input[type='range'], #controls select, #controls input[type='number'] { width: 100%; }
+    #buttons {
+      position: fixed;
+      right: 12px;
+      bottom: 12px;
+      z-index: 10;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-width: 340px;
+    }
+    #buttons button {
+      background: #2d2f36;
+      color: #f2f2f4;
+      border: 1px solid #43475a;
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    #buttons button:hover { background: #43475a; }
+    #edge { position: absolute; width: 0; height: 0; }
+    #status {
+      position: fixed;
+      bottom: 12px;
+      left: 12px;
+      z-index: 5;
+      font-size: 12px;
+      opacity: 0.7;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <div id="controls">
+      <label for="size">size</label>
+      <input id="size" type="range" min="120" max="420" step="10" value="240" />
+      <label for="centerSize">centerSize</label>
+      <input id="centerSize" type="range" min="24" max="180" step="4" value="72" />
+      <label for="gap">gap</label>
+      <input id="gap" type="range" min="0" max="24" step="1" value="4" />
+      <label for="startAngle">startAngle</label>
+      <input id="startAngle" type="range" min="-180" max="180" step="1" value="-90" />
+      <label for="direction">direction</label>
+      <select id="direction">
+        <option value="clockwise" selected>clockwise</option>
+        <option value="counterclockwise">counterclockwise</option>
+      </select>
+      <label for="mode">mode</label>
+      <select id="mode">
+        <option value="click" selected>click</option>
+        <option value="hold">hold</option>
+      </select>
+      <label for="closeDistance">closeDistance</label>
+      <input id="closeDistance" type="range" min="0" max="200" step="4" value="48" />
+      <label for="items">items</label>
+      <input id="items" type="number" min="1" max="12" value="6" />
+    </div>
+    <div id="buttons">
+      <button data-point="center">Center</button>
+      <button data-point="top">Top</button>
+      <button data-point="bottom">Bottom</button>
+      <button data-point="left">Left</button>
+      <button data-point="right">Right</button>
+      <button data-point="top-left">Top-left</button>
+      <button data-point="top-right">Top-right</button>
+      <button data-point="bottom-left">Bottom-left</button>
+      <button data-point="bottom-right">Bottom-right</button>
+      <button data-point="random">Random</button>
+    </div>
+    <div id="status"></div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
