@@ -1,0 +1,27 @@
+# Changelog
+
+Все версии — фиксированные релизы (no rolling releases).
+
+## 0.1.0 (2026-08-13)
+
+Первый публичный релиз. Pielet — круговое контекстное меню без зависимостей.
+
+**Возможности**
+
+- `new Pielet(config)` / `open(x, y)` / `close()` — полный жизненный цикл; экземпляр — `EventTarget`.
+- События `open`, `close`, `select` без payload; порядок при выборе: `select` → `close` → `action`.
+- Мгновенное закрытие при scroll, resize окна, `visualViewport.resize`, выходе указателя за `closeDistance`.
+- Одно открытое меню на страницу (модульный реестр активных runtime).
+- Edge reflow: перераспределение секторов по наибольшей видимой дуге у краёв экрана, центр не смещается.
+- `typeContent`: `text` (fit-to-box), `image`, `node`, `none` (разделитель).
+- Режимы взаимодействия: `click` и `hold` (с выбором кнопки `button`).
+- Hover-подсветка и клик по центру/зазору/пустому сектору закрывают меню без выбора.
+- `clip-path` полигоны с настраиваемой точностью; ни Canvas, ни SVG, ни innerHTML.
+- Тёмная тема через CSS custom properties (namespace `.pielet`).
+- Пустой bundle: dist/pielet.js ~6.4 kB gzip, ноль импортов.
+- Демо-страница (`npm run dev:demo`) и Playwright e2e для реального браузера.
+
+**Ограничения 0.1.0**
+
+- ESM только (require не поддерживается).
+- Русская/английская документация: api.md, architecture.md, migration.md.
