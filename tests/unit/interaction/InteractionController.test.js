@@ -187,6 +187,58 @@ describe('InteractionController — pointerup (click mode)', () => {
     fire(window, 'pointerup', pointAt(0.3, 300));
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it('closes on pointerup in the center after the open grace (click mode)', async () => {
+    vi.useFakeTimers();
+    try {
+      make();
+      await vi.advanceTimersByTimeAsync(400);
+      fire(window, 'pointerup', pointAt(0, 10));
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(onSelect).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('closes on pointerup in a gap after the open grace (click mode)', async () => {
+    vi.useFakeTimers();
+    try {
+      make();
+      await vi.advanceTimersByTimeAsync(400);
+      const geometry = makeGeometry();
+      const gapMid = (geometry.sectors[0].end + geometry.sectors[1].start) / 2;
+      fire(window, 'pointerup', pointAt(gapMid));
+      expect(onClose).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('closes on pointerup over a none sector after the open grace (click mode)', async () => {
+    vi.useFakeTimers();
+    try {
+      controller.detach();
+      const geometry = makeGeometry({ selectable: [false, true, true, true] });
+      const localOnClose = vi.fn();
+      const localController = new InteractionController({
+        interactionMode: 'click',
+        button: 0,
+        geometry,
+        ...CENTER,
+        onHover: vi.fn(),
+        onClose: localOnClose,
+        onSelect: vi.fn()
+      });
+      localController.attach();
+      await vi.advanceTimersByTimeAsync(400);
+      const angle = (geometry.sectors[0].start + geometry.sectors[0].end) / 2;
+      fire(window, 'pointerup', pointAt(angle));
+      expect(localOnClose).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe('InteractionController — pointerup (hold mode)', () => {

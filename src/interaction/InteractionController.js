@@ -7,6 +7,13 @@
 
 import { getSelectedSector } from '../geometry/hitTestSector.js';
 
+/**
+ * Grace-окно (мс) после открытия: отпускание кнопки, которым завершается
+ * клик, открывший меню, не считается «кликом мимо» и не закрывает его.
+ * @type {number}
+ */
+const CLICK_OPEN_GRACE_MS = 300;
+
 export class InteractionController {
     /**
      * @param {object} options
@@ -30,6 +37,7 @@ export class InteractionController {
         this._onSelect = onSelect;
         this._hover = null;
         this._attached = false;
+        this._openedAt = Date.now();
 
         this._onMove = this._onMove.bind(this);
         this._onUp = this._onUp.bind(this);
@@ -87,7 +95,15 @@ export class InteractionController {
         const hit = this._hit(event);
         if (hit.region === 'sector') {
             this._onSelect(hit.itemIndex);
-        } else if (this._mode === 'hold') {
+            return;
+        }
+        if (this._mode === 'hold') {
+            this._onClose();
+            return;
+        }
+        // click-режим: отпускание того же клика, которым открыли меню,
+        // не является «кликом мимо» — меню не закрывается.
+        if (Date.now() - this._openedAt > CLICK_OPEN_GRACE_MS) {
             this._onClose();
         }
     }

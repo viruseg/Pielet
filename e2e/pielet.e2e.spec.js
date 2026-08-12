@@ -167,6 +167,23 @@ test('click mode: releasing the mouse button does not close the menu', async ({ 
   await expect(page.locator('.pielet')).toHaveCount(1);
 });
 
+test('click mode: clicking outside an item closes the menu', async ({ page }) => {
+  await openMenu(page, 400, 300);
+  await page.waitForTimeout(400);
+  await page.mouse.click(400, 300);
+  await expect(page.locator('.pielet')).toHaveCount(0);
+});
+
+test('click mode: clicking a none sector closes the menu without action', async ({ page }) => {
+  // третий item демо — typeContent 'none' (i % 6 === 3): 6 items → none на индексе 3
+  await openMenu(page, 500, 400);
+  await page.waitForTimeout(400);
+  const angle = -90 + 3 * 60 + 30; // центр третьего сектора (60° pitch)
+  const rad = (angle * Math.PI) / 180;
+  await page.mouse.click(500 + 80 * Math.cos(rad), 400 + 80 * Math.sin(rad));
+  await expect(page.locator('.pielet')).toHaveCount(0);
+});
+
 test('context menu is suppressed while the menu is open', async ({ page }) => {
   await openMenu(page, 400, 400);
   const event = await page.evaluate(async () => {

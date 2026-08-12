@@ -91,8 +91,6 @@ export class MenuRenderer {
                 caption.style.position = 'absolute';
                 caption.style.left = `${outerRadius + meanRadius * Math.cos(sector.mid)}px`;
                 caption.style.top = `${outerRadius + meanRadius * Math.sin(sector.mid)}px`;
-                caption.style.width = `${sector.availWidth}px`;
-                caption.style.height = `${sector.availHeight}px`;
                 caption.style.transform = 'translate(-50%, -50%)';
                 const contentEl = createContentContainer(item, sector, baseFontSize);
                 if (contentEl) caption.appendChild(contentEl);

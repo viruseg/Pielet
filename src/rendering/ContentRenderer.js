@@ -45,8 +45,8 @@ export function createContentContainer(item, sector, baseFontSize) {
     if (typeContent === 'text') {
         const el = document.createElement('div');
         el.className = 'pielet__content--text';
-        el.style.width = `${sector.availWidth}px`;
-        el.style.height = `${sector.availHeight}px`;
+        el.style.maxWidth = `${sector.availWidth}px`;
+        el.style.maxHeight = `${sector.availHeight}px`;
         el.textContent = content;
         fitText(el, sector.availWidth, sector.availHeight, baseFontSize);
         return el;

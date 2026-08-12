@@ -16,10 +16,12 @@ describe('createContentContainer', () => {
     expect(el.textContent).toBe('Open');
   });
 
-  it('text: sizes the box to the available area', () => {
+  it('text: constrains the box with max sizes only (no fixed width/height)', () => {
     const el = createContentContainer({ typeContent: 'text', content: 'Open' }, sector, 14);
-    expect(el.style.width).toBe('200px');
-    expect(el.style.height).toBe('70px');
+    expect(el.style.maxWidth).toBe('200px');
+    expect(el.style.maxHeight).toBe('70px');
+    expect(el.style.width).toBe('');
+    expect(el.style.height).toBe('');
   });
 
   it('text: starts at the base font size', () => {

@@ -197,6 +197,15 @@ describe('Pielet selection pipeline', () => {
     menu.close();
   });
 
+  it('click mode: a click outside an item closes the menu (after the open grace)', async () => {
+    menu = makeMenu();
+    menu.open(300, 300);
+    await sleep(400);
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 300, clientY: 300 }));
+    await sleep(400);
+    expect(document.body.querySelector('.pielet')).toBeNull();
+  });
+
   it('hold mode: pointerup in the center closes the menu without select', async () => {
     const action = vi.fn();
     menu = new Pielet({
