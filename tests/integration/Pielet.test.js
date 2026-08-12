@@ -117,6 +117,12 @@ describe('Pielet.close', () => {
 });
 
 describe('Pielet.config handling', () => {
+  it('throws on invalid config at construction time', () => {
+    expect(() => new Pielet({ items: [] })).toThrow(/Pielet config error/);
+    expect(() => new Pielet({ items: [{ typeContent: 'text', content: '' }] })).toThrow(/Pielet config error/);
+    expect(() => new Pielet()).toThrow(/Pielet config error/);
+  });
+
   it('applies config changes on the next open', async () => {
     menu = makeMenu();
     menu.open(200, 200);
@@ -143,6 +149,28 @@ describe('Pielet.config handling', () => {
 });
 
 describe('Pielet selection pipeline', () => {
+  it('hover never highlights a none sector (end-to-end)', () => {
+    const menu2 = new Pielet({
+      items: [
+        { typeContent: 'none' },
+        { typeContent: 'text', content: 'B' },
+        { typeContent: 'none' },
+        { typeContent: 'text', content: 'D' }
+      ]
+    });
+    menu2.open(300, 300);
+    // сектор 0 (none) наверху: pointermove туда не должен добавить hover
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 300, clientY: 200 }));
+    expect(document.querySelectorAll('.pielet__item--hover').length).toBe(0);
+    // наведение на сектор 1 (text, справа) подсвечивает его
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 378, clientY: 300 }));
+    expect(document.querySelectorAll('.pielet__item--hover').length).toBe(1);
+    expect(document.querySelector('.pielet__item--hover').getAttribute('style')).toContain('clip-path');
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 300, clientY: 200 }));
+    expect(document.querySelectorAll('.pielet__item--hover').length).toBe(0);
+    menu2.close();
+  });
+
   it('runs select event → close → action in order, with DOM removed before action', async () => {
     const log = [];
     const action = vi.fn(() => {
