@@ -160,13 +160,13 @@ describe('Pielet selection pipeline', () => {
     });
     menu2.open(300, 300);
     // сектор 0 (none) наверху: pointermove туда не должен добавить hover
-    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 300, clientY: 200 }));
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 300, clientY: 220 }));
     expect(document.querySelectorAll('.pielet__item--hover').length).toBe(0);
-    // наведение на сектор 1 (text, справа) подсвечивает его
-    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 378, clientY: 300 }));
+    // наведение на середину сектора 1 (text, справа) подсвечивает его
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 356, clientY: 356 }));
     expect(document.querySelectorAll('.pielet__item--hover').length).toBe(1);
     expect(document.querySelector('.pielet__item--hover').getAttribute('style')).toContain('clip-path');
-    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 300, clientY: 200 }));
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 300, clientY: 220 }));
     expect(document.querySelectorAll('.pielet__item--hover').length).toBe(0);
     menu2.close();
   });
@@ -181,9 +181,9 @@ describe('Pielet selection pipeline', () => {
     menu.addEventListener('select', () => log.push('select'));
     menu.addEventListener('close', () => log.push('close'));
     menu.open(300, 300);
-    // сектор 0 начинается сверху при startAngle -90: указатель сверху от центра
-    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 300, clientY: 220 }));
-    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 300, clientY: 220 }));
+    // единственный пункт с полным кругом: цель — середина сектора (вниз от центра)
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 301, clientY: 380 }));
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
     expect(action).toHaveBeenCalledTimes(1);
     expect(log).toEqual(['select', 'close', 'action', 'dom-gone:true']);
     expect(document.body.querySelector('.pielet')).toBeNull();
@@ -247,8 +247,8 @@ describe('Pielet selection pipeline', () => {
     window.dispatchEvent(new MouseEvent('pointerup', {
       bubbles: true,
       button: 0,
-      clientX: 300,
-      clientY: 250
+      clientX: 301,
+      clientY: 380
     }));
     expect(document.body.querySelectorAll('.pielet')).toHaveLength(1);
     const secondEl = document.body.querySelector('.pielet');

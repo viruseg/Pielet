@@ -36,8 +36,8 @@ open(x, y)
   └─ acquireActiveMenu → предыдущее меню закрывается мгновенно
   └─ calculateMenuGeometry(config)
   └─ calculateVisibleArc({center, radius, viewport})   → {startAngle, arc}
-  └─ calculateSectorLayout({arc, outerRadius, meanRadius, ringWidth, gap, direction})
-    gap → угол по внешнему радиусу: points на внешней дуге ровно на `gap` px друг от друга;
+  └─ calculateSectorLayout({arc, outerRadius, innerRadius, meanRadius, ringWidth, gap, direction})
+    gap → угол по внешнему и внутреннему радиусу: points ровно на `gap` px друг от друга на обеих дугах;
   └─ MenuRenderer.mount({center, geometry, items})     → DOM в document.body
   └─ InteractionController.attach()                    → слушатели на window
   └─ слушатели viewport: window resize, document scroll (capture, passive),

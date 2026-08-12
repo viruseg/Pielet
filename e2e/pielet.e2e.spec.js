@@ -32,8 +32,8 @@ test('click selects the item under the pointer and runs its action', async ({ pa
   await openMenu(page, 500, 400);
   const menu = page.locator('.pielet');
   await expect(menu).toHaveCount(1);
-  // 6 items, первый сектор начинается с -90° (сверху) по часовой
-  await page.mouse.move(500, 400 - 80);
+  // 6 items, первый сектор начинается с -90° (сверху) по часовой; цель — его середина (-60°)
+  await page.mouse.move(540, 331);
   await page.mouse.down();
   await page.mouse.up();
   await page.waitForFunction(
@@ -49,9 +49,9 @@ test('hold mode: pointer down at center opens, drag selects on release', async (
   await openMenuDeferred(page, 500, 400);
   await page.mouse.move(500, 400);
   await page.mouse.down();
-  // меню открывается по кнопке мыши; далее перемещение на первый сектор (вверх)
+  // меню открывается по кнопке мыши; далее перемещение на первый сектор (середина сверху-справа)
   await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
-  await page.mouse.move(500, 400 - 80, { steps: 5 });
+  await page.mouse.move(540, 331, { steps: 5 });
   await page.mouse.up();
   await page.waitForFunction(
     () => window.__lastAction && window.__lastAction.index === 0,

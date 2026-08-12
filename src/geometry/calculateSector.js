@@ -47,45 +47,43 @@ const MAX_SEGMENTS = 96;
  * @param {number} options.itemCount - количество пунктов (N > 0)
  * @param {number} options.arcStart - начало дуги в радианах
  * @param {number} options.arcLength - длина доступной дуги в радианах (0 < arcLength <= 2π)
- * @param {number} options.outerRadius - внешний радиус кольца (gap в px переводится в угол по нему,
- *   чтобы точки на внешней дуге были ровно на `gap` px друг от друга)
+ * @param {number} options.outerRadius - внешний радиус кольца
+ * @param {number} options.innerRadius - внутренний радиус кольца
  * @param {number} options.meanRadius - средний радиус кольца (для области контента)
  * @param {number} options.ringWidth - ширина кольца
- * @param {number} options.gap - зазор в CSS-пикселях (>= 0)
+ * @param {number} options.gap - зазор в CSS-пикселях (>= 0): длина дуги зазора
+ *   между соседними пунктами РАВНА gap на внешней и на внутренней дуге
+ *   (угловые диапазоны дуг считаются независимо)
  * @param {'clockwise' | 'counterclockwise'} options.direction - порядок распределения
- * @returns {{ sectors: Array<{ start: number, end: number, relStart: number, span: number, mid: number, availWidth: number, availHeight: number }>, gapAngle: number }}
+ * @returns {{ sectors: Array<{ start: number, end: number, innerStart: number, innerEnd: number, relStart: number, span: number, spanInner: number, mid: number, availWidth: number, availHeight: number }>, gapAngle: number, gapAngleInner: number }}
  */
-export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRadius, meanRadius, ringWidth, gap, direction }) {
+export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRadius, innerRadius, meanRadius, ringWidth, gap, direction }) {
     const nominalSpan = arcLength / itemCount;
-    const requestedGapAngle = gap / outerRadius;
     const maxGapAngle = nominalSpan * MAX_GAP_FRACTION;
-    const gapAngle = Math.min(requestedGapAngle, maxGapAngle);
+    const gapAngle = Math.min(gap / outerRadius, maxGapAngle);
+    const gapAngleInner = Math.min(gap / innerRadius, maxGapAngle);
     const span = nominalSpan - gapAngle;
-    const pitch = span + gapAngle;
+    const spanInner = nominalSpan - gapAngleInner;
+    const dir = direction === 'counterclockwise' ? -1 : 1;
 
     const sectors = [];
     for (let i = 0; i < itemCount; i++) {
-        let start;
-        let relStart;
-        if (direction === 'counterclockwise') {
-            start = arcStart - i * pitch - span;
-            relStart = -i * pitch;
-        } else {
-            start = arcStart + i * pitch;
-            relStart = i * pitch;
-        }
-        const end = start + span;
+        // mid общий для обеих дуг: cектор симметричен относительно радиального луча
+        const mid = arcStart + dir * (i * nominalSpan + span / 2);
         sectors.push({
-            start,
-            end,
-            relStart,
+            start: mid - span / 2,
+            end: mid + span / 2,
+            innerStart: mid - spanInner / 2,
+            innerEnd: mid + spanInner / 2,
+            relStart: i * nominalSpan,
             span,
-            mid: start + span / 2,
+            spanInner,
+            mid,
             availWidth: 2 * meanRadius * Math.sin(span / 2) * CONTENT_BOX_FACTOR,
             availHeight: ringWidth * CONTENT_BOX_FACTOR
         });
     }
-    return { sectors, gapAngle };
+    return { sectors, gapAngle, gapAngleInner };
 }
 
 /**
@@ -93,13 +91,16 @@ export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRad
  * квадрата размером 2*outerRadius, центр квадрата — в центре кольца.
  * Углы задаются в радианах (совпадают с мировыми, т.к. элемент не повёрнут).
  *
- * @param {{ start: number, end: number }} sector
+ * @param {{ start: number, end: number, innerStart?: number, innerEnd?: number }} sector
  * @param {number} outerRadius
  * @param {number} innerRadius
  * @returns {string} значение CSS-свойства clip-path
  */
-export function buildSectorClipPath({ start, end }, outerRadius, innerRadius) {
+export function buildSectorClipPath({ start, end, innerStart, innerEnd }, outerRadius, innerRadius) {
     const span = end - start;
+    const innerStartAngle = innerStart === undefined ? start : innerStart;
+    const innerEndAngle = innerEnd === undefined ? end : innerEnd;
+    const innerSpan = innerEndAngle - innerStartAngle;
     const segments = Math.max(MIN_SEGMENTS, Math.min(MAX_SEGMENTS, Math.ceil(span * SEGMENTS_PER_RADIAN)));
     const point = (radius, angle) =>
         `${(outerRadius + radius * Math.cos(angle)).toFixed(2)}px ${(outerRadius + radius * Math.sin(angle)).toFixed(2)}px`;
@@ -109,7 +110,7 @@ export function buildSectorClipPath({ start, end }, outerRadius, innerRadius) {
         points.push(point(outerRadius, start + (span * k) / segments));
     }
     for (let k = segments; k >= 0; k--) {
-        points.push(point(innerRadius, start + (span * k) / segments));
+        points.push(point(innerRadius, innerStartAngle + (innerSpan * k) / segments));
     }
     return `polygon(${points.join(', ')})`;
 }

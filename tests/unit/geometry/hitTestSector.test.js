@@ -21,6 +21,7 @@ function makeGeometry({
     arcStart,
     arcLength,
     outerRadius,
+    innerRadius,
     meanRadius: (outerRadius + innerRadius) / 2,
     ringWidth: outerRadius - innerRadius,
     gap,
@@ -125,19 +126,42 @@ describe('getSelectedSector — gap', () => {
     expect(r.itemIndex).toBeNull();
   });
 
-  it('pointer exactly on sector/gap boundary → sector wins (inclusive end)', () => {
+  it('pointer exactly on sector/gap boundary → sector wins (inclusive end, outer rim)', () => {
     const geometry = makeGeometry({ n: 4, gap: 8 });
     const angle = geometry.sectors[0].end;
-    const r = hit(geometry, 100 + 65 * Math.cos(angle), 100 + 65 * Math.sin(angle));
+    const r = hit(geometry, 100 + 100 * Math.cos(angle), 100 + 100 * Math.sin(angle));
     expect(r.region).toBe('sector');
     expect(r.itemIndex).toBe(0);
   });
 
-  it('pointer exactly on next sector start → next sector wins', () => {
+  it('pointer exactly on next sector start → next sector wins (outer rim)', () => {
     const geometry = makeGeometry({ n: 4, gap: 8 });
     const angle = geometry.sectors[1].start;
-    const r = hit(geometry, 100 + 65 * Math.cos(angle), 100 + 65 * Math.sin(angle));
+    const r = hit(geometry, 100 + 100 * Math.cos(angle), 100 + 100 * Math.sin(angle));
     expect(r.itemIndex).toBe(1);
+  });
+
+  it('pointer in the gap on the INNER radius → region gap', () => {
+    const geometry = makeGeometry({ n: 4, gap: 8 });
+    const gapMid = (geometry.sectors[0].innerEnd + geometry.sectors[1].innerStart) / 2;
+    const r = hit(geometry, 100 + 40 * Math.cos(gapMid), 100 + 40 * Math.sin(gapMid));
+    expect(r.region).toBe('gap');
+    expect(r.itemIndex).toBeNull();
+  });
+
+  it('pointer in sector on the inner radius → correct sector wins', () => {
+    const geometry = makeGeometry({ n: 4, gap: 8 });
+    const mid = geometry.sectors[2].mid;
+    const r = hit(geometry, 100 + 40 * Math.cos(mid), 100 + 40 * Math.sin(mid));
+    expect(r.region).toBe('sector');
+    expect(r.itemIndex).toBe(2);
+  });
+
+  it('inner gap and outer gap both hold: mid-radius point is still a gap', () => {
+    const geometry = makeGeometry({ n: 4, gap: 8 });
+    const gapMid = (geometry.sectors[0].innerEnd + geometry.sectors[1].innerStart) / 2;
+    const r = hit(geometry, 100 + 65 * Math.cos(gapMid), 100 + 65 * Math.sin(gapMid));
+    expect(r.region).toBe('gap');
   });
 });
 
@@ -164,11 +188,24 @@ describe('getSelectedSector — counterclockwise', () => {
     expect(r.itemIndex).toBe(0);
   });
 
-  it('counterclockwise: clockwise order reversed — angle ~100° is the last sector', () => {
+  it('counterclockwise: every sector hit at its unfolded mid on the mid radius', () => {
     const geometry = makeGeometry({ arcStart: -90 * DEG, direction: 'counterclockwise', n: 4 });
-    const angle = 100 * DEG;
-    const r = hit(geometry, 100 + 65 * Math.cos(angle), 100 + 65 * Math.sin(angle));
-    expect(r.itemIndex).toBe(3);
+    // p = arcStart - theta: unfolded p_i = i * nominalSpan
+    const nominalSpan = TAU / 4;
+    for (let i = 0; i < 4; i++) {
+      const p = i * nominalSpan + geometry.sectors[i].span / 2;
+      const theta = geometry.arcStart - p;
+      const r = hit(geometry, 100 + 65 * Math.cos(theta), 100 + 65 * Math.sin(theta));
+      expect(r.itemIndex).toBe(i);
+    }
+  });
+
+  it('counterclockwise: pointer between the last and first sector at mid radius → gap', () => {
+    const geometry = makeGeometry({ arcStart: -90 * DEG, direction: 'counterclockwise', n: 4, gap: 8 });
+    const p = 4 * (TAU / 4) - (4 / 100 - 0) / 2; // середина финального зазора
+    const theta = geometry.arcStart - p;
+    const r = hit(geometry, 100 + 65 * Math.cos(theta), 100 + 65 * Math.sin(theta));
+    expect(r.region).toBe('gap');
   });
 });
 

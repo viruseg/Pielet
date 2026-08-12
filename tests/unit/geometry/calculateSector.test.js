@@ -25,7 +25,8 @@ describe('calculateMenuGeometry', () => {
 
 describe('calculateSectorLayout', () => {
   const base = {
-    arcStart: 0, arcLength: TAU, meanRadius: 78, outerRadius: 120, ringWidth: 84, gap: 4, direction: 'clockwise'
+    arcStart: 0, arcLength: TAU, meanRadius: 78, outerRadius: 120, innerRadius: 36, ringWidth: 84, gap: 4,
+    direction: 'clockwise'
   };
 
   it('distributes 4 items evenly over the full circle', () => {
@@ -82,6 +83,39 @@ describe('calculateSectorLayout', () => {
     near((sectors[1].start - sectors[0].end) * 120, 4, 1e-9);
   });
 
+  it('inner arc distance equals gap too (independent inner arc angles)', () => {
+    const { sectors, gapAngleInner } = calculateSectorLayout({ ...base, itemCount: 4 });
+    near(gapAngleInner, 4 / 36, 1e-9);
+    near(sectors[0].spanInner, TAU / 4 - 4 / 36, 1e-9);
+    near(sectors[1].spanInner, TAU / 4 - 4 / 36, 1e-9);
+    // точки на ВНУТРЕННЕЙ дуге ровно на gap px друг от друга
+    near((sectors[1].innerStart - sectors[0].innerEnd) * 36, 4, 1e-9);
+  });
+
+  it('inner and outer arcs share the same mid; inner span is narrower', () => {
+    const { sectors } = calculateSectorLayout({ ...base, itemCount: 4 });
+    near(sectors[0].mid, (sectors[0].start + sectors[0].end) / 2, 1e-9);
+    near(sectors[0].mid, (sectors[0].innerStart + sectors[0].innerEnd) / 2, 1e-9);
+    expect(sectors[0].spanInner).toBeLessThan(sectors[0].span);
+    expect(sectors[0].innerStart).toBeGreaterThan(sectors[0].start);
+    expect(sectors[0].innerEnd).toBeLessThan(sectors[0].end);
+  });
+
+  it('property: inner spans + N * gapAngleInner equal the available arc for any N', () => {
+    for (let n = 1; n <= 12; n++) {
+      const { sectors, gapAngleInner } = calculateSectorLayout({ ...base, itemCount: n });
+      const sum = sectors.reduce((acc, s) => acc + s.spanInner, 0);
+      near(sum + n * gapAngleInner, TAU, 1e-9);
+    }
+  });
+
+  it('zero gap: inner and outer arcs coincide', () => {
+    const { sectors } = calculateSectorLayout({ ...base, gap: 0, itemCount: 3 });
+    near(sectors[0].spanInner, sectors[0].span, 1e-9);
+    near(sectors[0].innerStart, sectors[0].start, 1e-9);
+    near(sectors[0].innerEnd, sectors[0].end, 1e-9);
+  });
+
   it('shrinks gap proportionally when it does not fit', () => {
     const hugeGap = calculateSectorLayout({ ...base, gap: 500, itemCount: 8 });
     near(hugeGap.gapAngle, (TAU / 8) * 0.5, 1e-9);
@@ -117,18 +151,18 @@ describe('calculateSectorLayout', () => {
     near(sectors[2].relStart, 2 * stepq);
   });
 
-  it('computes relStart for hit testing (counterclockwise: negative offsets)', () => {
-    const { sectors, gapAngle } = calculateSectorLayout({ ...base, direction: 'counterclockwise', itemCount: 4 });
-    const stepq = sectors[0].span + gapAngle;
+  it('computes relStart for hit testing (counterclockwise: positive offsets in unfolded p-space)', () => {
+    const { sectors } = calculateSectorLayout({ ...base, direction: 'counterclockwise', itemCount: 4 });
+    const stepq = sectors[0].span + 4 / 120; // gapAngle (внешний)
     near(sectors[0].relStart, 0);
-    near(sectors[1].relStart, -stepq);
-    near(sectors[2].relStart, -2 * stepq);
+    near(sectors[1].relStart, stepq);
+    near(sectors[2].relStart, 2 * stepq);
   });
 });
 
 describe('buildSectorClipPath', () => {
   it('returns a polygon with px points on outer and inner radii', () => {
-    const sector = { start: 0, end: Math.PI / 2 };
+    const sector = { start: 0, end: Math.PI / 2, innerStart: 0, innerEnd: Math.PI / 2 };
     const path = buildSectorClipPath(sector, 120, 36);
     expect(path.startsWith('polygon(')).toBe(true);
     expect(path.endsWith('px)')).toBe(true);
@@ -145,6 +179,22 @@ describe('buildSectorClipPath', () => {
       expect(d).toBeGreaterThanOrEqual(35.5);
       expect(d).toBeLessThanOrEqual(120.5);
     }
+  });
+
+  it('inner arc uses innerStart/innerEnd angles (scant sector inner bounds)', () => {
+    const sector = { start: 0, end: Math.PI / 2, innerStart: Math.PI / 8, innerEnd: 3 * Math.PI / 8 };
+    const path = buildSectorClipPath(sector, 120, 36);
+    const nums = path.match(/[\d.]+px/g).map((s) => parseFloat(s));
+    const points = [];
+    for (let i = 0; i < nums.length; i += 2) points.push([nums[i], nums[i + 1]]);
+    // внутренняя дуга рисуется от innerEnd к innerStart (обратное направление)
+    const half = Math.floor(points.length / 2);
+    const firstInner = points[half];
+    expect(Math.hypot(firstInner[0] - 120, firstInner[1] - 120)).toBeCloseTo(36, 1);
+    expect(Math.atan2(firstInner[1] - 120, firstInner[0] - 120)).toBeCloseTo(3 * Math.PI / 8, 2);
+    const last = points[points.length - 1];
+    expect(Math.hypot(last[0] - 120, last[1] - 120)).toBeCloseTo(36, 1);
+    expect(Math.atan2(last[1] - 120, last[0] - 120)).toBeCloseTo(Math.PI / 8, 2);
   });
 
   it('has at least 8 segments per arc', () => {

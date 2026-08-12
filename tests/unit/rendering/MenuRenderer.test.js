@@ -20,6 +20,7 @@ function makeGeometry({ itemCount = 4, arcStart = 0, arcLength = TAU, direction 
     arcStart,
     arcLength,
     outerRadius: 100,
+    innerRadius: 30,
     meanRadius: 65,
     ringWidth: 70,
     gap,

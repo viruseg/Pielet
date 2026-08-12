@@ -54,18 +54,51 @@ export function getSelectedSector({ x, y, centerX, centerY, geometry }) {
     if (dist < innerRadius || dist === 0) return { region: 'center', itemIndex: null };
 
     const theta = Math.atan2(dy, dx);
-    let p = theta - arcStart;
-    if (direction === 'counterclockwise') p = arcStart - theta;
-    p = ((p % TAU) + TAU) % TAU;
+
+    // Внешняя дуга сектора [start..end], внутренняя [innerStart..innerEnd] —
+    // независимые угловые диапазоны. Боковые границы — прямые отрезки
+    // (inner, innerStart)→(outer, start) и (inner, innerEnd)→(outer, end).
+    // Для радиуса указателя ρ вычисляем точный угол каждой прямой-грани
+    // (решение квадратного уравнения по |A + s·D| = ρ) — инклюзивные концы
+    // совпадают с геометрией clip-path полигона.
+    const edgeAngle = (fromAngle, toAngle, rho) => {
+        const ax = Math.cos(fromAngle) * innerRadius;
+        const ay = Math.sin(fromAngle) * innerRadius;
+        const bx = Math.cos(toAngle) * outerRadius;
+        const by = Math.sin(toAngle) * outerRadius;
+        const dxe = bx - ax;
+        const dye = by - ay;
+        const a = dxe * dxe + dye * dye;
+        const b = 2 * (ax * dxe + ay * dye);
+        const c = ax * ax + ay * ay - rho * rho;
+        // корни; выбираем тот, что на отрезке [0,1] (s=0 при rho=inner, s=1 при rho=outer);
+        // если сегмент не достаёт до rho — берём ближайшую к rho вершину
+        const disc = b * b - 4 * a * c;
+        let s;
+        if (disc >= 0) {
+            const sqrtD = Math.sqrt(disc);
+            const s1 = (-b - sqrtD) / (2 * a);
+            const s2 = (-b + sqrtD) / (2 * a);
+            if (s1 >= 0 && s1 <= 1) s = s1;
+            else if (s2 >= 0 && s2 <= 1) s = s2;
+            else if (s1 > 1 && s2 > 1) s = 1;
+            else s = 0;
+        } else {
+            s = 0;
+        }
+        return Math.atan2(ay + s * dye, ax + s * dxe);
+    };
+    const between = (angle, lo, hi) => {
+        if (lo <= hi) return angle >= lo - EPS && angle <= hi + EPS;
+        return angle >= lo - EPS || angle <= hi + EPS;
+    };
 
     for (let i = 0; i < sectors.length; i++) {
-        const { relStart, span } = sectors[i];
-        const start = ((relStart % TAU) + TAU) % TAU;
-        if (p >= start - EPS && p <= start + span + EPS) {
-            return {
-                region: selectable[i] ? 'sector' : 'none',
-                itemIndex: i
-            };
+        const s = sectors[i];
+        const lo = edgeAngle(s.innerStart, s.start, dist);
+        const hi = edgeAngle(s.innerEnd, s.end, dist);
+        if (between(theta, lo, hi)) {
+            return { region: selectable[i] ? 'sector' : 'none', itemIndex: i };
         }
     }
     return { region: 'gap', itemIndex: null };

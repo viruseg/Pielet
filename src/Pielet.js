@@ -70,6 +70,7 @@ export default class Pielet extends EventTarget {
             arcStart: visible.startAngle,
             arcLength: visible.arc,
             outerRadius,
+            innerRadius,
             meanRadius,
             ringWidth,
             gap: config.gap,
