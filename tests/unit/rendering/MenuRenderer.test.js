@@ -77,6 +77,15 @@ describe('MenuRenderer.mount', () => {
     expect(els[2].querySelector('.pielet__item-caption .pielet__content--image')).toBeTruthy();
   });
 
+  it('marks none items with the --none class (no fill)', () => {
+    renderer.mount({ centerX: 200, centerY: 150, geometry: makeGeometry(), items, baseFontSize: 14 });
+    const els = renderer.element.querySelectorAll('.pielet__item');
+    expect(els[1].classList.contains('pielet__item--none')).toBe(true);
+    expect(els[0].classList.contains('pielet__item--none')).toBe(false);
+    expect(els[2].classList.contains('pielet__item--none')).toBe(false);
+    expect(els[3].classList.contains('pielet__item--none')).toBe(false);
+  });
+
   it('positions the caption at the radial center of its sector', () => {
     const geometry = makeGeometry();
     renderer.mount({ centerX: 200, centerY: 150, geometry, items, baseFontSize: 14 });

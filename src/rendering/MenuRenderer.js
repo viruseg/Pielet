@@ -83,6 +83,7 @@ export class MenuRenderer {
 
             const itemEl = document.createElement('div');
             itemEl.className = 'pielet__item';
+            if (item.typeContent === 'none') itemEl.classList.add('pielet__item--none');
             itemEl.style.clipPath = buildSectorClipPath(sector, outerRadius, innerRadius);
 
             if (item.typeContent !== 'none') {
