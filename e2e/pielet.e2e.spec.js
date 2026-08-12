@@ -105,6 +105,49 @@ test('opening at a corner keeps the requested center (edge reflow)', async ({ pa
   expect(box.y + box.height / 2).toBeCloseTo(60, 1);
 });
 
+test('menu opens exactly at the viewport center', async ({ page }) => {
+  const { vw, vh } = await page.evaluate(() => ({ vw: window.innerWidth, vh: window.innerHeight }));
+  await openMenu(page, vw / 2, vh / 2);
+  const box = await page.locator('.pielet').boundingBox();
+  expect(box.x + box.width / 2).toBeCloseTo(vw / 2, 1);
+  expect(box.y + box.height / 2).toBeCloseTo(vh / 2, 1);
+});
+
+for (const point of [
+  { name: 'left edge', x: 80, y: 500 },
+  { name: 'right edge', x: 1100, y: 500 },
+  { name: 'top edge', x: 600, y: 80 },
+  { name: 'bottom edge', x: 600, y: 700 },
+  { name: 'top-left corner', x: 80, y: 80 },
+  { name: 'top-right corner', x: 1100, y: 80 },
+  { name: 'bottom-left corner', x: 80, y: 700 },
+  { name: 'bottom-right corner', x: 1100, y: 700 }
+]) {
+  test(`opening at the ${point.name} anchors the requested center (x=${point.x}, y=${point.y})`, async ({ page }) => {
+    await openMenu(page, point.x, point.y);
+    const box = await page.locator('.pielet').boundingBox();
+    expect(box.x + box.width / 2).toBeCloseTo(point.x, 1);
+    expect(box.y + box.height / 2).toBeCloseTo(point.y, 1);
+    expect(box.x).toBeCloseTo(point.x - 120, 1);
+    expect(box.y).toBeCloseTo(point.y - 120, 1);
+  });
+}
+
+test('menu larger than viewport still opens centered without errors', async ({ page }) => {
+  await page.evaluate(async () => {
+    window.__menu.close();
+    window.__menu = new window.Pielet({
+      size: 900,
+      items: [{ typeContent: 'text', content: 'Big' }]
+    });
+    window.__menu.open(300, 200);
+  });
+  await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
+  const box = await page.locator('.pielet').boundingBox();
+  expect(box.x + box.width / 2).toBeCloseTo(300, 1);
+  expect(box.y + box.height / 2).toBeCloseTo(200, 1);
+});
+
 test('context menu is suppressed while the menu is open', async ({ page }) => {
   await openMenu(page, 400, 400);
   const event = await page.evaluate(async () => {

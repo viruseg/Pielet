@@ -96,6 +96,26 @@ describe('MenuRenderer.mount', () => {
     await vi.advanceTimersByTimeAsync(20);
     expect(renderer.element.classList.contains('pielet--open')).toBe(true);
   });
+
+  it('preserves DOM events of a user-provided node item', () => {
+    const onClick = vi.fn();
+    const button = document.createElement('button');
+    button.addEventListener('click', onClick);
+    renderer.mount({
+      centerX: 200,
+      centerY: 150,
+      geometry: makeGeometry(),
+      items: [{ typeContent: 'node', content: button }],
+      baseFontSize: 14
+    });
+    const caption = renderer.element.querySelector('.pielet__item-caption');
+    expect(caption).toBeTruthy();
+    expect(caption.contains(button)).toBe(true);
+    expect(button.parentNode).toBe(caption);
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(onClick.mock.instances[0]).toBe(button);
+  });
 });
 
 describe('MenuRenderer.setHover', () => {
