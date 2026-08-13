@@ -100,6 +100,22 @@ describe('MenuRenderer.mount', () => {
     expect(caption.style.transform).toContain('translate(-50%, -50%)');
   });
 
+  it('2 items at startAngle -90: both captions sit on the horizontal line through the menu center', () => {
+    const geometry = makeGeometry({ itemCount: 2, arcStart: -Math.PI / 2, gap: 4 });
+    const two = [
+      { typeContent: 'text', content: 'A' },
+      { typeContent: 'text', content: 'B' }
+    ];
+    renderer.mount({ centerX: 200, centerY: 150, geometry, items: two, baseFontSize: 14 });
+    const caps = renderer.element.querySelectorAll('.pielet__item-caption');
+    expect(caps).toHaveLength(2);
+    // центр меню в координатах элемента = outerRadius (100); ось через центр — top = 100px
+    expect(parseFloat(caps[0].style.top)).toBeCloseTo(100, 6);
+    expect(parseFloat(caps[1].style.top)).toBeCloseTo(100, 6);
+    // и симметрично по горизонтали относительно центра
+    expect(parseFloat(caps[0].style.left) + parseFloat(caps[1].style.left)).toBeCloseTo(200, 6);
+  });
+
   it('adds the open class asynchronously', async () => {
     vi.useFakeTimers();
     renderer.mount({ centerX: 200, centerY: 150, geometry: makeGeometry(), items, baseFontSize: 14 });

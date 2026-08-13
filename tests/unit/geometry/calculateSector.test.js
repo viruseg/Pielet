@@ -32,10 +32,10 @@ describe('calculateSectorLayout', () => {
   it('distributes 4 items evenly over the full circle', () => {
     const { sectors, gapAngle } = calculateSectorLayout({ ...base, itemCount: 4 });
     expect(sectors).toHaveLength(4);
-    near(sectors[0].start, 0);
     near(sectors[0].span, TAU / 4 - gapAngle, 1e-9);
-    near(sectors[1].start, sectors[0].end + gapAngle, 1e-9);
-    near(sectors[3].end, TAU - gapAngle, 1e-9);
+    // зазор между соседями — ровно gapAngle, слоты равны
+    near(sectors[1].start - sectors[0].end, gapAngle, 1e-9);
+    near(sectors[3].end - sectors[0].start, TAU - gapAngle, 1e-9);
   });
 
   it('property: sum of spans + N * gapAngle equals available arc for any N', () => {
@@ -59,20 +59,21 @@ describe('calculateSectorLayout', () => {
   it('lays sectors clockwise from arcStart', () => {
     const arcStart = -Math.PI / 2;
     const { sectors, gapAngle } = calculateSectorLayout({ ...base, arcStart, itemCount: 3 });
-    const stepq = sectors[0].span + gapAngle;
-    near(sectors[0].start, arcStart);
-    near(sectors[1].start, arcStart + stepq);
-    near(sectors[2].start, arcStart + 2 * stepq);
+    const pitch = sectors[0].span + gapAngle;
+    // сектор центрирован в своём слоте: видимая часть отступает от границ слота на gapAngle/2
+    near(sectors[0].start, arcStart + gapAngle / 2);
+    near(sectors[1].start - sectors[0].start, pitch);
+    near(sectors[2].start - sectors[1].start, pitch);
     expect(sectors[0].mid).toBeGreaterThan(sectors[0].start);
   });
 
   it('lays sectors counterclockwise (decreasing angles)', () => {
     const arcStart = -Math.PI / 2;
     const { sectors, gapAngle } = calculateSectorLayout({ ...base, arcStart, direction: 'counterclockwise', itemCount: 3 });
-    const stepq = sectors[0].span + gapAngle;
-    near(sectors[0].end, arcStart);
-    near(sectors[1].end, arcStart - stepq);
-    near(sectors[2].end, arcStart - 2 * stepq);
+    const pitch = sectors[0].span + gapAngle;
+    near(sectors[0].end, arcStart - gapAngle / 2);
+    near(sectors[1].end - sectors[0].end, -pitch);
+    near(sectors[2].end - sectors[1].end, -pitch);
     expect(sectors[0].start).toBeLessThan(sectors[0].end);
   });
 
@@ -157,6 +158,62 @@ describe('calculateSectorLayout', () => {
     near(sectors[0].relStart, 0);
     near(sectors[1].relStart, stepq);
     near(sectors[2].relStart, 2 * stepq);
+  });
+});
+
+describe('sector alignment: gap lines and content centers', () => {
+  const DEG = Math.PI / 180;
+  const base = {
+    arcStart: 0, arcLength: TAU, meanRadius: 78, outerRadius: 120, innerRadius: 36, ringWidth: 84, gap: 4,
+    direction: 'clockwise'
+  };
+
+  it('2 items at startAngle -90: content centers on the horizontal axis through the menu center', () => {
+    const arcStart = -Math.PI / 2;
+    const { sectors } = calculateSectorLayout({ ...base, arcStart, itemCount: 2 });
+    near(sectors[0].mid, 0, 1e-9);
+    near(sectors[1].mid, Math.PI, 1e-9);
+  });
+
+  it('2 items at startAngle -90: the gap is centered on the vertical line (90° and 270°)', () => {
+    const arcStart = -Math.PI / 2;
+    const { sectors } = calculateSectorLayout({ ...base, arcStart, itemCount: 2 });
+    // зазор между секторами 0 и 1 симметричен относительно границы слотов (вертикальная линия 90°)
+    const boundary = Math.PI / 2;
+    near(sectors[0].end + sectors[1].start, 2 * boundary, 1e-9);
+    near(sectors[0].innerEnd + sectors[1].innerStart, 2 * boundary, 1e-9);
+    // «стык» сектор 1 → сектор 0 (через 2π) симметричен относительно 270°
+    const wrap = (sectors[1].end + sectors[0].start + TAU) / 2;
+    near(wrap % TAU, 3 * Math.PI / 2, 1e-9);
+  });
+
+  it('4 items at startAngle -90: every gap is centered on its slot boundary (vertical/horizontal lines)', () => {
+    const arcStart = -Math.PI / 2;
+    const { sectors } = calculateSectorLayout({ ...base, arcStart, itemCount: 4 });
+    const pitch = TAU / 4;
+    for (let i = 0; i < 4; i++) {
+      const boundary = (arcStart + (i + 1) * pitch) % TAU;
+      const s = sectors[i];
+      const n = sectors[(i + 1) % 4];
+      const outerSum = i < 3 ? s.end + n.start : s.end + n.start + TAU;
+      const innerSum = i < 3 ? s.innerEnd + n.innerStart : s.innerEnd + n.innerStart + TAU;
+      near((outerSum / 2) % TAU, boundary, 1e-6);
+      near((innerSum / 2) % TAU, boundary, 1e-6);
+    }
+  });
+
+  it('4 items at startAngle -90: content centers on slot axes (-45°, 45°, 135°, 225°)', () => {
+    const arcStart = -Math.PI / 2;
+    const { sectors } = calculateSectorLayout({ ...base, arcStart, itemCount: 4 });
+    const expected = [-45, 45, 135, 225].map((d) => d * DEG);
+    sectors.forEach((s, i) => near(s.mid, expected[i], 1e-9));
+  });
+
+  it('counterclockwise mirrors the alignment (2 items: centers on the horizontal axis)', () => {
+    const arcStart = -Math.PI / 2;
+    const { sectors } = calculateSectorLayout({ ...base, arcStart, direction: 'counterclockwise', itemCount: 2 });
+    near(((sectors[0].mid % TAU) + TAU) % TAU, Math.PI, 1e-9);
+    near(((sectors[1].mid % TAU) + TAU) % TAU, 0, 1e-9);
   });
 });
 

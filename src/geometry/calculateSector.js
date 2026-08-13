@@ -68,8 +68,10 @@ export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRad
 
     const sectors = [];
     for (let i = 0; i < itemCount; i++) {
-        // mid общий для обеих дуг: cектор симметричен относительно радиального луча
-        const mid = arcStart + dir * (i * nominalSpan + span / 2);
+        // mid — ось слота (центр номинальной доли дуги): сектор симметричен
+        // относительно границы соседних слотов, поэтому gap-линии и центры
+        // контента лежат ровно на радиальных осях слотов
+        const mid = arcStart + dir * (i * nominalSpan + nominalSpan / 2);
         sectors.push({
             start: mid - span / 2,
             end: mid + span / 2,
