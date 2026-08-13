@@ -61,6 +61,7 @@ export default class Pielet extends EventTarget {
             centerY: y,
             outerRadius,
             startAngle: config.startAngle,
+            direction: config.direction,
             viewportWidth: window.innerWidth,
             viewportHeight: window.innerHeight
         });

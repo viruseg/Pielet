@@ -106,3 +106,28 @@ describe('calculateVisibleArc — startAngle preservation', () => {
     near(r.arc, TAU);
   });
 });
+
+describe('calculateVisibleArc — counterclockwise edge reflow', () => {
+  it('counterclockwise fully visible keeps config startAngle', () => {
+    const r = calculateVisibleArc({ ...base, direction: 'counterclockwise', centerX: 500, centerY: 400 });
+    near(r.startAngle, -90 * DEG);
+    near(r.arc, TAU);
+  });
+
+  it('left edge: anchors the arc at the END so CCW sectors sweep inside the visible window', () => {
+    const r = calculateVisibleArc({ ...base, direction: 'counterclockwise', centerX: 50, centerY: 400 });
+    // видимое окно [240°, 480°]; CCW-полоса [startAngle - arc, startAngle] должна лежать в нём
+    near(r.arc, 240 * DEG, 1e-6);
+    near(r.startAngle, 480 * DEG, 1e-6);
+  });
+
+  it('top edge: swept band [startAngle - arc, startAngle] is fully visible', () => {
+    const r = calculateVisibleArc({ ...base, direction: 'counterclockwise', centerX: 500, centerY: 50 });
+    near(r.startAngle, 570 * DEG, 1e-6);
+    near(r.arc, 240 * DEG, 1e-6);
+    for (const t of [0, 0.25, 0.5, 0.75, 1]) {
+      const a = r.startAngle - r.arc * t;
+      expect(Math.sin(a)).toBeGreaterThanOrEqual(-0.5 - 1e-9);
+    }
+  });
+});

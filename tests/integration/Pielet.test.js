@@ -256,6 +256,56 @@ describe('Pielet selection pipeline', () => {
   });
 });
 
+describe('Pielet — counterclockwise near viewport edges', () => {
+  function setViewport(width, height) {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
+  }
+
+  function clipPoints() {
+    const menuEl = document.querySelector('.pielet');
+    const originX = Number.parseInt(menuEl.style.left, 10);
+    const originY = Number.parseInt(menuEl.style.top, 10);
+    return Array.from(document.querySelectorAll('.pielet__item')).flatMap((el) => {
+      const raw = el.style.clipPath;
+      if (!raw || raw.slice(0, 8) !== 'polygon(') return [];
+      const inner = raw.slice(raw.indexOf('(') + 1, raw.lastIndexOf(')'));
+      return inner.split(',').map((t) => {
+        const [x, y] = t.trim().split(' ').map(parseFloat);
+        return [originX + x, originY + y];
+      });
+    });
+  }
+
+  it('counterclockwise near the left edge: all sector points stay inside the viewport', () => {
+    setViewport(1024, 768);
+    menu = new Pielet({ items, direction: 'counterclockwise' });
+    menu.open(80, 384);
+    const points = clipPoints();
+    expect(points.length).toBeGreaterThan(0);
+    for (const [x, y] of points) {
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(x).toBeLessThanOrEqual(1024);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y).toBeLessThanOrEqual(768);
+    }
+  });
+
+  it('counterclockwise near the top edge: all sector points stay inside the viewport', () => {
+    setViewport(1024, 768);
+    menu = new Pielet({ items, direction: 'counterclockwise' });
+    menu.open(512, 80);
+    const points = clipPoints();
+    expect(points.length).toBeGreaterThan(0);
+    for (const [x, y] of points) {
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(x).toBeLessThanOrEqual(1024);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y).toBeLessThanOrEqual(768);
+    }
+  });
+});
+
 describe('Pielet — single active menu across instances', () => {
   it('opening a second instance closes the first one (one DOM menu only)', async () => {
     const first = new Pielet({ items });

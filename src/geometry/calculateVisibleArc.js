@@ -119,11 +119,12 @@ function intersectIntervals(a, b) {
  * @param {number} options.centerY - центр меню (clientY при open)
  * @param {number} options.outerRadius - внешний радиус меню
  * @param {number} options.startAngle - начальный угол в градусах (конфигурация)
+ * @param {'clockwise' | 'counterclockwise'} [options.direction] - направление развёртки секторов
  * @param {number} options.viewportWidth - ширина viewport в CSS-пикселях
  * @param {number} options.viewportHeight - высота viewport в CSS-пикселях
  * @returns {{ startAngle: number, arc: number }}
  */
-export function calculateVisibleArc({ centerX, centerY, outerRadius, startAngle, viewportWidth, viewportHeight }) {
+export function calculateVisibleArc({ centerX, centerY, outerRadius, startAngle, direction = 'clockwise', viewportWidth, viewportHeight }) {
     const cfgStart = (startAngle * Math.PI) / 180;
     const full = { startAngle: cfgStart, arc: TAU };
     if (!(outerRadius > 0) || !(viewportWidth > 0) || !(viewportHeight > 0)) return full;
@@ -159,7 +160,9 @@ export function calculateVisibleArc({ centerX, centerY, outerRadius, startAngle,
         const raw = Math.abs(mid - cfgStart);
         const dist = Math.min(raw, TAU - raw);
         if (dist < bestDist) {
-            best = { startAngle: s, arc: len };
+            // CW-развёртка идёт от начала дуги вверх по углу;
+            // CCW — от конца вниз, поэтому якорь для CCW — конец видимой дуги
+            best = { startAngle: direction === 'counterclockwise' ? e : s, arc: len };
             bestDist = dist;
         }
     }
