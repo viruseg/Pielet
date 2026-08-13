@@ -1,5 +1,4 @@
 import Pielet from '../src/index.js';
-import '../src/styles/pielet.css';
 
 const statusEl = document.getElementById('status');
 const controls = {
