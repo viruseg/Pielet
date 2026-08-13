@@ -9,9 +9,12 @@
 
 ## Быстрый старт
 
+```html
+<link rel="stylesheet" href="src/styles/pielet.css" />
+```
+
 ```js
-import Pielet from 'pielet';
-import 'pielet/style.css'; // тёмная тема (опционально)
+import Pielet from 'pielet.js';
 
 const menu = new Pielet({
   items: [
