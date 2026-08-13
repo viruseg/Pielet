@@ -5,15 +5,9 @@
 - Раскладка секторов, hover, hit-testing и поведение при выходе за край экрана — чистая математика без DOM.
 - Один открытый runtime на страницу (браузерный паттерн context menu), кросс-экземплярная гарантия «одно меню».
 - Стили — только через CSS custom properties, темы переопределяются без копирования библиотечных стилей.
-- Canvas/SVG не используются; отрисовка — DOM + CSS `clip-path`.
+- Отрисовка — DOM + CSS `clip-path`.
 
-## Установка
-
-```bash
-npm install pielet
-```
-
-Пакет поставляется как ESM (`import`). CommonJS не поддерживается.
+## Быстрый старт
 
 ```js
 import Pielet from 'pielet';
@@ -108,9 +102,11 @@ npm run dev:demo
 ## Разработка
 
 ```bash
+npm install       # install
 npm test          # unit + integration (vitest)
 npm run test:e2e  # end-to-end (Playwright, chromium)
 npm run build     # dist/pielet.js + dist/pielet.css + dist/*.d.ts
+npx vite          # run
 ```
 
 ## Лицензия
