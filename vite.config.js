@@ -5,8 +5,9 @@ export default defineConfig({
   build: {
     lib: {
       entry: 'src/index.js',
-      formats: ['es'],
-      fileName: () => 'pielet.js'
+      name: 'Pielet',
+      formats: ['es', 'iife'],
+      fileName: (format) => format === 'es' ? 'pielet.js' : 'pielet.browser.js'
     },
     cssFileName: 'pielet',
     emptyOutDir: true,
