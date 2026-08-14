@@ -76,8 +76,6 @@ function openAt(x, y) {
     items: assembleItems(state.items)
   });
   menu.open(x, y);
-  window.__menuEl = document.querySelector('.pielet');
-  statusEl.textContent = `open(${Math.round(x)}, ${Math.round(y)}) — ${menu.config.items.length} items`;
 }
 
 document.addEventListener('pointerdown', (e) => {
@@ -95,9 +93,14 @@ document.addEventListener('contextmenu', (e) => {
 
 menu.addEventListener('open', () => {
   window.__menuEl = document.querySelector('.pielet');
+  statusEl.textContent = `event: open — ${menu.config.items.length} items — ${new Date().toLocaleTimeString()}`;
 });
 menu.addEventListener('select', () => {
   window.__menuEl = document.querySelector('.pielet');
+});
+menu.addEventListener('close', () => {
+  window.__menuEl = null;
+  statusEl.textContent = `event: close — menu removed from DOM — ${new Date().toLocaleTimeString()}`;
 });
 
 window.addEventListener('resize', () => {

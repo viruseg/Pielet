@@ -43,6 +43,26 @@ window.addEventListener('contextmenu', (e) => {
 
 Исключения из `action` пробрасываются в консоль (не проглатываются); меню при этом остаётся закрытым и пригодным к переиспользованию.
 
+## События
+
+Экземпляр реализует `EventTarget`. События `open`, `close`, `select` — `CustomEvent` без `detail`, диспатчатся на самом экземпляре:
+
+```js
+const menu = new Pielet({ items: [{ typeContent: 'text', content: 'Открыть' }] });
+
+menu.addEventListener('open', () => {
+  console.log('меню открыто и готово к взаимодействию');
+});
+menu.addEventListener('close', () => {
+  console.log('меню закрыто и удалено из DOM');
+});
+menu.addEventListener('select', () => {
+  console.log('выбран сектор с action');
+});
+```
+
+Порядок при выборе пункта: `select` → `close` → вызов `action`.
+
 ## Конфигурация
 
 | Поле | По умолчанию | Описание |
