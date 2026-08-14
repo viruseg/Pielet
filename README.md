@@ -38,14 +38,14 @@ window.addEventListener('contextmenu', (e) => {
 | `menu.config` | Живой объект конфигурации. Изменения применяются при следующем `open()`. |
 | `menu.open(x, y)` | Открывает меню с центром в точке viewport (clientX/clientY). Выбрасывает ошибку на нечисловых координатах. |
 | `menu.close()` | Плавно закрывает меню. No-op, если меню закрыто. |
-| События | `open`, `close`, `select` — `CustomEvent` без detail, диспатчатся на экземпляре (`EventTarget`). |
-| `menu.config.items[i].action` | Вызывается после полного закрытия меню (DOM и слушатели уже убраны), без аргументов. |
+| События | `open`, `close` — `CustomEvent` без `detail`; `select` — с `detail: { id }`, диспатчатся на экземпляре (`EventTarget`). |
+| `menu.config.items[i].action` | Вызывается после полного закрытия меню (DOM и слушатели уже убраны), с одним аргументом — `id` пункта (строка). |
 
 Исключения из `action` пробрасываются в консоль (не проглатываются); меню при этом остаётся закрытым и пригодным к переиспользованию.
 
 ## События
 
-Экземпляр реализует `EventTarget`. События `open`, `close`, `select` — `CustomEvent` без `detail`, диспатчатся на самом экземпляре:
+Экземпляр реализует `EventTarget`. События `open` и `close` — `CustomEvent` без `detail`; `select` несёт `detail: { id }` — строковый идентификатор выбранного пункта. Все диспатчатся на самом экземпляре:
 
 ```js
 const menu = new Pielet({ items: [{ typeContent: 'text', content: 'Открыть' }] });
@@ -56,8 +56,8 @@ menu.addEventListener('open', () => {
 menu.addEventListener('close', () => {
   console.log('меню закрыто и удалено из DOM');
 });
-menu.addEventListener('select', () => {
-  console.log('выбран сектор с action');
+menu.addEventListener('select', (e) => {
+  console.log('выбран сектор с id', e.detail.id);
 });
 ```
 
@@ -83,7 +83,8 @@ menu.addEventListener('select', () => {
 | --- | --- |
 | `typeContent` | `'text'` \| `'image'` \| `'node'` \| `'none'`. `'none'` — пустой (некликабельный и неhover-ящийся) сектор-разделитель. |
 | `content` | Строка для text/image, `Node` (например, `SVGElement`) для node. |
-| `action` | Опциональная функция, вызываемая при выборе. |
+| `id` | Опциональный строковый идентификатор. Если не указан — генерируется автоматически при каждом `open()` в формате `pielet-<время>-<n>` (префикс `pielet-` зарезервирован). Передаётся в `select` (`event.detail.id`) и первым аргументом в `action`. |
+| `action` | Опциональная функция `(id) => {}`, вызываемая при выборе. |
 
 ## Кастомизация темы
 

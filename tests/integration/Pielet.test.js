@@ -238,6 +238,57 @@ describe('Pielet selection pipeline', () => {
     expect(document.body.querySelector('.pielet')).toBeNull();
   });
 
+  it('select event detail.id and action argument match an explicit item id', async () => {
+    const action = vi.fn();
+    let detailId = null;
+    menu = new Pielet({ items: [{ typeContent: 'text', content: 'A', id: 'custom-a', action }] });
+    menu.addEventListener('select', (e) => {
+      detailId = e.detail.id;
+    });
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 301, clientY: 380 }));
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
+    expect(detailId).toBe('custom-a');
+    expect(action).toHaveBeenCalledTimes(1);
+    expect(action).toHaveBeenCalledWith('custom-a');
+  });
+
+  it('select event detail.id and action argument use the generated id', async () => {
+    const action = vi.fn();
+    let detailId = null;
+    menu = new Pielet({ items: [{ typeContent: 'text', content: 'A', action }] });
+    menu.addEventListener('select', (e) => {
+      detailId = e.detail.id;
+    });
+    menu.open(300, 300);
+    const itemId = menu.config.items[0].id;
+    expect(itemId).toMatch(/^pielet-\d+-\d+$/);
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 301, clientY: 380 }));
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
+    expect(detailId).toBe(itemId);
+    expect(action).toHaveBeenCalledWith(itemId);
+  });
+
+  it('regenerates generated ids on each open while explicit ids stay stable', async () => {
+    const action = vi.fn();
+    menu = new Pielet({
+      items: [
+        { typeContent: 'text', content: 'A', action },
+        { typeContent: 'text', content: 'B', id: 'stable' }
+      ]
+    });
+    menu.open(300, 300);
+    const firstGenerated = menu.config.items[0].id;
+    expect(firstGenerated).toMatch(/^pielet-/);
+    expect(menu.config.items[1].id).toBe('stable');
+    menu.close();
+    await sleep(400);
+    menu.open(300, 300);
+    expect(menu.config.items[0].id).toMatch(/^pielet-/);
+    expect(menu.config.items[0].id).not.toBe(firstGenerated);
+    expect(menu.config.items[1].id).toBe('stable');
+  });
+
   it('opens another menu from an action without runtime conflicts', () => {
     menu = new Pielet({
       items: [{ typeContent: 'text', content: 'A', action: () => second.open(600, 150) }]

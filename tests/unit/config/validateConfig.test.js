@@ -164,3 +164,49 @@ describe('validateConfig valid inputs', () => {
     expect(config.items.map((i) => i.content)).toEqual(['first', undefined, 'last']);
   });
 });
+
+describe('item id handling', () => {
+  it('assigns a generated id to items without id', () => {
+    const config = normalizeConfig({ items: [{ typeContent: 'text', content: 'A' }] });
+    expect(config.items[0].id).toMatch(/^pielet-\d+-\d+$/);
+  });
+
+  it('generated ids are unique within one normalization', () => {
+    const config = normalizeConfig({
+      items: [{ typeContent: 'text', content: 'A' }, { typeContent: 'text', content: 'B' }, { typeContent: 'none' }]
+    });
+    const ids = config.items.map((i) => i.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    ids.forEach((id) => expect(id).toMatch(/^pielet-\d+-\d+$/));
+  });
+
+  it('preserves explicitly provided id', () => {
+    const config = normalizeConfig({ items: [{ typeContent: 'text', content: 'A', id: 'copy' }] });
+    expect(config.items[0].id).toBe('copy');
+  });
+
+  it('regenerates generated ids on each normalizeConfig call', () => {
+    const items = [{ typeContent: 'text', content: 'A' }];
+    const first = normalizeConfig({ items });
+    const second = normalizeConfig({ items });
+    expect(first.items[0].id).not.toBe(second.items[0].id);
+  });
+
+  it('does not mutate the source item objects', () => {
+    const items = [{ typeContent: 'text', content: 'A' }];
+    normalizeConfig({ items });
+    expect(items[0]).not.toHaveProperty('id');
+  });
+
+  it('throws when id is empty', () => {
+    expect(() =>
+      validateConfig({ items: [{ typeContent: 'text', content: 'A', id: '' }] })
+    ).toThrow(/id/);
+  });
+
+  it('throws when id is not a string', () => {
+    expect(() =>
+      validateConfig({ items: [{ typeContent: 'text', content: 'A', id: 1 }] })
+    ).toThrow(/id/);
+  });
+});

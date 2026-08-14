@@ -29,7 +29,11 @@
  * @typedef {object} PieletItem
  * @property {ContentType} typeContent - тип содержимого
  * @property {string | Node} [content] - текст/URL для text/image, Node для node; игнорируется для none
- * @property {() => void} [action] - вызывается без аргументов после полного закрытия меню
+ * @property {string} [id] - опциональный строковый идентификатор. Если не указан
+ *   (или начинается с зарезервированного префикса `pielet-`) — генерируется
+ *   автоматически при каждой нормализации в формате `pielet-<время>-<n>`.
+ *   Этот id передаётся в `select` (event.detail.id) и первым аргументом в `action`.
+ * @property {(id: string) => void} [action] - вызывается с id пункта после полного закрытия меню
  */
 
 /**

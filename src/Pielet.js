@@ -147,16 +147,19 @@ export default class Pielet extends EventTarget {
     /**
      * Pipeline выбора пункта (спека §27):
      * select event → закрытие → удаление DOM/listeners → вызов action.
+     * select несёт `detail.id` — строковый идентификатор пункта; тот же id
+     * передаётся первым аргументом в `item.action`.
      * @param {import('./types.js').PieletItem} item
      * @param {number} index
      */
     _select(item, index) {
         void index;
-        this.dispatchEvent(new CustomEvent('select'));
+        const id = item && typeof item.id === 'string' ? item.id : '';
+        this.dispatchEvent(new CustomEvent('select', { detail: { id } }));
         this._close(true);
         if (item && typeof item.action === 'function') {
             const action = item.action;
-            action();
+            action(id);
         }
     }
 

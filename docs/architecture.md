@@ -47,7 +47,7 @@ open(x, y)
 pointer moves/up
   └─ getSelectedSector(x, y, geometry) → outside | center | gap | none | sector
   └─ hover: MenuRenderer.setHover(index | null)
-  └─ select: dispatch 'select' → мгновенное закрытие → action()
+  └─ select: dispatch 'select' (detail.id) → мгновенное закрытие → action(id)
 close()
   └─ detach InteractionController, снять viewport-слушатели
   └─ fade-out opacity (transitionend + fallback по computed duration)
@@ -82,7 +82,7 @@ close()
 
 ### `action` вызывается после разбора DOM
 
-Порядок: `select`-событие → мгновенное удаление DOM и слушателей → `action`. Исключения не подавляются. Это позволяет action открывать новое меню без конфликтов с закрывающимся.
+Порядок: `select`-событие (`detail.id` — строковый id пункта) → мгновенное удаление DOM и слушателей → `action(id)` — тот же id первым аргументом. Исключения не подавляются. Это позволяет action открывать новое меню без конфликтов с закрывающимся.
 
 ### Мгновенное закрытие vs fade-out
 

@@ -10,6 +10,50 @@ const DIRECTIONS = new Set(['clockwise', 'counterclockwise']);
 const INTERACTION_MODES = new Set(['hold', 'click']);
 const CONTENT_TYPES = new Set(['none', 'text', 'image', 'node']);
 
+/**
+ * Префикс автоматически генерируемых id пунктов.
+ * Резервируется: пользовательские id не должны начинаться с него.
+ * @type {string}
+ */
+const ID_PREFIX = 'pielet-';
+
+/**
+ * Счётчик генерируемых id, растёт на протяжении жизни страницы.
+ * Вместе с Date.now() гарантирует уникальность id в рамках страницы.
+ * @type {number}
+ */
+let generatedIdCounter = 0;
+
+/**
+ * Генерирует id пункта меню.
+ * @returns {string}
+ */
+function generateItemId() {
+    return `${ID_PREFIX}${Date.now()}-${generatedIdCounter++}`;
+}
+
+/**
+ * Проверяет, что id похож на сгенерированный библиотекой (начинается с ID_PREFIX).
+ * @param {unknown} id
+ * @returns {boolean}
+ */
+function isGeneratedId(id) {
+    return typeof id === 'string' && id.startsWith(ID_PREFIX);
+}
+
+/**
+ * Возвращает id пункта: явно заданный пользователем (непустой, не под префиксом)
+ * или заново сгенерированный.
+ * @param {Record<string, unknown>} item
+ * @returns {string}
+ */
+function resolveItemId(item) {
+    if (typeof item.id === 'string' && item.id.length > 0 && !isGeneratedId(item.id)) {
+        return item.id;
+    }
+    return generateItemId();
+}
+
 function err(message) {
     return new Error(`Pielet config error: ${message}`);
 }
@@ -29,7 +73,10 @@ function validateItem(item, index) {
     if (typeof item !== 'object' || item === null) {
         throw err(`items[${index}] must be an object, got ${String(item)}`);
     }
-    const { typeContent, content, action } = item;
+    const { typeContent, content, action, id } = item;
+    if (id !== undefined && (typeof id !== 'string' || id.length === 0)) {
+        throw err(`items[${index}].id must be a non-empty string, got ${String(id)}`);
+    }
     if (!CONTENT_TYPES.has(typeContent)) {
         throw err(`items[${index}].typeContent must be one of: none, text, image, node; got ${String(typeContent)}`);
     }
@@ -98,7 +145,7 @@ export function normalizeConfig(rawConfig = {}) {
         interactionMode: config.interactionMode,
         button: config.button,
         closeDistance: config.closeDistance,
-        items: config.items
+        items: config.items.map((item) => ({ ...item, id: resolveItemId(item) }))
     };
     return normalized;
 }

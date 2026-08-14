@@ -16,11 +16,13 @@ const labels = ['Open', 'Save', 'Copy', 'Cut', 'Rename', 'Delete', 'Share', 'Pri
 
 function assembleItems(count) {
   return Array.from({ length: count }, (_, i) => ({
+    // первый пункт — явный id, остальные — автогенерация (префикс pielet-)
+    id: i === 0 ? 'demo-open' : undefined,
     typeContent: i % 6 === 3 ? 'none' : 'text',
     content: labels[i % labels.length],
-    action: () => {
-      window.__lastAction = { index: i, content: labels[i % labels.length], at: Date.now() };
-      statusEl.textContent = `action: ${labels[i % labels.length]} (${i}) — ${new Date().toLocaleTimeString()}`;
+    action: (id) => {
+      window.__lastAction = { index: i, content: labels[i % labels.length], id, at: Date.now() };
+      statusEl.textContent = `action: ${labels[i % labels.length]} (${i}) id: ${id} — ${new Date().toLocaleTimeString()}`;
     }
   }));
 }
@@ -95,8 +97,9 @@ menu.addEventListener('open', () => {
   window.__menuEl = document.querySelector('.pielet');
   statusEl.textContent = `event: open — ${menu.config.items.length} items — ${new Date().toLocaleTimeString()}`;
 });
-menu.addEventListener('select', () => {
+menu.addEventListener('select', (e) => {
   window.__menuEl = document.querySelector('.pielet');
+  statusEl.textContent = `event: select — id: ${e.detail.id} — ${new Date().toLocaleTimeString()}`;
 });
 menu.addEventListener('close', () => {
   window.__menuEl = null;
