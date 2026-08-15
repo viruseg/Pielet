@@ -49,11 +49,15 @@ export default class Pielet extends EventTarget {
 
         const config = normalizeConfig(this.config);
         this.config = config;
-        this._closeNotified = false;
 
-        if (this._runtime) this._close(true);
+        if (this._runtime) {
+            this._closeNotified = true;
+            this._close(true);
+        }
         const previous = acquireActiveMenu(this);
         if (previous) previous._close(true);
+
+        this._closeNotified = false;
 
         const { outerRadius, innerRadius, ringWidth, meanRadius } = calculateMenuGeometry(config);
 

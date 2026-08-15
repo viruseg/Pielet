@@ -411,6 +411,19 @@ describe('Pielet — single active menu across instances', () => {
     const el = document.body.querySelector('.pielet');
     expect(el.style.left).toBe('580px');
   });
+
+  it('reopening while open replaces silently, final close emits a single close event', async () => {
+    const onClose = vi.fn();
+    menu = makeMenu();
+    menu.addEventListener('close', onClose);
+    menu.open(200, 200);
+    menu.open(700, 100);
+    expect(onClose).toHaveBeenCalledTimes(0);
+    await sleep(30);
+    menu.close();
+    await sleep(400);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('Pielet — viewport changes close the menu', () => {
