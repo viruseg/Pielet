@@ -19,6 +19,7 @@
 .pielet {
     position: fixed;
     pointer-events: none;
+    touch-action: none;
     z-index: 2147483000;
     opacity: 0;
     will-change: opacity;

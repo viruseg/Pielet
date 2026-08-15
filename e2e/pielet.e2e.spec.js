@@ -220,3 +220,25 @@ test('context menu is suppressed while the menu is open', async ({ page }) => {
   });
   expect(event).toBe(true);
 });
+
+test.describe('touch devices', () => {
+  test.use({ hasTouch: true });
+
+  test('touch: tap opens the menu even with a non-primary button selected', async ({ page }) => {
+    await page.selectOption('#button', 'right');
+    await page.touchscreen.tap(500, 400);
+    await expect(page.locator('.pielet')).toHaveCount(1);
+  });
+
+  test('touch: tap on a sector selects the item', async ({ page }) => {
+    await page.touchscreen.tap(500, 400);
+    await expect(page.locator('.pielet')).toHaveCount(1);
+    await page.touchscreen.tap(540, 331);
+    await page.waitForFunction(
+      () => window.__lastAction && window.__lastAction.index === 0,
+      null,
+      { timeout: MENU_OPEN_TIMED_OUT }
+    );
+    await expect(page.locator('.pielet')).toHaveCount(0);
+  });
+});

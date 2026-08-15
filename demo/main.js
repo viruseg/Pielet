@@ -60,7 +60,7 @@ function readState() {
   };
 }
 
-function openAt(x, y) {
+function openAt(x, y, button = controls.button.value) {
   const state = readState();
   Object.assign(menu.config, {
     size: state.size,
@@ -69,7 +69,7 @@ function openAt(x, y) {
     startAngle: state.startAngle,
     direction: state.direction,
     interactionMode: state.mode,
-    button: state.button,
+    button,
     closeDistance: state.closeDistance,
     items: state.items
   });
@@ -78,13 +78,13 @@ function openAt(x, y) {
 
 document.addEventListener('pointerdown', (e) => {
   if (e.target.closest('#controls')) return;
-  // демо рассчитано на мышь/перо — тач меню не открывает
-  if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
-  // селект читаем из контрола напрямую — menu.config.button обновляется лишь в openAt()
-  if (e.button !== Pielet.BUTTONS[controls.button.value]) return;
+  // Тач передаёт только основную кнопку (PointerEvent.button === 0), поэтому
+  // селект button осмыслен лишь для мыши/пера — на таче всегда трактуем left.
+  const button = e.pointerType === 'touch' ? 'left' : controls.button.value;
+  if (e.button !== Pielet.BUTTONS[button]) return;
   if (isOpen) return;
   e.preventDefault();
-  openAt(e.clientX, e.clientY);
+  openAt(e.clientX, e.clientY, button);
 });
 
 document.addEventListener('contextmenu', (e) => {
