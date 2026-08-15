@@ -16,32 +16,26 @@ const controls = {
 const labels = ['Open', 'Save', 'Copy', 'Cut', 'Rename', 'Delete', 'Share', 'Print', 'Zoom', 'Flip', 'Rotate', 'Pin'];
 
 function assembleItems(count) {
-  return Array.from({ length: count }, (_, i) => ({
-    // первый пункт — явный id, остальные — автогенерация (префикс pielet-)
-    id: i === 0 ? 'demo-open' : undefined,
-    typeContent: i % 6 === 3 ? 'none' : 'text',
-    content: labels[i % labels.length],
-    action: (id) => {
-      window.__lastAction = { index: i, content: labels[i % labels.length], id, at: Date.now() };
-      statusEl.textContent = `action: ${labels[i % labels.length]} (${i}) id: ${id} — ${new Date().toLocaleTimeString()}`;
-    }
-  }));
+  return Array.from({ length: count }, (_, i) => {
+    const label = labels[i % labels.length];
+    return {
+      // первый пункт — явный id, остальные — автогенерация (префикс pielet-)
+      id: i === 0 ? 'demo-open' : undefined,
+      typeContent: i % 6 === 3 ? 'none' : 'text',
+      content: label,
+      action: (id) => {
+        window.__lastAction = { index: i, content: label, id, at: Date.now() };
+        statusEl.textContent = `action: ${label} (${i}) id: ${id} — ${new Date().toLocaleTimeString()}`;
+      }
+    };
+  });
 }
 
-const menu = new Pielet({
-  size: Number(controls.size.value),
-  centerSize: Number(controls.centerSize.value),
-  gap: Number(controls.gap.value),
-  startAngle: Number(controls.startAngle.value),
-  direction: controls.direction.value,
-  interactionMode: controls.mode.value,
-  button: controls.button.value,
-  closeDistance: Number(controls.closeDistance.value),
-  items: assembleItems(Number(controls.items.value))
-});
+const menu = new Pielet(readState());
 window.__menu = menu;
-window.__menuEl = null;
 window.Pielet = Pielet;
+
+let isOpen = false;
 
 function syncValueLabels() {
   document.querySelectorAll('#controls output.value').forEach((out) => {
@@ -53,19 +47,17 @@ Object.values(controls).forEach((el) => el.addEventListener('input', syncValueLa
 syncValueLabels();
 
 function readState() {
-  const state = {
+  return {
     size: Number(controls.size.value),
     centerSize: Number(controls.centerSize.value),
     gap: Number(controls.gap.value),
     startAngle: Number(controls.startAngle.value),
     direction: controls.direction.value,
-    mode: controls.mode.value,
+    interactionMode: controls.mode.value,
     button: controls.button.value,
     closeDistance: Number(controls.closeDistance.value),
-    items: Number(controls.items.value)
+    items: assembleItems(Number(controls.items.value))
   };
-  window.__demoState = state;
-  return state;
 }
 
 function openAt(x, y) {
@@ -79,19 +71,18 @@ function openAt(x, y) {
     interactionMode: state.mode,
     button: state.button,
     closeDistance: state.closeDistance,
-    items: assembleItems(state.items)
+    items: state.items
   });
   menu.open(x, y);
 }
 
 document.addEventListener('pointerdown', (e) => {
   if (e.target.closest('#controls')) return;
+  // демо рассчитано на мышь/перо — тач меню не открывает
   if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
-  // меню открывается только отслеживаемой кнопкой конфига; селект читаем напрямую —
-  // menu.config.button обновляется лишь при openAt(), и после смены кнопки был бы устаревшим
+  // селект читаем из контрола напрямую — menu.config.button обновляется лишь в openAt()
   if (e.button !== Pielet.BUTTONS[controls.button.value]) return;
-  // меню открыто — оно само обрабатывает pointerdown/up (выбор пункта)
-  if (document.querySelector('.pielet')) return;
+  if (isOpen) return;
   e.preventDefault();
   openAt(e.clientX, e.clientY);
 });
@@ -101,20 +92,13 @@ document.addEventListener('contextmenu', (e) => {
 });
 
 menu.addEventListener('open', () => {
-  window.__menuEl = document.querySelector('.pielet');
+  isOpen = true;
   statusEl.textContent = `event: open — ${menu.config.items.length} items — ${new Date().toLocaleTimeString()}`;
 });
 menu.addEventListener('select', (e) => {
-  window.__menuEl = document.querySelector('.pielet');
   statusEl.textContent = `event: select — id: ${e.detail.id} — ${new Date().toLocaleTimeString()}`;
 });
 menu.addEventListener('close', () => {
-  window.__menuEl = null;
+  isOpen = false;
   statusEl.textContent = `event: close — menu removed from DOM — ${new Date().toLocaleTimeString()}`;
 });
-
-window.addEventListener('resize', () => {
-  window.__demoState = readState();
-});
-
-window.__openAt = openAt;
