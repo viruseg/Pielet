@@ -6,4 +6,3 @@
 import Pielet from './Pielet.js';
 
 export default Pielet;
-export { Pielet };
