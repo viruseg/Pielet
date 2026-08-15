@@ -217,6 +217,54 @@ describe('sector alignment: gap lines and content centers', () => {
   });
 });
 
+describe('calculateSectorLayout — single item (itemCount === 1)', () => {
+  const base = {
+    arcStart: 0, arcLength: TAU, meanRadius: 78, outerRadius: 120, innerRadius: 36, ringWidth: 84, gap: 4,
+    direction: 'clockwise'
+  };
+
+  it('draws no gap: gapAngle and gapAngleInner are 0 even with gap > 0', () => {
+    const { gapAngle, gapAngleInner } = calculateSectorLayout({ ...base, itemCount: 1 });
+    near(gapAngle, 0, 1e-9);
+    near(gapAngleInner, 0, 1e-9);
+  });
+
+  it('the single sector covers the whole available arc', () => {
+    const { sectors } = calculateSectorLayout({ ...base, itemCount: 1 });
+    near(sectors[0].span, TAU, 1e-9);
+    near(sectors[0].spanInner, TAU, 1e-9);
+    near(sectors[0].start, base.arcStart, 1e-9);
+    near(sectors[0].end, base.arcStart + TAU, 1e-9);
+    near(sectors[0].innerStart, base.arcStart, 1e-9);
+    near(sectors[0].innerEnd, base.arcStart + TAU, 1e-9);
+  });
+
+  it('single item with a partial arc (edge reflow) covers exactly that arc', () => {
+    const { sectors } = calculateSectorLayout({ ...base, arcLength: Math.PI / 2, itemCount: 1 });
+    near(sectors[0].span, Math.PI / 2, 1e-9);
+    near(sectors[0].start, 0, 1e-9);
+    near(sectors[0].end, Math.PI / 2, 1e-9);
+  });
+
+  it('content mid sits on the arcStart ray: at startAngle -90 the label is on top', () => {
+    const arcStart = -Math.PI / 2;
+    const { sectors } = calculateSectorLayout({ ...base, arcStart, itemCount: 1 });
+    near(sectors[0].mid, arcStart, 1e-9);
+    near(sectors[0].mid, -Math.PI / 2, 1e-9);
+  });
+
+  it('full ring gives a full-diameter content box instead of a degenerate chord', () => {
+    const { sectors } = calculateSectorLayout({ ...base, itemCount: 1 });
+    near(sectors[0].availWidth, 2 * 78 * 0.85, 1e-9);
+    expect(sectors[0].availWidth).toBeGreaterThan(0);
+  });
+
+  it('partial arc keeps the chord-based content box', () => {
+    const { sectors } = calculateSectorLayout({ ...base, arcLength: 4 * Math.PI / 3, itemCount: 1 });
+    near(sectors[0].availWidth, 2 * 78 * Math.sin(2 * Math.PI / 3) * 0.85, 1e-9);
+  });
+});
+
 describe('buildSectorClipPath', () => {
   it('returns a polygon with px points on outer and inner radii', () => {
     const sector = { start: 0, end: Math.PI / 2, innerStart: 0, innerEnd: Math.PI / 2 };

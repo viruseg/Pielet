@@ -35,13 +35,21 @@ const MIN_SEGMENTS = 8;
  */
 const MAX_SEGMENTS = 96;
 
+/** Полный угол в радианах. @type {number} */
+const TAU = Math.PI * 2;
+
+/** Эпсилон для сравнения углов с полным кругом. @type {number} */
+const EPS = 1e-9;
+
 /**
  * Рассчитывает раскладку секторов по доступной дуге.
  *
  * Дуга делится поровну между всеми пунктами; между секторами вставляется
  * зазор `gap` (в px), переведённый в угол через средний радиус кольца.
  * Если угол зазора не помещается, он пропорционально уменьшается до
- * половины номинальной ширины сектора.
+ * половины номинальной ширины сектора. При единственном пункте зазор
+ * не нужен (сектор занимает всю доступную дугу), а контент центрируется
+ * на луче `arcStart` (для startAngle=-90 текст стоит сверху меню).
  *
  * @param {object} options
  * @param {number} options.itemCount - количество пунктов (N > 0)
@@ -53,35 +61,55 @@ const MAX_SEGMENTS = 96;
  * @param {number} options.ringWidth - ширина кольца
  * @param {number} options.gap - зазор в CSS-пикселях (>= 0): длина дуги зазора
  *   между соседними пунктами РАВНА gap на внешней и на внутренней дуге
- *   (угловые диапазоны дуг считаются независимо)
+ *   (угловые диапазоны дуг считаются независимо); при N = 1 игнорируется
  * @param {'clockwise' | 'counterclockwise'} options.direction - порядок распределения
  * @returns {{ sectors: Array<{ start: number, end: number, innerStart: number, innerEnd: number, relStart: number, span: number, spanInner: number, mid: number, availWidth: number, availHeight: number }>, gapAngle: number, gapAngleInner: number }}
  */
 export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRadius, innerRadius, meanRadius, ringWidth, gap, direction }) {
     const nominalSpan = arcLength / itemCount;
+    const isSingle = itemCount === 1;
     const maxGapAngle = nominalSpan * MAX_GAP_FRACTION;
-    const gapAngle = Math.min(gap / outerRadius, maxGapAngle);
-    const gapAngleInner = Math.min(gap / innerRadius, maxGapAngle);
+    const gapAngle = isSingle ? 0 : Math.min(gap / outerRadius, maxGapAngle);
+    const gapAngleInner = isSingle ? 0 : Math.min(gap / innerRadius, maxGapAngle);
     const span = nominalSpan - gapAngle;
     const spanInner = nominalSpan - gapAngleInner;
     const dir = direction === 'counterclockwise' ? -1 : 1;
+    // Полное кольцо: хорда дуги вырождается в 0, контент ограничен диаметром.
+    const isFullRing = isSingle && arcLength >= TAU - EPS;
 
     const sectors = [];
     for (let i = 0; i < itemCount; i++) {
-        // mid — ось слота (центр номинальной доли дуги): сектор симметричен
-        // относительно границы соседних слотов, поэтому gap-линии и центры
-        // контента лежат ровно на радиальных осях слотов
-        const mid = arcStart + dir * (i * nominalSpan + nominalSpan / 2);
+        let start, end, innerStart, innerEnd, mid;
+        if (isSingle) {
+            // Единственный сектор занимает всю дугу целиком, контент
+            // центрируется на луче arcStart (для startAngle=-90 — сверху).
+            mid = arcStart;
+            start = arcStart;
+            end = arcStart + arcLength;
+            innerStart = arcStart;
+            innerEnd = arcStart + arcLength;
+        } else {
+            // mid — ось слота (центр номинальной доли дуги): сектор симметричен
+            // относительно границы соседних слотов, поэтому gap-линии и центры
+            // контента лежат ровно на радиальных осях слотов
+            mid = arcStart + dir * (i * nominalSpan + nominalSpan / 2);
+            start = mid - span / 2;
+            end = mid + span / 2;
+            innerStart = mid - spanInner / 2;
+            innerEnd = mid + spanInner / 2;
+        }
         sectors.push({
-            start: mid - span / 2,
-            end: mid + span / 2,
-            innerStart: mid - spanInner / 2,
-            innerEnd: mid + spanInner / 2,
+            start,
+            end,
+            innerStart,
+            innerEnd,
             relStart: i * nominalSpan,
             span,
             spanInner,
             mid,
-            availWidth: 2 * meanRadius * Math.sin(span / 2) * CONTENT_BOX_FACTOR,
+            availWidth: isFullRing
+                ? 2 * meanRadius * CONTENT_BOX_FACTOR
+                : 2 * meanRadius * Math.sin(span / 2) * CONTENT_BOX_FACTOR,
             availHeight: ringWidth * CONTENT_BOX_FACTOR
         });
     }

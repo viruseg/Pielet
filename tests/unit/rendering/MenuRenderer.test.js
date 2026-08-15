@@ -116,6 +116,19 @@ describe('MenuRenderer.mount', () => {
     expect(parseFloat(caps[0].style.left) + parseFloat(caps[1].style.left)).toBeCloseTo(200, 6);
   });
 
+  it('single item at startAngle -90: caption sits on the arcStart ray (top of the menu)', () => {
+    const geometry = makeGeometry({ itemCount: 1, arcStart: -Math.PI / 2, gap: 4 });
+    const single = [{ typeContent: 'text', content: 'A' }];
+    renderer.mount({ centerX: 200, centerY: 150, geometry, items: single, baseFontSize: 14 });
+    const caption = renderer.element.querySelector('.pielet__item-caption');
+    const meanRadius = (geometry.outerRadius + geometry.innerRadius) / 2;
+    expect(caption.style.left).toBe(`${100 + meanRadius * Math.cos(-Math.PI / 2)}px`);
+    expect(caption.style.top).toBe(`${100 + meanRadius * Math.sin(-Math.PI / 2)}px`);
+    // текст строго над центром меню (left = центр, top = центр − meanRadius)
+    expect(parseFloat(caption.style.left)).toBeCloseTo(100, 6);
+    expect(parseFloat(caption.style.top)).toBeCloseTo(100 - 65, 6);
+  });
+
   it('adds the open class asynchronously', async () => {
     vi.useFakeTimers();
     renderer.mount({ centerX: 200, centerY: 150, geometry: makeGeometry(), items, baseFontSize: 14 });

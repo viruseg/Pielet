@@ -53,6 +53,14 @@ export function getSelectedSector({ x, y, centerX, centerY, geometry }) {
     if (dist > outerRadius + closeDistance) return { region: 'outside', itemIndex: null };
     if (dist < innerRadius || dist === 0) return { region: 'center', itemIndex: null };
 
+    // Единственный пункт занимает всю дугу кольца (gap при N = 1 не рисуется):
+    // любая точка кольца принадлежит его сектору. Обход граничного случая,
+    // когда боковые грани полного круга вырождаются в одну линию и between()
+    // по углам становится нестабильным.
+    if (sectors.length === 1) {
+        return { region: selectable[0] ? 'sector' : 'none', itemIndex: 0 };
+    }
+
     const theta = Math.atan2(dy, dx);
 
     // Внешняя дуга сектора [start..end], внутренняя [innerStart..innerEnd] —

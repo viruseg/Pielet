@@ -115,6 +115,14 @@ describe('getSelectedSector — boundaries and tie-break', () => {
     expect(hit(geometry, 100, 100 - 65).itemIndex).toBe(0);
     expect(hit(geometry, 100 - 65, 100).itemIndex).toBe(0);
   });
+
+  it('single item at startAngle -90 with gap > 0: every ring point selects it (no gap holes)', () => {
+    const geometry = makeGeometry({ n: 1, gap: 8, arcStart: -90 * DEG });
+    expect(hit(geometry, 100, 100 - 65).itemIndex).toBe(0); // вверх (startAngle)
+    expect(hit(geometry, 100 + 65, 100).itemIndex).toBe(0); // вправо
+    expect(hit(geometry, 100 - 65, 100).itemIndex).toBe(0); // влево
+    expect(hit(geometry, 100, 100 + 65).itemIndex).toBe(0); // вниз
+  });
 });
 
 describe('getSelectedSector — gap', () => {

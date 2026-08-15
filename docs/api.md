@@ -57,8 +57,8 @@
 {
   size?: number;                        // 240, > 0
   centerSize?: number;                  // 72, 0 < centerSize < size
-  gap?: number;                         // 4, >= 0 — расстояние между пунктами по внешней и внутренней дуге
-  startAngle?: number;                  // -90 (градусы)
+  gap?: number;                         // 4, >= 0 — расстояние между пунктами по внешней и внутренней дуге; при одном пункте игнорируется
+  startAngle?: number;                  // -90 (градусы); при одном пункте — угол, на котором центрируется контент (для -90 текст сверху)
   direction?: 'clockwise' | 'counterclockwise';
   interactionMode?: 'click' | 'hold'; // см. описание ниже
   button?: 'left' | 'middle' | 'right' | 'back' | 'forward'; // 'left', отслеживаемая кнопка

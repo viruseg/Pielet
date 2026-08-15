@@ -181,7 +181,7 @@ describe('Pielet selection pipeline', () => {
     menu.addEventListener('select', () => log.push('select'));
     menu.addEventListener('close', () => log.push('close'));
     menu.open(300, 300);
-    // единственный пункт с полным кругом: цель — середина сектора (вниз от центра)
+    // единственный пункт занимает всё кольцо (gap при n=1 не рисуется): клик внизу всё ещё внутри сектора
     window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 301, clientY: 380 }));
     window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
     expect(action).toHaveBeenCalledTimes(1);
