@@ -6,6 +6,7 @@
  */
 
 import { getSelectedSector } from '../geometry/hitTestSector.js';
+import { BUTTON_CODES } from '../config/buttons.js';
 
 /**
  * Grace-окно (мс) после открытия: отпускание кнопки, которым завершается
@@ -18,7 +19,7 @@ export class InteractionController {
     /**
      * @param {object} options
      * @param {'hold' | 'click'} options.interactionMode
-     * @param {number} options.button - кнопка для hold-режима (PointerEvent.button)
+     * @param {import('../types.js').MouseButtonName} options.button - отслеживаемая кнопка (текстовая константа)
      * @param {number} options.centerX
      * @param {number} options.centerY
      * @param {object} options.geometry - полная геометрия меню (для hit-теста)
@@ -28,7 +29,7 @@ export class InteractionController {
      */
     constructor({ interactionMode, button, centerX, centerY, geometry, onHover, onClose, onSelect }) {
         this._mode = interactionMode;
-        this._button = button;
+        this._button = BUTTON_CODES[button];
         this._centerX = centerX;
         this._centerY = centerY;
         this._geometry = geometry;
@@ -91,7 +92,8 @@ export class InteractionController {
     }
 
     _onUp(event) {
-        if (this._mode === 'hold' && event.button !== this._button) return;
+        // Меню реагирует только на отпускание отслеживаемой кнопки (config.button).
+        if (event.button !== this._button) return;
         const hit = this._hit(event);
         if (hit.region === 'sector') {
             this._onSelect(hit.itemIndex);

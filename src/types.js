@@ -18,9 +18,19 @@
  */
 
 /**
+ * Имя кнопки мыши (отслеживаемая кнопка меню).
+ * - `left` — PointerEvent.button 0
+ * - `middle` — PointerEvent.button 1
+ * - `right` — PointerEvent.button 2
+ * - `back` — PointerEvent.button 3
+ * - `forward` — PointerEvent.button 4
+ * @typedef {'left' | 'middle' | 'right' | 'back' | 'forward'} MouseButtonName
+ */
+
+/**
  * Режим поведения уже открытого меню.
  * - `hold` — выбор по pointerup кнопкой из `button`
- * - `click` — выбор по любому pointerup на selectable пункте
+ * - `click` — выбор по pointerup на selectable пункте кнопкой из `button`
  * @typedef {'hold' | 'click'} InteractionMode
  */
 
@@ -45,7 +55,7 @@
  * @property {number} startAngle - угол начала первого пункта в градусах (default -90)
  * @property {Direction} direction - порядок распределения пунктов (default 'clockwise')
  * @property {InteractionMode} interactionMode - режим поведения меню (default 'click')
- * @property {number} button - кнопка указателя для hold-режима, PointerEvent.button (default 0)
+ * @property {MouseButtonName} button - отслеживаемая кнопка мыши (default 'left'). Меню реагирует только на неё
  * @property {number} closeDistance - доп. расстояние за внешним краем, после которого меню закрывается (default 48)
  * @property {PieletItem[]} items - пункты меню (обязательно, минимум один)
  */

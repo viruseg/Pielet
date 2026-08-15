@@ -8,6 +8,7 @@ const controls = {
   startAngle: document.getElementById('startAngle'),
   direction: document.getElementById('direction'),
   mode: document.getElementById('mode'),
+  button: document.getElementById('button'),
   closeDistance: document.getElementById('closeDistance'),
   items: document.getElementById('items')
 };
@@ -34,6 +35,7 @@ const menu = new Pielet({
   startAngle: Number(controls.startAngle.value),
   direction: controls.direction.value,
   interactionMode: controls.mode.value,
+  button: controls.button.value,
   closeDistance: Number(controls.closeDistance.value),
   items: assembleItems(Number(controls.items.value))
 });
@@ -58,6 +60,7 @@ function readState() {
     startAngle: Number(controls.startAngle.value),
     direction: controls.direction.value,
     mode: controls.mode.value,
+    button: controls.button.value,
     closeDistance: Number(controls.closeDistance.value),
     items: Number(controls.items.value)
   };
@@ -74,6 +77,7 @@ function openAt(x, y) {
     startAngle: state.startAngle,
     direction: state.direction,
     interactionMode: state.mode,
+    button: state.button,
     closeDistance: state.closeDistance,
     items: assembleItems(state.items)
   });
@@ -83,6 +87,9 @@ function openAt(x, y) {
 document.addEventListener('pointerdown', (e) => {
   if (e.target.closest('#controls')) return;
   if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
+  // меню открывается только отслеживаемой кнопкой конфига; селект читаем напрямую —
+  // menu.config.button обновляется лишь при openAt(), и после смены кнопки был бы устаревшим
+  if (e.button !== Pielet.BUTTONS[controls.button.value]) return;
   // меню открыто — оно само обрабатывает pointerdown/up (выбор пункта)
   if (document.querySelector('.pielet')) return;
   e.preventDefault();

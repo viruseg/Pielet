@@ -72,8 +72,8 @@ menu.addEventListener('select', (e) => {
 | `gap` | `4` | Зазор между секторами в px. |
 | `startAngle` | `-90` | Угол первого сектора в градусах (правый край — 0°, верх — -90°). |
 | `direction` | `'clockwise'` | `'clockwise'` \| `'counterclockwise'`. |
-| `interactionMode` | `'click'` | `'click'` \| `'hold'`. В hold-режиме выбор по кнопке из `button`. |
-| `button` | `0` | Кнопка мыши для hold-режима (`PointerEvent.button`). |
+| `interactionMode` | `'click'` | `'click'` \| `'hold'`. В hold-режиме меню живёт, пока удержана кнопка из `button`. |
+| `button` | `'left'` | Отслеживаемая кнопка: `'left'` \| `'middle'` \| `'right'` \| `'back'` \| `'forward'`. Меню выбирает/закрывается только по её отпусканию (и в hold, и в click). |
 | `closeDistance` | `48` | Дополнительный радиус вокруг меню: выход указателя за него закрывает меню. |
 | `items` | — (обязательно) | Массив пунктов `PieletItem`, непустой. |
 

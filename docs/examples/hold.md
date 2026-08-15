@@ -8,7 +8,7 @@ import 'pielet/style.css';
 
 const menu = new Pielet({
   interactionMode: 'hold',
-  button: 0, // PointerEvent.button
+  button: 'left',
   items: [
     { typeContent: 'text', content: 'Копировать', action: copy },
     { typeContent: 'text', content: 'Вырезать', action: cut },
@@ -17,10 +17,13 @@ const menu = new Pielet({
 });
 
 document.addEventListener('pointerdown', (e) => {
-  if (e.button !== 0) return;
+  // открываем меню только отслеживаемой кнопкой конфига
+  if (e.button !== Pielet.BUTTONS[menu.config.button]) return;
   e.preventDefault();
   menu.open(e.clientX, e.clientY);
 });
 ```
 
-В hold-режиме выбор игнорирует `pointerup` с другими кнопками: отпускание правой кнопки (кнопки 2), например, не выберет пункт.
+В hold-режиме меню живёт, пока отслеживаемая кнопка удерживается: движение без отпускания подсвечивает сектор, отпускание на секторе выбирает пункт, отпускание вне сектора закрывает меню. `pointerup` любой другой кнопки игнорируется — например, отпускание правой кнопки (кнопки 2) не выберет пункт, если `button` задан как `'left'`.
+
+Для правой кнопки задайте `button: 'right'` (именно она будет отслеживаться при открытии, выборе и закрытии).

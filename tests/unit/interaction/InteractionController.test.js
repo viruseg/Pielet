@@ -50,7 +50,7 @@ describe('InteractionController — hover (pointermove)', () => {
     onSelect = vi.fn();
     controller = new InteractionController({
       interactionMode: 'click',
-      button: 0,
+      button: 'left',
       geometry: makeGeometry(),
       ...CENTER,
       onHover,
@@ -84,7 +84,7 @@ describe('InteractionController — hover (pointermove)', () => {
     const geometry = makeGeometry({ selectable: [true, false, true, true] });
     const localController = new InteractionController({
       interactionMode: 'click',
-      button: 0,
+      button: 'left',
       geometry,
       ...CENTER,
       onHover,
@@ -121,7 +121,7 @@ describe('InteractionController — hover (pointermove)', () => {
 describe('InteractionController — pointerup (click mode)', () => {
   let controller, onClose, onSelect;
 
-  function make(mode = 'click', button = 0) {
+  function make(mode = 'click', button = 'left') {
     if (controller) controller.detach();
     onClose = vi.fn();
     onSelect = vi.fn();
@@ -137,15 +137,22 @@ describe('InteractionController — pointerup (click mode)', () => {
     controller.attach();
   }
 
-  it('selects the item under the pointer (any button in click mode)', () => {
+  it('selects the item under the pointer with the configured button (click mode)', () => {
     make();
     fire(window, 'pointerup', pointAt(0.3));
     expect(onSelect).toHaveBeenCalledWith(0);
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('selects with any mouse button in click mode', () => {
-    make();
+  it('does NOT select with a non-configured button (click mode)', () => {
+    make('click', 'left');
+    fire(window, 'pointerup', { ...pointAt(0.3), button: 2 });
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('selects only with the configured button (click mode)', () => {
+    make('click', 'right');
     fire(window, 'pointerup', { ...pointAt(0.3), button: 2 });
     expect(onSelect).toHaveBeenCalledWith(0);
   });
@@ -171,7 +178,7 @@ describe('InteractionController — pointerup (click mode)', () => {
     const localOnClose = vi.fn();
     const localController = new InteractionController({
       interactionMode: 'click',
-      button: 0,
+      button: 'left',
       geometry,
       ...CENTER,
       onHover: vi.fn(),
@@ -225,7 +232,7 @@ describe('InteractionController — pointerup (click mode)', () => {
       const localOnClose = vi.fn();
       const localController = new InteractionController({
         interactionMode: 'click',
-        button: 0,
+        button: 'left',
         geometry,
         ...CENTER,
         onHover: vi.fn(),
@@ -246,7 +253,7 @@ describe('InteractionController — pointerup (click mode)', () => {
 describe('InteractionController — pointerup (hold mode)', () => {
   let controller, onClose, onSelect;
 
-  function make(button = 0) {
+  function make(button = 'left') {
     onClose = vi.fn();
     onSelect = vi.fn();
     controller = new InteractionController({
@@ -262,20 +269,20 @@ describe('InteractionController — pointerup (hold mode)', () => {
   }
 
   it('ignores pointerup with a different button', () => {
-    make(0);
+    make('left');
     fire(window, 'pointerup', { ...pointAt(0.3), button: 2 });
     expect(onSelect).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
   });
 
   it('selects on pointerup with the configured button over a sector', () => {
-    make(2);
+    make('right');
     fire(window, 'pointerup', { ...pointAt(0.3), button: 2 });
     expect(onSelect).toHaveBeenCalledWith(0);
   });
 
   it('closes on pointerup with the configured button in the center/gap', () => {
-    make(0);
+    make('left');
     fire(window, 'pointerup', pointAt(0, 10));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onSelect).not.toHaveBeenCalled();
@@ -287,7 +294,7 @@ describe('InteractionController — cancellation and context menu', () => {
     const onClose = vi.fn();
     const controller = new InteractionController({
       interactionMode: 'click',
-      button: 0,
+      button: 'left',
       geometry: makeGeometry(),
       ...CENTER,
       onHover: vi.fn(),
@@ -302,7 +309,7 @@ describe('InteractionController — cancellation and context menu', () => {
   it('suppresses the browser context menu while open', () => {
     const controller = new InteractionController({
       interactionMode: 'click',
-      button: 0,
+      button: 'left',
       geometry: makeGeometry(),
       ...CENTER,
       onHover: vi.fn(),
@@ -321,7 +328,7 @@ describe('InteractionController — attach/detach', () => {
     const onHover = vi.fn();
     const controller = new InteractionController({
       interactionMode: 'click',
-      button: 0,
+      button: 'left',
       geometry: makeGeometry(),
       ...CENTER,
       onHover,
@@ -341,7 +348,7 @@ describe('InteractionController — attach/detach', () => {
     const onSelect = vi.fn();
     const controller = new InteractionController({
       interactionMode: 'click',
-      button: 0,
+      button: 'left',
       geometry: makeGeometry(),
       ...CENTER,
       onHover: vi.fn(),

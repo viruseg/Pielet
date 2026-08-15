@@ -19,7 +19,7 @@ describe('DEFAULT_CONFIG', () => {
       startAngle: -90,
       direction: 'clockwise',
       interactionMode: 'click',
-      button: 0,
+      button: 'left',
       closeDistance: 48
     });
   });
@@ -40,7 +40,7 @@ describe('normalizeConfig', () => {
     expect(config.startAngle).toBe(-90);
     expect(config.direction).toBe('clockwise');
     expect(config.interactionMode).toBe('click');
-    expect(config.button).toBe(0);
+    expect(config.button).toBe('left');
     expect(config.closeDistance).toBe(48);
   });
 
@@ -52,7 +52,7 @@ describe('normalizeConfig', () => {
       startAngle: 30,
       direction: 'counterclockwise',
       interactionMode: 'hold',
-      button: 2,
+      button: 'right',
       closeDistance: 60,
       items: validItems
     });
@@ -62,7 +62,7 @@ describe('normalizeConfig', () => {
     expect(config.startAngle).toBe(30);
     expect(config.direction).toBe('counterclockwise');
     expect(config.interactionMode).toBe('hold');
-    expect(config.button).toBe(2);
+    expect(config.button).toBe('right');
     expect(config.closeDistance).toBe(60);
   });
 
@@ -85,9 +85,9 @@ describe('validateConfig errors', () => {
     ['startAngle NaN', { startAngle: NaN }],
     ['unknown direction', { direction: 'diagonal' }],
     ['unknown interactionMode', { interactionMode: 'doubleclick' }],
-    ['button negative', { button: -1 }],
-    ['button too large', { button: 6 }],
-    ['button float', { button: 1.5 }],
+    ['button unknown name', { button: 'abc' }],
+    ['button numeric', { button: 0 }],
+    ['button wrong case', { button: 'LEFT' }],
     ['closeDistance negative', { closeDistance: -1 }],
     ['closeDistance NaN', { closeDistance: NaN }]
   ];
@@ -151,6 +151,13 @@ describe('validateConfig valid inputs', () => {
 
   it('accepts missing action', () => {
     expect(() => validateConfig({ items: [{ typeContent: 'text', content: 'A' }] })).not.toThrow();
+  });
+
+  it('accepts every named mouse button', () => {
+    for (const name of ['left', 'middle', 'right', 'back', 'forward']) {
+      expect(() => validateConfig({ items: validItems, button: name })).not.toThrow();
+      expect(normalizeConfig({ items: validItems, button: name }).button).toBe(name);
+    }
   });
 
   it('accepts boundary sizes', () => {

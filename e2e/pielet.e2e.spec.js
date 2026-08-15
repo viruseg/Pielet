@@ -60,6 +60,27 @@ test('hold mode: pointer down at center opens, drag selects on release', async (
   );
 });
 
+test('hold mode: a non-configured button (right) does not open the menu', async ({ page }) => {
+  await page.selectOption('#mode', 'hold');
+  await page.mouse.move(600, 400);
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.up({ button: 'right' });
+  await expect(page.locator('.pielet')).toHaveCount(0);
+});
+
+test('demo: changing the button takes effect immediately for the next open', async ({ page }) => {
+  await openMenu(page, 600, 400); // 'click' + 'left' по умолчанию
+  await page.waitForTimeout(400); // grace-окно открывающего клика
+  await page.mouse.click(600, 400); // клик в центр закрывает меню
+  await expect(page.locator('.pielet')).toHaveCount(0);
+  await page.selectOption('#button', 'right');
+  // новая кнопка должна открывать меню сразу, без предварительного «прогрева» старой
+  await page.mouse.move(600, 400);
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.up({ button: 'right' });
+  await expect(page.locator('.pielet')).toHaveCount(1);
+});
+
 test('scrolling the page closes the open menu', async ({ page }) => {
   await page.evaluate(() => {
     const pad = document.createElement('div');

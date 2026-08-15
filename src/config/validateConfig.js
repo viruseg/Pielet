@@ -5,6 +5,7 @@
  */
 
 import { DEFAULT_CONFIG } from './defaults.js';
+import { BUTTON_NAMES } from './buttons.js';
 
 const DIRECTIONS = new Set(['clockwise', 'counterclockwise']);
 const INTERACTION_MODES = new Set(['hold', 'click']);
@@ -115,7 +116,9 @@ export function validateConfig(config) {
     if (centerSize !== undefined) assertNumber(centerSize, 'centerSize', (v) => v > 0 && v < size, `a number greater than 0 and less than size (${size})`);
     if (gap !== undefined) assertNumber(gap, 'gap', (v) => v >= 0, 'a non-negative number');
     if (startAngle !== undefined) assertNumber(startAngle, 'startAngle', () => true, 'a finite number');
-    if (button !== undefined) assertNumber(button, 'button', (v) => Number.isInteger(v) && v >= 0 && v <= 5, 'an integer between 0 and 5');
+    if (button !== undefined && !BUTTON_NAMES.has(button)) {
+        throw err(`button must be one of: ${Array.from(BUTTON_NAMES).join(', ')}; got ${String(button)}`);
+    }
     if (closeDistance !== undefined) assertNumber(closeDistance, 'closeDistance', (v) => v >= 0, 'a non-negative number');
 
     if (direction !== undefined && !DIRECTIONS.has(direction)) {

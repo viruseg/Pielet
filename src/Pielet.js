@@ -10,6 +10,7 @@
  */
 
 import { normalizeConfig } from './config/validateConfig.js';
+import { BUTTON_CODES } from './config/buttons.js';
 import { calculateMenuGeometry } from './geometry/calculateMenuGeometry.js';
 import { calculateVisibleArc } from './geometry/calculateVisibleArc.js';
 import { calculateSectorLayout } from './geometry/calculateSector.js';
@@ -179,3 +180,10 @@ export default class Pielet extends EventTarget {
         }
     }
 }
+
+/**
+ * Текстовые имена кнопок → числовой PointerEvent.button.
+ * Нужен вызывающему коду, чтобы фильтровать pointerdown по отслеживаемой
+ * кнопке меню, например: `e.button !== Pielet.BUTTONS[menu.config.button]`.
+ */
+Pielet.BUTTONS = BUTTON_CODES;

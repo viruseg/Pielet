@@ -17,6 +17,6 @@ export const DEFAULT_CONFIG = {
 
     interactionMode: 'click',
 
-    button: 0,
+    button: 'left',
     closeDistance: 48
 };

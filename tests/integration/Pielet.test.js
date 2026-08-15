@@ -210,7 +210,7 @@ describe('Pielet selection pipeline', () => {
     const action = vi.fn();
     menu = new Pielet({
       interactionMode: 'hold',
-      button: 0,
+      button: 'left',
       items: [
         { typeContent: 'text', content: 'A', action },
         { typeContent: 'text', content: 'B' }
@@ -224,6 +224,37 @@ describe('Pielet selection pipeline', () => {
     expect(log).toEqual([]);
     await sleep(400);
     expect(document.body.querySelector('.pielet')).toBeNull();
+  });
+
+  it('hold mode: pointerup with the configured button over a sector selects and closes', async () => {
+    const action = vi.fn();
+    menu = new Pielet({ interactionMode: 'hold', items: [{ typeContent: 'text', content: 'A', action }] });
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
+    expect(action).toHaveBeenCalledTimes(1);
+    expect(document.body.querySelector('.pielet')).toBeNull();
+  });
+
+  it('hold mode: pointerup with a non-configured button is ignored', async () => {
+    const action = vi.fn();
+    menu = new Pielet({ interactionMode: 'hold', button: 'left', items: [{ typeContent: 'text', content: 'A', action }] });
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 2, clientX: 301, clientY: 380 }));
+    expect(action).not.toHaveBeenCalled();
+    expect(document.body.querySelector('.pielet')).toBeTruthy();
+    menu.close();
+    await sleep(400);
+  });
+
+  it('click mode: pointerup with a non-configured button does not select', async () => {
+    const action = vi.fn();
+    menu = new Pielet({ interactionMode: 'click', button: 'left', items: [{ typeContent: 'text', content: 'A', action }] });
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 2, clientX: 301, clientY: 380 }));
+    expect(action).not.toHaveBeenCalled();
+    expect(document.body.querySelector('.pielet')).toBeTruthy();
+    menu.close();
+    await sleep(400);
   });
 
   it('does not swallow exceptions from user action; menu closes and stays closed', () => {

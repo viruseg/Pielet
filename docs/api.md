@@ -61,7 +61,7 @@
   startAngle?: number;                  // -90 (градусы)
   direction?: 'clockwise' | 'counterclockwise';
   interactionMode?: 'click' | 'hold'; // см. описание ниже
-  button?: number;                      // 0, целое 0..5, только для 'hold'
+  button?: 'left' | 'middle' | 'right' | 'back' | 'forward'; // 'left', отслеживаемая кнопка
   closeDistance?: number;               // 48, >= 0
   items: PieletItem[];                  // непустой, обязателен
 }
@@ -108,3 +108,16 @@
 `'click'` (по умолчанию): меню остаётся открытым после клика, которым его открыли; последующий клик по сектору — выбор, клик вне пункта меню (центр, зазор, `none`, за `closeDistance`) — закрытие. Отпускание кнопки в течение grace-окна (300 мс после `open`) — это часть открывающего клика и меню не закрывает.
 
 `'hold'`: меню живёт, пока кнопка (`button`) удерживается; отпускание на секторе выбирает, отпускание вне сектора закрывает.
+
+### `button` (отслеживаемая кнопка)
+
+И в hold-, и в click-режиме меню реагирует только на отпускание кнопки, заданной в `config.button` (текстовая константа, дефолт `'left'`): `'left'` → 0, `'middle'` → 1, `'right'` → 2, `'back'` → 3, `'forward'` → 4 (числовые коды соответствуют `PointerEvent.button`). Отпускание любой другой кнопки игнорируется — пункт не выбирается и меню не закрывается.
+
+Сопоставление доступно как `Pielet.BUTTONS` (`{ left: 0, middle: 1, right: 2, back: 3, forward: 4 }`). Оно нужно вызывающему коду, чтобы открывать меню той же кнопкой, например:
+
+```js
+document.addEventListener('pointerdown', (e) => {
+  if (e.button !== Pielet.BUTTONS[menu.config.button]) return;
+  menu.open(e.clientX, e.clientY);
+});
+```
