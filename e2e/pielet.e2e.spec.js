@@ -8,11 +8,6 @@ async function openMenu(page, x, y) {
   await page.waitForTimeout(30);
 }
 
-async function openMenuDeferred(page, x, y) {
-  await page.evaluate(([px, py]) => window.__menu.open(px, py), [x, y]);
-  await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
-}
-
 test.beforeEach(async ({ page }) => {
   await page.goto('./');
   await page.waitForFunction(() => window.__menu);
@@ -46,7 +41,6 @@ test('click selects the item under the pointer and runs its action', async ({ pa
 
 test('hold mode: pointer down at center opens, drag selects on release', async ({ page }) => {
   await page.selectOption('#mode', 'hold');
-  await openMenuDeferred(page, 500, 400);
   await page.mouse.move(500, 400);
   await page.mouse.down();
   // меню открывается по кнопке мыши; далее перемещение на первый сектор (середина сверху-справа)
@@ -58,6 +52,15 @@ test('hold mode: pointer down at center opens, drag selects on release', async (
     null,
     { timeout: MENU_OPEN_TIMED_OUT }
   );
+});
+
+test('hold mode: pressing and immediately releasing the button closes the menu', async ({ page }) => {
+  await page.selectOption('#mode', 'hold');
+  await page.mouse.move(500, 400);
+  await page.mouse.down();
+  await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
+  await page.mouse.up();
+  await expect(page.locator('.pielet')).toHaveCount(0);
 });
 
 test('hold mode: a non-configured button (right) does not open the menu', async ({ page }) => {

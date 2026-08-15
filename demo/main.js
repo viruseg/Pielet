@@ -68,7 +68,7 @@ function openAt(x, y, button = controls.button.value) {
     gap: state.gap,
     startAngle: state.startAngle,
     direction: state.direction,
-    interactionMode: state.mode,
+    interactionMode: state.interactionMode,
     button,
     closeDistance: state.closeDistance,
     items: state.items
