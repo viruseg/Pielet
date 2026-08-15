@@ -22,7 +22,7 @@ Pielet рендерит меню DOM + CSS `clip-path`:
 | --- | --- |
 | Несколько открытых меню на странице | Одно открытое меню на страницу (как системный контекстный) |
 | `destroy()` / утечка слушателей | `close()` полностью освобождает DOM и слушатели; экземпляр переиспользуется |
-| `select`-данные в detail события | `open`/`close` без payload; `select` несёт `detail: { id }` — id пункта |
+| `select`-данные в detail события | `open` несёт `detail: { rect }` — bounding rect видимой части меню; `close` без payload; `select` несёт `detail: { id }` — id пункта |
 | Анимации на JS | CSS transitions; длительность задаётся `--pielet-transition-duration` |
 | Своя тема через параметры | CSS variables на любом родителе |
 

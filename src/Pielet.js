@@ -13,6 +13,7 @@ import { normalizeConfig } from './config/validateConfig.js';
 import { BUTTON_CODES } from './config/buttons.js';
 import { calculateMenuGeometry } from './geometry/calculateMenuGeometry.js';
 import { calculateVisibleArc } from './geometry/calculateVisibleArc.js';
+import { calculateVisibleRect } from './geometry/calculateVisibleRect.js';
 import { calculateSectorLayout } from './geometry/calculateSector.js';
 import { InteractionController } from './interaction/InteractionController.js';
 import { MenuRenderer } from './rendering/MenuRenderer.js';
@@ -111,7 +112,16 @@ export default class Pielet extends EventTarget {
         this._addViewportListeners();
 
         this._runtime = { renderer: this._renderer, interaction };
-        this.dispatchEvent(new CustomEvent('open'));
+        const rect = calculateVisibleRect({
+            centerX: x,
+            centerY: y,
+            outerRadius,
+            innerRadius,
+            startAngle: visible.startAngle,
+            arc: visible.arc,
+            direction: config.direction
+        });
+        this.dispatchEvent(new CustomEvent('open', { detail: { rect } }));
     }
 
     /**

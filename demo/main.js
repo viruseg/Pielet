@@ -91,9 +91,11 @@ document.addEventListener('contextmenu', (e) => {
   e.preventDefault();
 });
 
-menu.addEventListener('open', () => {
+menu.addEventListener('open', (e) => {
   isOpen = true;
+  const { rect } = e.detail;
   statusEl.textContent = `event: open — ${menu.config.items.length} items — ${new Date().toLocaleTimeString()}`;
+  console.log('Pielet open rect:', rect);
 });
 menu.addEventListener('select', (e) => {
   statusEl.textContent = `event: select — id: ${e.detail.id} — ${new Date().toLocaleTimeString()}`;

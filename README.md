@@ -38,20 +38,21 @@ window.addEventListener('contextmenu', (e) => {
 | `menu.config` | Живой объект конфигурации. Изменения применяются при следующем `open()`. |
 | `menu.open(x, y)` | Открывает меню с центром в точке viewport (clientX/clientY). Выбрасывает ошибку на нечисловых координатах. |
 | `menu.close()` | Плавно закрывает меню. No-op, если меню закрыто. |
-| События | `open`, `close` — `CustomEvent` без `detail`; `select` — с `detail: { id }`, диспатчатся на экземпляре (`EventTarget`). |
+| События | `open` — `CustomEvent` с `detail: { rect }` (bounding rect видимой части меню); `close` — без `detail`; `select` — с `detail: { id }`, диспатчатся на экземпляре (`EventTarget`). |
 | `menu.config.items[i].action` | Вызывается после полного закрытия меню (DOM и слушатели уже убраны), с одним аргументом — `id` пункта (строка). |
 
 Исключения из `action` пробрасываются в консоль (не проглатываются); меню при этом остаётся закрытым и пригодным к переиспользованию.
 
 ## События
 
-Экземпляр реализует `EventTarget`. События `open` и `close` — `CustomEvent` без `detail`; `select` несёт `detail: { id }` — строковый идентификатор выбранного пункта. Все диспатчатся на самом экземпляре:
+Экземпляр реализует `EventTarget`. Событие `open` несёт `detail: { rect }` — DOMRect-совместимый bounding rect видимой части меню; `close` — `CustomEvent` без `detail`; `select` несёт `detail: { id }` — строковый идентификатор выбранного пункта. Все диспатчатся на самом экземпляре:
 
 ```js
 const menu = new Pielet({ items: [{ typeContent: 'text', content: 'Открыть' }] });
 
-menu.addEventListener('open', () => {
-  console.log('меню открыто и готово к взаимодействию');
+menu.addEventListener('open', (e) => {
+  const { rect } = e.detail;
+  console.log('меню открыто и готово к взаимодействию', rect);
 });
 menu.addEventListener('close', () => {
   console.log('меню закрыто и удалено из DOM');

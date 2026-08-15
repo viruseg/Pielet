@@ -57,6 +57,27 @@ describe('Pielet.open', () => {
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
+  it('passes the visible rect in detail', () => {
+    menu = makeMenu();
+    let rect;
+    menu.addEventListener('open', (e) => {
+      rect = e.detail.rect;
+    });
+    menu.open(300, 250);
+    // дефолтный конфиг: size 240, centerSize 72 → outerRadius 120, innerRadius 36.
+    // Меню целиком в viewport jsdom (1024×768) → rect = весь квадрат вокруг центра.
+    expect(rect).toEqual({
+      x: 180,
+      y: 130,
+      width: 240,
+      height: 240,
+      left: 180,
+      top: 130,
+      right: 420,
+      bottom: 370
+    });
+  });
+
   it('throws on non-finite coordinates', () => {
     menu = makeMenu();
     expect(() => menu.open(NaN, 100)).toThrow(/coordinates/);
