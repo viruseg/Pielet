@@ -59,9 +59,14 @@
  *   Этот id передаётся в `select` (event.detail.id) и первым аргументом в `action`.
  * @property {(id: string, menu: Pielet, coords: { x: number, y: number }) => void} [action] - вызывается после закрытия меню:
  *   первый аргумент — id пункта, второй — экземпляр меню, третий — координаты
- *   указателя (clientX/clientY) в момент клика по пункту
+ *   указателя (clientX/clientY) в момент клика по пункту. Игнорируется при `isSubMenu: true`.
  * @property {boolean} [keepOpen] - если true, выбор пункта в click-режиме не закрывает меню
  *   (select event и action по-прежнему вызываются). В hold-режиме флаг игнорируется.
+ * @property {boolean} [isSubMenu] - если true, выбор пункта открывает сабменю `menu`
+ *   вместо вызова `action`. Требует `typeContent` не `none` и наличие `menu`.
+ *   В hold-режиме сабменю дополнительно открывается по hover-задержке `submenuDelay`.
+ * @property {Pielet} [menu] - экземпляр меню, открываемый как сабменю этого пункта.
+ *   Обязателен при `isSubMenu: true`.
  */
 
 /**
@@ -89,6 +94,10 @@
  * @property {boolean} unifyText - выровнять размер шрифта всех text-пунктов по
  *   самому длинному тексту (наименьший влезающий шрифт). Действует только при
  *   fit 'square', в 'circle' игнорируется (default false)
+ * @property {number} submenuDelay - задержка (мс) открытия сабменю при наведении
+ *   на пункт с `isSubMenu: true`. Действует в hold-режиме и в click-режиме, пока
+ *   отслеживаемая кнопка удержана (меню работает как hold). 0 отключает
+ *   hover-открытие, оставляя только открытие по клику (default 400)
  * @property {PieletItem[]} items - пункты меню (обязательно, минимум один)
  */
 

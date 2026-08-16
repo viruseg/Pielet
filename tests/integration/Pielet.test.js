@@ -572,6 +572,112 @@ describe('Pielet.setItemContent', () => {
   });
 });
 
+describe('Pielet — submenu (isSubMenu)', () => {
+  function makeSubmenu(overrides = {}) {
+    return new Pielet({ items: [{ typeContent: 'text', content: 'Leaf' }], ...overrides });
+  }
+
+  it('click: selecting a submenu item opens the submenu at the click coords and skips action', () => {
+    const submenu = makeSubmenu();
+    const action = vi.fn();
+    menu = new Pielet({
+      items: [{ typeContent: 'text', content: 'More', id: 'more', isSubMenu: true, menu: submenu, action }]
+    });
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 301, clientY: 380 }));
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
+    // родитель закрыт, сабменю открыто по координатам клика
+    const els = document.body.querySelectorAll('.pielet');
+    expect(els).toHaveLength(1);
+    expect(els[0].style.left).toBe('181px');
+    expect(els[0].style.top).toBe('260px');
+    expect(action).not.toHaveBeenCalled();
+    menu = submenu;
+  });
+
+  it('click: selecting a submenu item fires the select event on the parent', () => {
+    const submenu = makeSubmenu();
+    menu = new Pielet({
+      items: [{ typeContent: 'text', content: 'More', id: 'more', isSubMenu: true, menu: submenu }]
+    });
+    const onSelect = vi.fn();
+    menu.addEventListener('select', onSelect);
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect.mock.calls[0][0].detail.id).toBe('more');
+    menu = submenu;
+  });
+
+  it('submenu item renders its content and is hoverable', async () => {
+    const submenu = makeSubmenu();
+    menu = new Pielet({ items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: submenu }] });
+    menu.open(300, 300);
+    expect(document.querySelector('.pielet__content--text').textContent).toBe('More');
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 301, clientY: 380 }));
+    expect(document.querySelectorAll('.pielet__item--hover')).toHaveLength(1);
+    menu.close();
+  });
+
+  it('hold: hovering a submenu item for submenuDelay opens the submenu at the pointer, no select/action', async () => {
+    vi.useFakeTimers();
+    try {
+      const submenu = makeSubmenu();
+      const action = vi.fn();
+      const onSelect = vi.fn();
+      menu = new Pielet({
+        interactionMode: 'hold',
+        button: 'left',
+        items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: submenu, action }]
+      });
+      menu.addEventListener('select', onSelect);
+      menu.open(300, 300);
+      window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, buttons: 1, clientX: 301, clientY: 380 }));
+      await vi.advanceTimersByTimeAsync(399);
+      // родитель ещё открыт до истечения задержки
+      expect(document.body.querySelectorAll('.pielet')).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(1);
+      const els = document.body.querySelectorAll('.pielet');
+      expect(els).toHaveLength(1);
+      expect(els[0].style.left).toBe('181px');
+      expect(els[0].style.top).toBe('260px');
+      expect(onSelect).not.toHaveBeenCalled();
+      expect(action).not.toHaveBeenCalled();
+      menu = submenu;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('hold: submenu in hold mode keeps tracking the held button and selects on release', async () => {
+    vi.useFakeTimers();
+    try {
+      const submenuAction = vi.fn();
+      const submenu = makeSubmenu({ interactionMode: 'hold', button: 'left', items: [{ typeContent: 'text', content: 'Leaf', action: submenuAction }] });
+      const action = vi.fn();
+      menu = new Pielet({
+        interactionMode: 'hold',
+        button: 'left',
+        items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: submenu, action }]
+      });
+      menu.open(300, 300);
+      window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, buttons: 1, clientX: 301, clientY: 380 }));
+      await vi.advanceTimersByTimeAsync(500);
+      expect(document.body.querySelectorAll('.pielet')).toHaveLength(1);
+      // сабменю открыто в центре указателя; движение с зажатой кнопкой не закрывает его
+      window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, buttons: 1, clientX: 350, clientY: 400 }));
+      expect(document.body.querySelectorAll('.pielet')).toHaveLength(1);
+      // отпускание на секторе сабменю выбирает его пункт
+      window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 350, clientY: 400 }));
+      expect(submenuAction).toHaveBeenCalledTimes(1);
+      expect(action).not.toHaveBeenCalled();
+      menu = submenu;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe('Pielet — counterclockwise near viewport edges', () => {
   function setViewport(width, height) {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });

@@ -137,8 +137,11 @@
         <option value="true">on</option>
       </select>
       <output class="value" data-for="unifyText"></output>
+      <label for="submenuDelay">submenuDelay</label>
+      <input id="submenuDelay" type="range" min="0" max="2000" step="50" value="400" />
+      <output class="value" data-for="submenuDelay"></output>
     </div>
-    <div id="hint">click / tap anywhere to open the menu</div>
+    <div id="hint">click / tap anywhere to open the menu · пункт «Цвет» открывает сабменю (двойная вложенность)</div>
     <div id="status"></div>
   </div>
   <script type="module" src="demo/main.js"></script>

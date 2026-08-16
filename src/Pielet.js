@@ -93,7 +93,8 @@ export default class Pielet extends EventTarget {
             arcLength: visible.arc,
             direction: config.direction,
             sectors: layout.sectors,
-            selectable: config.items.map((item) => item.typeContent !== 'none')
+            selectable: config.items.map((item) => item.typeContent !== 'none'),
+            submenu: config.items.map((item) => item.isSubMenu === true)
         };
 
         this._renderer.mount({ centerX: x, centerY: y, geometry, items: config.items, unifyText: config.unifyText });
@@ -106,7 +107,9 @@ export default class Pielet extends EventTarget {
             geometry,
             onHover: (index) => this._renderer.setHover(index),
             onClose: () => this.close(),
-            onSelect: (index, point) => this._select(config.items[index], index, point)
+            onSelect: (index, point) => this._select(config.items[index], index, point),
+            submenuDelay: config.submenuDelay,
+            onSubmenuOpen: (index, point) => this._openSubmenu(config.items[index], point)
         });
         interaction.attach();
 
@@ -213,6 +216,8 @@ export default class Pielet extends EventTarget {
      * передаются в `item.action`.
      * Пункт с `keepOpen: true` не закрывает меню, но только в click-режиме:
      * в hold-режиме флаг игнорируется и меню закрывается как обычно.
+     * Пункт с `isSubMenu: true` вместо action открывает сабменю (`item.menu`)
+     * в точке клика; action игнорируется.
      * @param {import('./types.js').PieletItem} item
      * @param {number} index
      * @param {{ x: number, y: number }} [point] - координаты клика (clientX/clientY)
@@ -225,9 +230,30 @@ export default class Pielet extends EventTarget {
         if (!keepOpen) {
             this._close(true);
         }
+        if (item && item.isSubMenu === true) {
+            this._openSubmenu(item, point);
+            return;
+        }
         if (item && typeof item.action === 'function') {
             const action = item.action;
             action(id, this, point);
+        }
+    }
+
+    /**
+     * Открывает сабменю пункта в заданной точке (clientX/clientY).
+     * Используется обоими пайплайнами: click (выбор пункта) и hold
+     * (hover-задержка из InteractionController). Для hold-пайплайна
+     * select-событие и action не эмитятся — только открытие.
+     * @param {import('./types.js').PieletItem} item
+     * @param {{ x: number, y: number }} [point]
+     */
+    _openSubmenu(item, point) {
+        if (!item || item.isSubMenu !== true) return;
+        if (!point || typeof point.x !== 'number' || typeof point.y !== 'number') return;
+        const menu = item.menu;
+        if (menu && typeof menu.open === 'function') {
+            menu.open(point.x, point.y);
         }
     }
 

@@ -5,7 +5,7 @@ import { calculateSectorLayout } from '../../../src/geometry/calculateSector.js'
 
 const TAU = Math.PI * 2;
 
-function makeGeometry({ n = 4, gap = 8, selectable = null } = {}) {
+function makeGeometry({ n = 4, gap = 8, selectable = null, submenu = null } = {}) {
   const { sectors } = calculateSectorLayout({
     itemCount: n,
     arcStart: 0,
@@ -25,7 +25,8 @@ function makeGeometry({ n = 4, gap = 8, selectable = null } = {}) {
     arcLength: TAU,
     direction: 'clockwise',
     sectors,
-    selectable: selectable ?? Array.from({ length: n }, () => true)
+    selectable: selectable ?? Array.from({ length: n }, () => true),
+    submenu: submenu ?? Array.from({ length: n }, () => false)
   };
 }
 
@@ -370,5 +371,235 @@ describe('InteractionController — attach/detach', () => {
     fire(window, 'pointerup', pointAt(0.3));
     expect(onSelect).toHaveBeenCalledTimes(1);
     expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
+describe('InteractionController — held-button tracking', () => {
+  it('hold mode stays open while the tracked button is held', () => {
+    const onClose = vi.fn();
+    const controller = new InteractionController({
+      interactionMode: 'hold',
+      button: 'left',
+      geometry: makeGeometry(),
+      ...CENTER,
+      onHover: vi.fn(),
+      onClose,
+      onSelect: vi.fn()
+    });
+    controller.attach();
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 1 });
+    expect(onClose).not.toHaveBeenCalled();
+    controller.detach();
+  });
+
+  it('hold mode closes when the tracked button is not held on move', () => {
+    const onClose = vi.fn();
+    const controller = new InteractionController({
+      interactionMode: 'hold',
+      button: 'left',
+      geometry: makeGeometry(),
+      ...CENTER,
+      onHover: vi.fn(),
+      onClose,
+      onSelect: vi.fn()
+    });
+    controller.attach();
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 0 });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    controller.detach();
+  });
+
+  it('hold mode closes when a different button is held (mismatched submenu)', () => {
+    const onClose = vi.fn();
+    const controller = new InteractionController({
+      interactionMode: 'hold',
+      button: 'right',
+      geometry: makeGeometry(),
+      ...CENTER,
+      onHover: vi.fn(),
+      onClose,
+      onSelect: vi.fn()
+    });
+    controller.attach();
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 1 }); // зажата левая
+    expect(onClose).toHaveBeenCalledTimes(1);
+    controller.detach();
+  });
+
+  it('click mode stays open when the tracked button is not held', () => {
+    const onClose = vi.fn();
+    const controller = new InteractionController({
+      interactionMode: 'click',
+      button: 'left',
+      geometry: makeGeometry(),
+      ...CENTER,
+      onHover: vi.fn(),
+      onClose,
+      onSelect: vi.fn()
+    });
+    controller.attach();
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 0 });
+    expect(onClose).not.toHaveBeenCalled();
+    controller.detach();
+  });
+});
+
+describe('InteractionController — submenu open', () => {
+  let controller, onClose, onSelect, onSubmenuOpen;
+
+  function make({ mode = 'hold', button = 'left', submenuDelay = 400, geometry = null } = {}) {
+    if (controller) controller.detach();
+    onClose = vi.fn();
+    onSelect = vi.fn();
+    onSubmenuOpen = vi.fn();
+    controller = new InteractionController({
+      interactionMode: mode,
+      button,
+      geometry: geometry ?? makeGeometry({ submenu: [true, false, true, false] }),
+      ...CENTER,
+      submenuDelay,
+      onHover: vi.fn(),
+      onClose,
+      onSelect,
+      onSubmenuOpen
+    });
+    controller.attach();
+  }
+
+  function move(angle, dist = 65, buttons = 1) {
+    return fire(window, 'pointermove', { ...pointAt(angle, dist), buttons });
+  }
+
+  it('opens the submenu after the delay while hovering a submenu item in hold mode', async () => {
+    vi.useFakeTimers();
+    try {
+      make();
+      move(0.3); // item 0 — submenu, кнопка зажата
+      expect(onSubmenuOpen).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(399);
+      expect(onSubmenuOpen).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      const p = pointAt(0.3);
+      expect(onSubmenuOpen).toHaveBeenCalledTimes(1);
+      expect(onSubmenuOpen).toHaveBeenCalledWith(0, { x: p.clientX, y: p.clientY });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not arm the timer over a non-submenu item', async () => {
+    vi.useFakeTimers();
+    try {
+      make();
+      move(0.3 + Math.PI / 2); // item 1 — не submenu
+      await vi.advanceTimersByTimeAsync(600);
+      expect(onSubmenuOpen).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('opens the submenu in click mode only while the button is held', async () => {
+    vi.useFakeTimers();
+    try {
+      make({ mode: 'click' });
+      move(0.3, 65, 0); // кнопка не зажата
+      await vi.advanceTimersByTimeAsync(600);
+      expect(onSubmenuOpen).not.toHaveBeenCalled();
+      move(0.3, 65, 1); // кнопка зажата
+      await vi.advanceTimersByTimeAsync(600);
+      expect(onSubmenuOpen).toHaveBeenCalledTimes(1);
+      expect(onSubmenuOpen).toHaveBeenCalledWith(0, expect.any(Object));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('resets the delay when moving to another submenu item', async () => {
+    vi.useFakeTimers();
+    try {
+      make({ geometry: makeGeometry({ submenu: [true, true, false, false] }) });
+      move(0.3); // item 0
+      await vi.advanceTimersByTimeAsync(300);
+      move(0.3 + Math.PI / 2); // item 1 — сброс таймера
+      await vi.advanceTimersByTimeAsync(300);
+      expect(onSubmenuOpen).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(100);
+      expect(onSubmenuOpen).toHaveBeenCalledTimes(1);
+      expect(onSubmenuOpen).toHaveBeenCalledWith(1, expect.any(Object));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('clears the timer when moving off the submenu item', async () => {
+    vi.useFakeTimers();
+    try {
+      make();
+      move(0.3); // item 0 — submenu
+      await vi.advanceTimersByTimeAsync(300);
+      move(0.3 + Math.PI / 2); // item 1 — не submenu
+      await vi.advanceTimersByTimeAsync(600);
+      expect(onSubmenuOpen).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('clears the timer on pointerup over the item (click selection path)', async () => {
+    vi.useFakeTimers();
+    try {
+      make({ mode: 'click' });
+      move(0.3, 65, 1);
+      await vi.advanceTimersByTimeAsync(300);
+      fire(window, 'pointerup', { ...pointAt(0.3), button: 0 });
+      expect(onSelect).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(600);
+      expect(onSubmenuOpen).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not open submenu when submenuDelay is 0', async () => {
+    vi.useFakeTimers();
+    try {
+      make({ submenuDelay: 0 });
+      move(0.3);
+      await vi.advanceTimersByTimeAsync(600);
+      expect(onSubmenuOpen).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('clears the timer on pointercancel', async () => {
+    vi.useFakeTimers();
+    try {
+      make();
+      move(0.3);
+      await vi.advanceTimersByTimeAsync(300);
+      fire(window, 'pointercancel');
+      expect(onClose).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(600);
+      expect(onSubmenuOpen).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('clears the timer when the pointer leaves the menu', async () => {
+    vi.useFakeTimers();
+    try {
+      make();
+      move(0.3);
+      await vi.advanceTimersByTimeAsync(300);
+      move(0.3, 200); // outside
+      expect(onClose).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(600);
+      expect(onSubmenuOpen).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

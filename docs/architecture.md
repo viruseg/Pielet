@@ -47,7 +47,9 @@ open(x, y)
 pointer moves/up
   └─ getSelectedSector(x, y, geometry) → outside | center | gap | none | sector
   └─ hover: MenuRenderer.setHover(index | null)
+  └─ submenu (hold): hover на пункте с isSubMenu при удержанной кнопке + submenuDelay → menu.open(x, y)
   └─ select: dispatch 'select' (detail.id, detail.menu, detail.coords) → мгновенное закрытие → action(id, menu, coords)
+    — пункт с isSubMenu: вместо action → item.menu.open(coords)
 close()
   └─ detach InteractionController, снять viewport-слушатели
   └─ fade-out opacity (transitionend + fallback по computed duration)

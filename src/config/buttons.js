@@ -17,6 +17,20 @@ export const BUTTON_CODES = Object.freeze({
 });
 
 /**
+ * Текстовая константа → битовая маска PointerEvent.buttons.
+ * Используется, чтобы определять, удержана ли отслеживаемая кнопка,
+ * по событиям pointermove (без отдельного слушателя pointerdown).
+ * @type {Readonly<Record<'left' | 'middle' | 'right' | 'back' | 'forward', number>>}
+ */
+export const BUTTON_BITS = Object.freeze({
+    left: 1,
+    middle: 4,
+    right: 2,
+    back: 8,
+    forward: 16
+});
+
+/**
  * Допустимые текстовые имена кнопок.
  * @type {ReadonlySet<string>}
  */

@@ -16,7 +16,7 @@ test.beforeEach(async ({ page }) => {
 test('menu DOM lifecycle: open → DOM present, close → DOM removed', async ({ page }) => {
   await openMenu(page, 400, 400);
   await expect(page.locator('.pielet')).toHaveCount(1);
-  await expect(page.locator('.pielet__item')).toHaveCount(6);
+  await expect(page.locator('.pielet__item')).toHaveCount(7);
   await page.evaluate(() => window.__menu.close());
   await expect(page.locator('.pielet')).toHaveCount(0);
   await openMenu(page, 200, 200);
@@ -201,10 +201,10 @@ test('click mode: clicking outside an item closes the menu', async ({ page }) =>
 });
 
 test('click mode: clicking a none sector closes the menu without action', async ({ page }) => {
-  // третий item демо — typeContent 'none' (i % 6 === 3): 6 items → none на индексе 3
+  // третий item демо — typeContent 'none' (i % 6 === 3): 7 items → none на индексе 3
   await openMenu(page, 500, 400);
   await page.waitForTimeout(400);
-  const angle = -90 + 3 * 60 + 30; // центр третьего сектора (60° pitch)
+  const angle = -90 + (3 + 0.5) * (360 / 7); // центр третьего сектора (pitch 360/7)
   const rad = (angle * Math.PI) / 180;
   await page.mouse.click(500 + 80 * Math.cos(rad), 400 + 80 * Math.sin(rad));
   await expect(page.locator('.pielet')).toHaveCount(0);
@@ -224,6 +224,116 @@ test('context menu is suppressed while the menu is open', async ({ page }) => {
     return obj;
   });
   expect(event).toBe(true);
+});
+
+test.describe('submenus (isSubMenu)', () => {
+  async function installSubmenus(page, { parentMode = 'click', submenuMode = 'click' } = {}) {
+    await page.evaluate(({ parentMode, submenuMode }) => {
+      window.__leafAction = 0;
+      window.__submenu = new window.Pielet({
+        interactionMode: submenuMode,
+        button: 'left',
+        items: [
+          { typeContent: 'text', content: 'Leaf', action: () => { window.__leafAction += 1; } }
+        ]
+      });
+      window.__parent = new window.Pielet({
+        interactionMode: parentMode,
+        button: 'left',
+        submenuDelay: 250,
+        items: [
+          { typeContent: 'text', content: 'More', isSubMenu: true, menu: window.__submenu },
+          { typeContent: 'text', content: 'Other' }
+        ]
+      });
+    }, { parentMode, submenuMode });
+  }
+
+  test('click: clicking a submenu item opens the submenu at the click point', async ({ page }) => {
+    await installSubmenus(page);
+    await page.evaluate(() => window.__parent.open(400, 400));
+    await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
+    // клик по середине первого сектора (right half, угол 0°)
+    await page.mouse.click(480, 400);
+    await expect(page.locator('.pielet')).toHaveCount(1);
+    const box = await page.locator('.pielet').boundingBox();
+    expect(box.x + box.width / 2).toBeCloseTo(480, 1);
+    expect(box.y + box.height / 2).toBeCloseTo(400, 1);
+    await page.evaluate(() => window.__submenu.close());
+  });
+
+  test('click: the parent action of a submenu item is not called', async ({ page }) => {
+    await page.evaluate(() => {
+      window.__parentAction = 0;
+      window.__submenu = new window.Pielet({ items: [{ typeContent: 'text', content: 'Leaf' }] });
+      window.__parent = new window.Pielet({
+        items: [
+          { typeContent: 'text', content: 'More', isSubMenu: true, menu: window.__submenu, action: () => { window.__parentAction += 1; } },
+          { typeContent: 'text', content: 'Other' }
+        ]
+      });
+    });
+    await page.evaluate(() => window.__parent.open(400, 400));
+    await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
+    await page.mouse.click(480, 400);
+    const parentAction = await page.evaluate(() => window.__parentAction);
+    expect(parentAction).toBe(0);
+    await page.evaluate(() => window.__submenu.close());
+  });
+
+  test('hold: hovering a submenu item for the delay opens the submenu while holding', async ({ page }) => {
+    await installSubmenus(page, { parentMode: 'hold', submenuMode: 'hold' });
+    await page.evaluate(() => window.__parent.open(400, 400));
+    await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
+    // синтетическое удержание кнопки (buttons: 1) и наведение на первый сектор
+    await page.evaluate(() => {
+      window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, buttons: 1, clientX: 480, clientY: 400 }));
+    });
+    await page.waitForTimeout(500);
+    await expect(page.locator('.pielet')).toHaveCount(1);
+    const box = await page.locator('.pielet').boundingBox();
+    expect(box.x + box.width / 2).toBeCloseTo(480, 1);
+    expect(box.y + box.height / 2).toBeCloseTo(400, 1);
+    // сабменю в hold-режиме с той же кнопкой: уход на сектор и отпускание выбирают
+    await page.evaluate(() => {
+      window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, buttons: 1, clientX: 560, clientY: 400 }));
+      window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 560, clientY: 400 }));
+    });
+    await page.waitForFunction(() => window.__leafAction === 1, null, { timeout: MENU_OPEN_TIMED_OUT });
+  });
+});
+
+test('demo: the «Цвет» item opens a double-nested submenu chain (Цвет → Основные → Красный)', async ({ page }) => {
+  await openMenu(page, 500, 400);
+  // 7 items демо: последний сектор (индекс 6) — пункт «Цвет» (isSubMenu)
+  const colorItem = (() => {
+    const angle = -90 + (6 + 0.5) * (360 / 7);
+    const rad = (angle * Math.PI) / 180;
+    return { x: 500 + 80 * Math.cos(rad), y: 400 + 80 * Math.sin(rad) };
+  })();
+  await page.mouse.click(colorItem.x, colorItem.y);
+  await page.waitForTimeout(50);
+  await expect(page.locator('.pielet')).toHaveCount(1);
+  let box = await page.locator('.pielet').boundingBox();
+  expect(box.x + box.width / 2).toBeCloseTo(colorItem.x, 1);
+  expect(box.y + box.height / 2).toBeCloseTo(colorItem.y, 1);
+
+  // в сабменю 2 пункта; первый («Основные», угол 0°) — снова сабменю
+  const subX = colorItem.x + 80;
+  const subY = colorItem.y;
+  await page.mouse.click(subX, subY);
+  await page.waitForTimeout(50);
+  await expect(page.locator('.pielet')).toHaveCount(1);
+  box = await page.locator('.pielet').boundingBox();
+  expect(box.x + box.width / 2).toBeCloseTo(subX, 1);
+  expect(box.y + box.height / 2).toBeCloseTo(subY, 1);
+
+  // вложенное меню: 3 пункта; первый («Красный», середина сектора -30°) применяет цвет
+  const basicAngle = -30;
+  const basicRad = (basicAngle * Math.PI) / 180;
+  await page.mouse.click(subX + 80 * Math.cos(basicRad), subY + 80 * Math.sin(basicRad));
+  await page.waitForFunction(() => getComputedStyle(document.documentElement).getPropertyValue('--pielet-background').trim() === '#e5484d');
+  await expect(page.locator('.pielet')).toHaveCount(0);
 });
 
 test.describe('touch devices', () => {

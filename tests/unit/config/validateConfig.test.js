@@ -10,6 +10,8 @@ const validItems = [
   { typeContent: 'node', content: document.createElement('div') }
 ];
 
+const submenuStub = { open: () => {} };
+
 describe('DEFAULT_CONFIG', () => {
   it('has exactly the documented defaults', () => {
     expect(DEFAULT_CONFIG).toEqual({
@@ -22,7 +24,8 @@ describe('DEFAULT_CONFIG', () => {
       button: 'left',
       closeDistance: 48,
       fit: 'circle',
-      unifyText: false
+      unifyText: false,
+      submenuDelay: 400
     });
   });
 
@@ -46,6 +49,7 @@ describe('normalizeConfig', () => {
     expect(config.closeDistance).toBe(48);
     expect(config.fit).toBe('circle');
     expect(config.unifyText).toBe(false);
+    expect(config.submenuDelay).toBe(400);
   });
 
   it('keeps user values', () => {
@@ -60,6 +64,7 @@ describe('normalizeConfig', () => {
       closeDistance: 60,
       fit: 'square',
       unifyText: true,
+      submenuDelay: 250,
       items: validItems
     });
     expect(config.size).toBe(300);
@@ -72,6 +77,7 @@ describe('normalizeConfig', () => {
     expect(config.closeDistance).toBe(60);
     expect(config.fit).toBe('square');
     expect(config.unifyText).toBe(true);
+    expect(config.submenuDelay).toBe(250);
   });
 
   it('throws on an empty config object — items is required', () => {
@@ -155,6 +161,42 @@ describe('validateConfig errors', () => {
       validateConfig({ items: [{ typeContent: 'text', content: 'A', keepOpen: 'yes' }] })
     ).toThrow(/keepOpen/);
   });
+
+  it('throws when submenuDelay is negative', () => {
+    expect(() => validateConfig({ items: validItems, submenuDelay: -1 })).toThrow(/submenuDelay/);
+  });
+
+  it('throws when submenuDelay is NaN', () => {
+    expect(() => validateConfig({ items: validItems, submenuDelay: NaN })).toThrow(/submenuDelay/);
+  });
+
+  it('throws when submenuDelay is not a number', () => {
+    expect(() => validateConfig({ items: validItems, submenuDelay: '400' })).toThrow(/submenuDelay/);
+  });
+
+  it('throws when isSubMenu is not a boolean', () => {
+    expect(() =>
+      validateConfig({ items: [{ typeContent: 'text', content: 'A', isSubMenu: 'yes' }] })
+    ).toThrow(/isSubMenu/);
+  });
+
+  it('throws when isSubMenu item has typeContent none', () => {
+    expect(() =>
+      validateConfig({ items: [{ typeContent: 'none', isSubMenu: true, menu: submenuStub }] })
+    ).toThrow(/isSubMenu/);
+  });
+
+  it('throws when isSubMenu item has no menu', () => {
+    expect(() =>
+      validateConfig({ items: [{ typeContent: 'text', content: 'A', isSubMenu: true }] })
+    ).toThrow(/menu/);
+  });
+
+  it('throws when isSubMenu item menu lacks an open function', () => {
+    expect(() =>
+      validateConfig({ items: [{ typeContent: 'text', content: 'A', isSubMenu: true, menu: { close: () => {} } }] })
+    ).toThrow(/menu/);
+  });
 });
 
 describe('validateConfig valid inputs', () => {
@@ -206,6 +248,31 @@ describe('validateConfig valid inputs', () => {
     expect(() => validateConfig({ items: validItems, unifyText: false })).not.toThrow();
     expect(normalizeConfig({ items: validItems, unifyText: true }).unifyText).toBe(true);
     expect(normalizeConfig({ items: validItems, unifyText: false }).unifyText).toBe(false);
+  });
+
+  it('accepts submenuDelay of 0 (disables hover-open) and normalizes it', () => {
+    expect(() => validateConfig({ items: validItems, submenuDelay: 0 })).not.toThrow();
+    expect(normalizeConfig({ items: validItems, submenuDelay: 0 }).submenuDelay).toBe(0);
+  });
+
+  it('accepts an isSubMenu item with a menu that has open', () => {
+    const item = { typeContent: 'text', content: 'More', isSubMenu: true, menu: submenuStub };
+    expect(() => validateConfig({ items: [item] })).not.toThrow();
+    const config = normalizeConfig({ items: [item] });
+    expect(config.items[0].isSubMenu).toBe(true);
+    expect(config.items[0].menu).toBe(submenuStub);
+  });
+
+  it('accepts isSubMenu false without a menu', () => {
+    expect(() =>
+      validateConfig({ items: [{ typeContent: 'text', content: 'A', isSubMenu: false }] })
+    ).not.toThrow();
+  });
+
+  it('normalizes items preserving isSubMenu and menu', () => {
+    const config = normalizeConfig({ items: [{ typeContent: 'text', content: 'A', isSubMenu: true, menu: submenuStub }] });
+    expect(config.items[0].isSubMenu).toBe(true);
+    expect(config.items[0].menu).toBe(submenuStub);
   });
 
   it('normalizes items preserving keepOpen', () => {

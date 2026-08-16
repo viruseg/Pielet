@@ -75,12 +75,15 @@ function validateItem(item, index) {
     if (typeof item !== 'object' || item === null) {
         throw err(`items[${index}] must be an object, got ${String(item)}`);
     }
-    const { typeContent, content, action, id, keepOpen } = item;
+    const { typeContent, content, action, id, keepOpen, isSubMenu, menu } = item;
     if (id !== undefined && (typeof id !== 'string' || id.length === 0)) {
         throw err(`items[${index}].id must be a non-empty string, got ${String(id)}`);
     }
     if (keepOpen !== undefined && typeof keepOpen !== 'boolean') {
         throw err(`items[${index}].keepOpen must be a boolean, got ${String(keepOpen)}`);
+    }
+    if (isSubMenu !== undefined && typeof isSubMenu !== 'boolean') {
+        throw err(`items[${index}].isSubMenu must be a boolean, got ${String(isSubMenu)}`);
     }
     if (!CONTENT_TYPES.has(typeContent)) {
         throw err(`items[${index}].typeContent must be one of: none, text, image, node; got ${String(typeContent)}`);
@@ -92,6 +95,14 @@ function validateItem(item, index) {
     } else if (typeContent === 'node') {
         if (!(content instanceof Node)) {
             throw err(`items[${index}].content must be a DOM Node for typeContent "node"`);
+        }
+    }
+    if (isSubMenu === true) {
+        if (typeContent === 'none') {
+            throw err(`items[${index}].isSubMenu cannot be true for typeContent "none"`);
+        }
+        if (typeof menu !== 'object' || menu === null || typeof menu.open !== 'function') {
+            throw err(`items[${index}].menu must be a Pielet instance (object with open) when isSubMenu is true`);
         }
     }
     if (action !== undefined && typeof action !== 'function') {
@@ -106,7 +117,7 @@ function validateItem(item, index) {
  * @param {Record<string, unknown>} config
  */
 export function validateConfig(config) {
-    const { size, centerSize, gap, startAngle, direction, interactionMode, button, closeDistance, items, fit, unifyText } = config;
+    const { size, centerSize, gap, startAngle, direction, interactionMode, button, closeDistance, items, fit, unifyText, submenuDelay } = config;
 
     if (!Array.isArray(items)) {
         throw err(`items must be a non-empty array, got ${String(items)}`);
@@ -124,6 +135,7 @@ export function validateConfig(config) {
         throw err(`button must be one of: ${Array.from(BUTTON_NAMES).join(', ')}; got ${String(button)}`);
     }
     if (closeDistance !== undefined) assertNumber(closeDistance, 'closeDistance', (v) => v >= 0, 'a non-negative number');
+    if (submenuDelay !== undefined) assertNumber(submenuDelay, 'submenuDelay', (v) => v >= 0, 'a non-negative number');
 
     if (fit !== undefined && !FITS.has(fit)) {
         throw err(`fit must be one of: ${Array.from(FITS).join(', ')}; got ${String(fit)}`);
@@ -162,6 +174,7 @@ export function normalizeConfig(rawConfig = {}) {
         closeDistance: config.closeDistance,
         fit: config.fit,
         unifyText: config.unifyText,
+        submenuDelay: config.submenuDelay,
         items: config.items.map((item) => ({ ...item, id: resolveItemId(item) }))
     };
     return normalized;

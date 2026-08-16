@@ -23,5 +23,9 @@ export const DEFAULT_CONFIG = {
     fit: 'circle',
 
     // Выравнивание шрифта text-пунктов (только при fit: 'square')
-    unifyText: false
+    unifyText: false,
+
+    // Задержка (мс) открытия сабменю при наведении в hold-режиме.
+    // 0 отключает hover-открытие (остаётся только click-пайплайн).
+    submenuDelay: 400
 };
