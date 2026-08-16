@@ -106,7 +106,7 @@ export default class Pielet extends EventTarget {
             geometry,
             onHover: (index) => this._renderer.setHover(index),
             onClose: () => this.close(),
-            onSelect: (index) => this._select(config.items[index], index)
+            onSelect: (index, point) => this._select(config.items[index], index, point)
         });
         interaction.attach();
 
@@ -207,24 +207,27 @@ export default class Pielet extends EventTarget {
     /**
      * Pipeline выбора пункта (спека §27):
      * select event → закрытие → удаление DOM/listeners → вызов action.
-     * select несёт `detail.id` — строковый идентификатор пункта — и `detail.menu`;
-     * тот же id первым аргументом и экземпляр меню вторым передаются в `item.action`.
+     * select несёт `detail.id` — строковый идентификатор пункта — `detail.menu`
+     * и `detail.coords` — координаты указателя в момент клика по пункту;
+     * тот же id первым аргументом, экземпляр меню вторым и координаты третьим
+     * передаются в `item.action`.
      * Пункт с `keepOpen: true` не закрывает меню, но только в click-режиме:
      * в hold-режиме флаг игнорируется и меню закрывается как обычно.
      * @param {import('./types.js').PieletItem} item
      * @param {number} index
+     * @param {{ x: number, y: number }} [point] - координаты клика (clientX/clientY)
      */
-    _select(item, index) {
+    _select(item, index, point) {
         void index;
         const id = item && typeof item.id === 'string' ? item.id : '';
-        this.dispatchEvent(new CustomEvent('select', { detail: { id, menu: this } }));
+        this.dispatchEvent(new CustomEvent('select', { detail: { id, menu: this, coords: point } }));
         const keepOpen = this.config.interactionMode === 'click' && item && item.keepOpen === true;
         if (!keepOpen) {
             this._close(true);
         }
         if (item && typeof item.action === 'function') {
             const action = item.action;
-            action(id, this);
+            action(id, this, point);
         }
     }
 

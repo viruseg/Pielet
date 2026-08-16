@@ -358,7 +358,7 @@ describe('Pielet selection pipeline', () => {
     expect(detailId).toBe('custom-a');
     expect(detailMenu).toBe(menu);
     expect(action).toHaveBeenCalledTimes(1);
-    expect(action).toHaveBeenCalledWith('custom-a', menu);
+    expect(action).toHaveBeenCalledWith('custom-a', menu, { x: 301, y: 380 });
   });
 
   it('select event detail.id and action argument use the generated id', async () => {
@@ -377,7 +377,22 @@ describe('Pielet selection pipeline', () => {
     window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
     expect(detailId).toBe(itemId);
     expect(detailMenu).toBe(menu);
-    expect(action).toHaveBeenCalledWith(itemId, menu);
+    expect(action).toHaveBeenCalledWith(itemId, menu, { x: 301, y: 380 });
+  });
+
+  it('select event detail.coords and action third argument carry the pointerup coordinates', async () => {
+    const action = vi.fn();
+    let detailCoords = null;
+    menu = new Pielet({ items: [{ typeContent: 'text', content: 'A', id: 'coord-a', action }] });
+    menu.addEventListener('select', (e) => {
+      detailCoords = e.detail.coords;
+    });
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 301, clientY: 380 }));
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
+    expect(detailCoords).toEqual({ x: 301, y: 380 });
+    expect(action).toHaveBeenCalledTimes(1);
+    expect(action).toHaveBeenCalledWith('coord-a', menu, { x: 301, y: 380 });
   });
 
   it('regenerates generated ids on each open while explicit ids stay stable', async () => {

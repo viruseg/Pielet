@@ -30,10 +30,10 @@ function assembleItems(count, fit) {
       id: i === 0 ? 'demo-open' : undefined,
       typeContent: 'text',
       content,
-      action: (id, menu) => {
-        window.__lastAction = { index: i, content: label, id, at: Date.now() };
+      action: (id, menu, coords) => {
+        window.__lastAction = { index: i, content: label, id, at: Date.now(), coords };
         const sameMenu = menu === window.__menu ? 'этот же экземпляр' : 'другой экземпляр';
-        statusEl.textContent = `action: ${label} (${i}) id: ${id} — ${sameMenu} — ${new Date().toLocaleTimeString()}`;
+        statusEl.textContent = `action: ${label} (${i}) id: ${id} — ${sameMenu} — точка: ${coords.x}, ${coords.y} — ${new Date().toLocaleTimeString()}`;
       }
     };
   });
@@ -110,7 +110,7 @@ menu.addEventListener('open', (e) => {
   console.log('Pielet open rect:', rect);
 });
 menu.addEventListener('select', (e) => {
-  statusEl.textContent = `event: select — id: ${e.detail.id} — ${new Date().toLocaleTimeString()}`;
+  statusEl.textContent = `event: select — id: ${e.detail.id} — точка: ${e.detail.coords.x}, ${e.detail.coords.y} — ${new Date().toLocaleTimeString()}`;
 });
 menu.addEventListener('close', () => {
   isOpen = false;

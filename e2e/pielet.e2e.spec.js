@@ -36,6 +36,8 @@ test('click selects the item under the pointer and runs its action', async ({ pa
     null,
     { timeout: MENU_OPEN_TIMED_OUT }
   );
+  const coords = await page.evaluate(() => window.__lastAction.coords);
+  expect(coords).toEqual({ x: 540, y: 331 });
   await expect(page.locator('.pielet')).toHaveCount(0);
 });
 

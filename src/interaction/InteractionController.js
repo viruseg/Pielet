@@ -25,7 +25,7 @@ export class InteractionController {
      * @param {object} options.geometry - полная геометрия меню (для hit-теста)
      * @param {(index: number | null) => void} options.onHover - смена hover-пункта
      * @param {() => void} options.onClose - запрос закрытия меню
-     * @param {(index: number) => void} options.onSelect - выбор пункта
+     * @param {(index: number, point: { x: number, y: number }) => void} options.onSelect - выбор пункта; point — координаты указателя в момент pointerup
      */
     constructor({ interactionMode, button, centerX, centerY, geometry, onHover, onClose, onSelect }) {
         this._mode = interactionMode;
@@ -96,7 +96,7 @@ export class InteractionController {
         if (event.button !== this._button) return;
         const hit = this._hit(event);
         if (hit.region === 'sector') {
-            this._onSelect(hit.itemIndex);
+            this._onSelect(hit.itemIndex, { x: event.clientX, y: event.clientY });
             return;
         }
         if (this._mode === 'hold') {

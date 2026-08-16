@@ -57,8 +57,9 @@
  *   (или начинается с зарезервированного префикса `pielet-`) — генерируется
  *   автоматически при каждой нормализации в формате `pielet-<время>-<n>`.
  *   Этот id передаётся в `select` (event.detail.id) и первым аргументом в `action`.
- * @property {(id: string, menu: Pielet) => void} [action] - вызывается после закрытия меню:
- *   первый аргумент — id пункта, второй — экземпляр меню, для которого вызван action
+ * @property {(id: string, menu: Pielet, coords: { x: number, y: number }) => void} [action] - вызывается после закрытия меню:
+ *   первый аргумент — id пункта, второй — экземпляр меню, третий — координаты
+ *   указателя (clientX/clientY) в момент клика по пункту
  * @property {boolean} [keepOpen] - если true, выбор пункта в click-режиме не закрывает меню
  *   (select event и action по-прежнему вызываются). В hold-режиме флаг игнорируется.
  */
@@ -69,6 +70,7 @@
  * @typedef {object} PieletEventDetail
  * @property {Pielet} menu - экземпляр меню, для которого вызвано событие
  * @property {string} [id] - строковый id выбранного пункта (только `select`)
+ * @property {object} [coords] - координаты указателя (clientX/clientY) в момент клика по пункту (только `select`)
  * @property {object} [rect] - DOMRect-совместимый bounding rect видимой части меню (только `open`)
  */
 

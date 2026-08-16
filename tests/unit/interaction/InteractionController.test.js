@@ -139,9 +139,17 @@ describe('InteractionController — pointerup (click mode)', () => {
 
   it('selects the item under the pointer with the configured button (click mode)', () => {
     make();
-    fire(window, 'pointerup', pointAt(0.3));
-    expect(onSelect).toHaveBeenCalledWith(0);
+    const p = pointAt(0.3);
+    fire(window, 'pointerup', p);
+    expect(onSelect).toHaveBeenCalledWith(0, { x: p.clientX, y: p.clientY });
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('passes the pointer coordinates at pointerup to onSelect', () => {
+    make();
+    const p = pointAt(0.3);
+    fire(window, 'pointerup', p);
+    expect(onSelect).toHaveBeenCalledWith(0, { x: p.clientX, y: p.clientY });
   });
 
   it('does NOT select with a non-configured button (click mode)', () => {
@@ -153,8 +161,9 @@ describe('InteractionController — pointerup (click mode)', () => {
 
   it('selects only with the configured button (click mode)', () => {
     make('click', 'right');
-    fire(window, 'pointerup', { ...pointAt(0.3), button: 2 });
-    expect(onSelect).toHaveBeenCalledWith(0);
+    const p = pointAt(0.3);
+    fire(window, 'pointerup', { ...p, button: 2 });
+    expect(onSelect).toHaveBeenCalledWith(0, { x: p.clientX, y: p.clientY });
   });
 
   it('does NOT close on pointerup in the center (click mode)', () => {
@@ -277,8 +286,9 @@ describe('InteractionController — pointerup (hold mode)', () => {
 
   it('selects on pointerup with the configured button over a sector', () => {
     make('right');
-    fire(window, 'pointerup', { ...pointAt(0.3), button: 2 });
-    expect(onSelect).toHaveBeenCalledWith(0);
+    const p = pointAt(0.3);
+    fire(window, 'pointerup', { ...p, button: 2 });
+    expect(onSelect).toHaveBeenCalledWith(0, { x: p.clientX, y: p.clientY });
   });
 
   it('closes on pointerup with the configured button in the center/gap', () => {
