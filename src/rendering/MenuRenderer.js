@@ -6,7 +6,7 @@
  */
 
 import { buildSectorClipPath } from '../geometry/calculateSector.js';
-import { createContentContainer } from './ContentRenderer.js';
+import { createContentContainer, fitText } from './ContentRenderer.js';
 
 const DEFAULT_CLOSE_DURATION_MS = 250;
 
@@ -33,8 +33,6 @@ export class MenuRenderer {
         this._captions = [];
         /** @type {Array<object>} */
         this._sectors = [];
-        /** @type {number} */
-        this._baseFontSize = 14;
         /** @type {boolean[]} */
         this._selectable = [];
         /** @type {number} */
@@ -58,12 +56,10 @@ export class MenuRenderer {
      * @param {number} options.centerY
      * @param {object} options.geometry - результат calculateMenuGeometry/calculateSectorLayout
      * @param {Array<object>} options.items - пункты меню
-     * @param {number} options.baseFontSize - базовый размер шрифта для text-пунктов
      */
-    mount({ centerX, centerY, geometry, items, baseFontSize: baseFontSizeOption }) {
+    mount({ centerX, centerY, geometry, items }) {
         const { outerRadius, innerRadius, sectors } = geometry;
         const size = outerRadius * 2;
-        const meanRadius = (outerRadius + innerRadius) / 2;
 
         const el = document.createElement('div');
         el.className = 'pielet';
@@ -78,11 +74,6 @@ export class MenuRenderer {
         this._el = el;
         this._closeDuration = parseDuration(this.getComputedDuration());
 
-        const baseFontSize = baseFontSizeOption !== undefined
-            ? baseFontSizeOption
-            : this.getBaseFontSize();
-        this._baseFontSize = baseFontSize;
-
         this._itemEls = [];
         this._captions = [];
         this._sectors = sectors;
@@ -96,14 +87,17 @@ export class MenuRenderer {
             itemEl.style.clipPath = buildSectorClipPath(sector, outerRadius, innerRadius);
 
             let caption = null;
+            let contentEl = null;
             if (item.typeContent !== 'none') {
                 caption = document.createElement('div');
                 caption.className = 'pielet__item-caption';
                 caption.style.position = 'absolute';
-                caption.style.left = `${outerRadius + meanRadius * Math.cos(sector.mid)}px`;
-                caption.style.top = `${outerRadius + meanRadius * Math.sin(sector.mid)}px`;
-                caption.style.transform = 'translate(-50%, -50%)';
-                const contentEl = createContentContainer(item, sector, baseFontSize);
+                caption.style.left = `${outerRadius + sector.contentRadius * Math.cos(sector.mid)}px`;
+                caption.style.top = `${outerRadius + sector.contentRadius * Math.sin(sector.mid)}px`;
+                caption.style.transform = sector.rotate
+                    ? `translate(-50%, -50%) rotate(${sector.mid * 180 / Math.PI + (sector.flip ? 180 : 0)}deg)`
+                    : 'translate(-50%, -50%)';
+                contentEl = createContentContainer(item, sector);
                 if (contentEl) caption.appendChild(contentEl);
                 itemEl.appendChild(caption);
             }
@@ -111,6 +105,11 @@ export class MenuRenderer {
 
             el.appendChild(itemEl);
             this._itemEls.push(itemEl);
+
+            // fitText требует, чтобы элемент был в DOM (scrollWidth/scrollHeight).
+            if (item.typeContent === 'text' && contentEl) {
+                fitText(contentEl, sector.availWidth, sector.availHeight);
+            }
         }
 
         this._selectable = items.map((item) => item.typeContent !== 'none');
@@ -118,21 +117,6 @@ export class MenuRenderer {
         setTimeout(() => {
             if (this._el === el) el.classList.add('pielet--open');
         }, 0);
-    }
-
-    /**
-     * Базовый размер шрифта text-пунктов из CSS переменной
-     * `--pielet-font-size` (в px), иначе 14.
-     * @returns {number}
-     */
-    getBaseFontSize() {
-        try {
-            const value = this._el && window.getComputedStyle(this._el).getPropertyValue('--pielet-font-size');
-            const parsed = value && parseFloat(value);
-            return Number.isFinite(parsed) && parsed > 0 ? parsed : 14;
-        } catch {
-            return 14;
-        }
     }
 
     /**
@@ -167,8 +151,12 @@ export class MenuRenderer {
         const caption = this._captions[index];
         const sector = this._sectors[index];
         if (!caption || !sector) return;
-        const contentEl = createContentContainer(item, sector, this._baseFontSize);
+        const contentEl = createContentContainer(item, sector);
         caption.replaceChildren(contentEl || '');
+        // caption уже в DOM (перерисовка «на месте»), можно измерять сразу.
+        if (item.typeContent === 'text' && contentEl) {
+            fitText(contentEl, sector.availWidth, sector.availHeight);
+        }
     }
 
     /**

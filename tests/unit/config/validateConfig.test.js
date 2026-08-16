@@ -20,7 +20,8 @@ describe('DEFAULT_CONFIG', () => {
       direction: 'clockwise',
       interactionMode: 'click',
       button: 'left',
-      closeDistance: 48
+      closeDistance: 48,
+      fit: 'circle'
     });
   });
 
@@ -42,6 +43,7 @@ describe('normalizeConfig', () => {
     expect(config.interactionMode).toBe('click');
     expect(config.button).toBe('left');
     expect(config.closeDistance).toBe(48);
+    expect(config.fit).toBe('circle');
   });
 
   it('keeps user values', () => {
@@ -54,6 +56,7 @@ describe('normalizeConfig', () => {
       interactionMode: 'hold',
       button: 'right',
       closeDistance: 60,
+      fit: 'square',
       items: validItems
     });
     expect(config.size).toBe(300);
@@ -64,6 +67,7 @@ describe('normalizeConfig', () => {
     expect(config.interactionMode).toBe('hold');
     expect(config.button).toBe('right');
     expect(config.closeDistance).toBe(60);
+    expect(config.fit).toBe('square');
   });
 
   it('throws on an empty config object — items is required', () => {
@@ -89,7 +93,9 @@ describe('validateConfig errors', () => {
     ['button numeric', { button: 0 }],
     ['button wrong case', { button: 'LEFT' }],
     ['closeDistance negative', { closeDistance: -1 }],
-    ['closeDistance NaN', { closeDistance: NaN }]
+    ['closeDistance NaN', { closeDistance: NaN }],
+    ['unknown fit', { fit: 'ellipse' }],
+    ['fit wrong case', { fit: 'Circle' }]
   ];
 
   for (const [label, partial] of cases) {
@@ -180,6 +186,13 @@ describe('validateConfig valid inputs', () => {
   it('accepts keepOpen as a boolean', () => {
     expect(() => validateConfig({ items: [{ typeContent: 'text', content: 'A', keepOpen: true }] })).not.toThrow();
     expect(() => validateConfig({ items: [{ typeContent: 'text', content: 'A', keepOpen: false }] })).not.toThrow();
+  });
+
+  it('accepts every named fit value', () => {
+    for (const fit of ['circle', 'square']) {
+      expect(() => validateConfig({ items: validItems, fit })).not.toThrow();
+      expect(normalizeConfig({ items: validItems, fit }).fit).toBe(fit);
+    }
   });
 
   it('normalizes items preserving keepOpen', () => {

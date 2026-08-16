@@ -6,29 +6,48 @@
 
 const MIN_FONT_SIZE = 8;
 const MAX_FIT_ITERATIONS = 24;
-const FIT_STEP_PX = 1;
+const MAX_FONT_SIZE = 1024;
 
 /**
- * Ужимает шрифт текстового элемента, пока его содержимое не перестанет
- * выходить за доступную область (измерение через scrollWidth/scrollHeight).
- * Шрифт уменьшается равномерно, без растяжения по осям.
+ * Подбирает максимальный размер шрифта, при котором содержимое элемента
+ * помещается в доступную область (вписывание с заполнением): короткий текст
+ * растёт до границы бокса, длинный — ужимается. Измерение через
+ * scrollWidth/scrollHeight (требует, чтобы элемент был в DOM).
  *
- * @param {HTMLElement} el - текстовый элемент с установленным width/height
+ * @param {HTMLElement} el - текстовый элемент с установленным maxWidth/maxHeight
  * @param {number} availWidth
  * @param {number} availHeight
- * @param {number} baseFontSize - стартовый размер шрифта в px
  * @param {number} minFontSize - нижняя граница размера шрифта
  * @param {number} maxIterations - предохранитель от бесконечного цикла
  */
-export function fitText(el, availWidth, availHeight, baseFontSize, minFontSize = MIN_FONT_SIZE, maxIterations = MAX_FIT_ITERATIONS) {
-    let size = Math.max(baseFontSize, 1);
-    el.style.fontSize = `${size}px`;
-    for (let i = 0; i < maxIterations; i++) {
-        if (el.scrollWidth <= availWidth && el.scrollHeight <= availHeight) break;
-        if (size <= minFontSize) break;
-        size = Math.max(size - FIT_STEP_PX, minFontSize);
+export function fitText(el, availWidth, availHeight, minFontSize = MIN_FONT_SIZE, maxIterations = MAX_FIT_ITERATIONS) {
+    const fits = (size) => {
         el.style.fontSize = `${size}px`;
+        return el.scrollWidth <= availWidth && el.scrollHeight <= availHeight;
+    };
+
+    if (!fits(minFontSize)) {
+        el.style.fontSize = `${minFontSize}px`;
+        return;
     }
+
+    // Экспоненциальный подбор верхней границы, где текст перестаёт помещаться.
+    let lo = minFontSize;
+    let hi = Math.max(minFontSize, availWidth, availHeight);
+    let iter = 0;
+    while (fits(hi) && hi < MAX_FONT_SIZE && iter < maxIterations) {
+        lo = hi;
+        hi = Math.min(hi * 2, MAX_FONT_SIZE);
+        iter++;
+    }
+
+    // Бинарный поиск максимального влезающего размера в [lo, hi].
+    while (lo < hi) {
+        const mid = Math.ceil((lo + hi) / 2);
+        if (fits(mid)) lo = mid;
+        else hi = mid - 1;
+    }
+    el.style.fontSize = `${lo}px`;
 }
 
 /**
@@ -36,10 +55,9 @@ export function fitText(el, availWidth, availHeight, baseFontSize, minFontSize =
  *
  * @param {import('../types.js').PieletItem} item
  * @param {{ availWidth: number, availHeight: number }} sector - сектор (доступная область)
- * @param {number} baseFontSize - базовый размер шрифта для text-пунктов
  * @returns {HTMLElement | Node | null} элемент для вставки в caption, либо null для `none`
  */
-export function createContentContainer(item, sector, baseFontSize) {
+export function createContentContainer(item, sector) {
     const { typeContent, content } = item;
 
     if (typeContent === 'text') {
@@ -48,7 +66,7 @@ export function createContentContainer(item, sector, baseFontSize) {
         el.style.maxWidth = `${sector.availWidth}px`;
         el.style.maxHeight = `${sector.availHeight}px`;
         el.textContent = content;
-        fitText(el, sector.availWidth, sector.availHeight, baseFontSize);
+        // fitText вызывается рендерером после вставки в DOM (нужны scrollWidth/scrollHeight).
         return el;
     }
 

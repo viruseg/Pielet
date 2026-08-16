@@ -26,7 +26,7 @@ describe('calculateMenuGeometry', () => {
 describe('calculateSectorLayout', () => {
   const base = {
     arcStart: 0, arcLength: TAU, meanRadius: 78, outerRadius: 120, innerRadius: 36, ringWidth: 84, gap: 4,
-    direction: 'clockwise'
+    direction: 'clockwise', fit: 'circle'
   };
 
   it('distributes 4 items evenly over the full circle', () => {
@@ -136,12 +136,68 @@ describe('calculateSectorLayout', () => {
     near(sectors[1].start, sectors[0].end, 1e-9);
   });
 
-  it('computes content box from mean radius and ring width', () => {
+  it('circle fit: content box is an inscribed square of the safe zone', () => {
     const { sectors } = calculateSectorLayout({ ...base, itemCount: 4 });
-    near(sectors[0].availWidth, 2 * 78 * Math.sin(sectors[0].span / 2) * 0.85, 1e-9);
-    near(sectors[0].availHeight, 84 * 0.85, 1e-9);
-    expect(sectors[0].availWidth).toBeGreaterThan(0);
-    expect(sectors[0].availHeight).toBeGreaterThan(0);
+    const r1 = (120 - 36) / 2;
+    const r2 = (120 * Math.sin(sectors[0].span / 2)) / (1 + Math.sin(sectors[0].span / 2));
+    const safe = Math.min(r1, r2);
+    near(sectors[0].safeRadius, safe, 1e-9);
+    near(sectors[0].contentRadius, 120 - safe, 1e-9);
+    near(sectors[0].availWidth, safe * Math.SQRT2, 1e-9);
+    near(sectors[0].availHeight, safe * Math.SQRT2, 1e-9);
+    expect(sectors[0].rotate).toBe(false);
+  });
+
+  it('circle fit: side-limited sector uses r2 (many items)', () => {
+    const { sectors } = calculateSectorLayout({ ...base, itemCount: 12 });
+    const r1 = (120 - 36) / 2;
+    const r2 = (120 * Math.sin(sectors[0].span / 2)) / (1 + Math.sin(sectors[0].span / 2));
+    const safe = Math.min(r1, r2);
+    expect(r2).toBeLessThan(r1);
+    near(sectors[0].safeRadius, r2, 1e-9);
+    near(sectors[0].contentRadius, 120 - r2, 1e-9);
+    near(sectors[0].availWidth, safe * Math.SQRT2, 1e-9);
+  });
+
+  it('square fit: radial box rotated with the sector (chord/ring swapped)', () => {
+    const { sectors } = calculateSectorLayout({ ...base, fit: 'square', itemCount: 4 });
+    // после поворота ширина ложится вдоль радиуса (кольцо), высота — вдоль дуги (хорда)
+    near(sectors[0].availWidth, 84 * 0.85, 1e-9);
+    near(sectors[0].availHeight, 2 * 78 * Math.sin(sectors[0].span / 2) * 0.85, 1e-9);
+    near(sectors[0].contentRadius, 78, 1e-9);
+    expect(sectors[0].rotate).toBe(true);
+  });
+
+  it('square fit: single item full ring uses the diameter for the tangential extent', () => {
+    const { sectors } = calculateSectorLayout({ ...base, fit: 'square', itemCount: 1 });
+    near(sectors[0].availWidth, 84 * 0.85, 1e-9);
+    near(sectors[0].availHeight, 2 * 78 * 0.85, 1e-9);
+    expect(sectors[0].rotate).toBe(true);
+  });
+
+  it('square fit: flips captions in the left half of the circle so text reads from outer to inner', () => {
+    const { sectors } = calculateSectorLayout({ ...base, fit: 'square', itemCount: 4 });
+    // clockwise от 0: оси секторов на 45°, 135°, 225°, 315°
+    near(sectors[0].mid, Math.PI / 4, 1e-9);
+    expect(sectors[0].flip).toBe(false); // правая половина (cos > 0)
+    expect(sectors[1].flip).toBe(true);  // левая половина (cos < 0)
+    expect(sectors[2].flip).toBe(true);  // левая половина (cos < 0)
+    expect(sectors[3].flip).toBe(false); // правая половина (cos > 0)
+  });
+
+  it('square fit: right-side sector at startAngle -90 stays unflipped, left-side flips', () => {
+    const arcStart = -Math.PI / 2;
+    const { sectors } = calculateSectorLayout({ ...base, fit: 'square', arcStart, itemCount: 2 });
+    // оси секторов на 0° (справа) и 180° (слева)
+    near(sectors[0].mid, 0, 1e-9);
+    near(((sectors[1].mid % TAU) + TAU) % TAU, Math.PI, 1e-9);
+    expect(sectors[0].flip).toBe(false);
+    expect(sectors[1].flip).toBe(true);
+  });
+
+  it('circle fit: never flips content (it is not rotated)', () => {
+    const { sectors } = calculateSectorLayout({ ...base, itemCount: 4 });
+    for (const s of sectors) expect(s.flip).toBe(false);
   });
 
   it('computes relStart for hit testing (clockwise: positive offsets)', () => {
@@ -220,7 +276,7 @@ describe('sector alignment: gap lines and content centers', () => {
 describe('calculateSectorLayout — single item (itemCount === 1)', () => {
   const base = {
     arcStart: 0, arcLength: TAU, meanRadius: 78, outerRadius: 120, innerRadius: 36, ringWidth: 84, gap: 4,
-    direction: 'clockwise'
+    direction: 'clockwise', fit: 'circle'
   };
 
   it('draws no gap: gapAngle and gapAngleInner are 0 even with gap > 0', () => {
@@ -255,13 +311,21 @@ describe('calculateSectorLayout — single item (itemCount === 1)', () => {
 
   it('full ring gives a full-diameter content box instead of a degenerate chord', () => {
     const { sectors } = calculateSectorLayout({ ...base, itemCount: 1 });
-    near(sectors[0].availWidth, 2 * 78 * 0.85, 1e-9);
+    // circle fit: безопасная зона ограничена только кольцом (r2 вырождается)
+    near(sectors[0].safeRadius, (120 - 36) / 2, 1e-9);
+    near(sectors[0].contentRadius, 78, 1e-9);
+    near(sectors[0].availWidth, ((120 - 36) / 2) * Math.SQRT2, 1e-9);
     expect(sectors[0].availWidth).toBeGreaterThan(0);
   });
 
-  it('partial arc keeps the chord-based content box', () => {
+  it('partial arc keeps the side-limited safe zone for circle fit', () => {
     const { sectors } = calculateSectorLayout({ ...base, arcLength: 4 * Math.PI / 3, itemCount: 1 });
-    near(sectors[0].availWidth, 2 * 78 * Math.sin(2 * Math.PI / 3) * 0.85, 1e-9);
+    const span = sectors[0].span;
+    const r2 = (120 * Math.sin(span / 2)) / (1 + Math.sin(span / 2));
+    const r1 = (120 - 36) / 2;
+    const safe = Math.min(r1, r2);
+    near(sectors[0].safeRadius, safe, 1e-9);
+    near(sectors[0].availWidth, safe * Math.SQRT2, 1e-9);
   });
 });
 

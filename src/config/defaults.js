@@ -18,5 +18,7 @@ export const DEFAULT_CONFIG = {
     interactionMode: 'click',
 
     button: 'left',
-    closeDistance: 48
+    closeDistance: 48,
+
+    fit: 'circle'
 };

@@ -62,10 +62,11 @@ const EPS = 1e-9;
  * @param {number} options.gap - зазор в CSS-пикселях (>= 0): длина дуги зазора
  *   между соседними пунктами РАВНА gap на внешней и на внутренней дуге
  *   (угловые диапазоны дуг считаются независимо); при N = 1 игнорируется
+ * @param {'circle' | 'square'} options.fit - способ вписывания контента в сектор
  * @param {'clockwise' | 'counterclockwise'} options.direction - порядок распределения
- * @returns {{ sectors: Array<{ start: number, end: number, innerStart: number, innerEnd: number, relStart: number, span: number, spanInner: number, mid: number, availWidth: number, availHeight: number }>, gapAngle: number, gapAngleInner: number }}
+ * @returns {{ sectors: Array<{ start: number, end: number, innerStart: number, innerEnd: number, relStart: number, span: number, spanInner: number, mid: number, safeRadius: number, contentRadius: number, availWidth: number, availHeight: number, rotate: boolean, flip: boolean }>, gapAngle: number, gapAngleInner: number }}
  */
-export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRadius, innerRadius, meanRadius, ringWidth, gap, direction }) {
+export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRadius, innerRadius, meanRadius, ringWidth, gap, fit = 'circle', direction }) {
     const nominalSpan = arcLength / itemCount;
     const isSingle = itemCount === 1;
     const maxGapAngle = nominalSpan * MAX_GAP_FRACTION;
@@ -98,6 +99,40 @@ export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRad
             innerStart = mid - spanInner / 2;
             innerEnd = mid + spanInner / 2;
         }
+
+        let safeRadius, contentRadius, availWidth, availHeight, rotate, flip;
+        if (fit === 'circle') {
+            // Безопасная зона — окружность, касающаяся границ сектора:
+            // r1 ограничена кольцом (внутренний/внешний радиус),
+            // r2 — боковыми гранями сектора. Для полного кольца r2 вырождается.
+            const r1 = (outerRadius - innerRadius) / 2;
+            const r2 = isFullRing
+                ? Infinity
+                : (outerRadius * Math.sin(span / 2)) / (1 + Math.sin(span / 2));
+            safeRadius = Math.min(r1, r2);
+            contentRadius = outerRadius - safeRadius;
+            // Вписанный квадрат: диагональ равна диаметру безопасной окружности.
+            const side = safeRadius * Math.SQRT2;
+            availWidth = side;
+            availHeight = side;
+            rotate = false;
+            flip = false;
+        } else {
+            // Прямоугольный бокс сектора, поворачивается вместе с сектором:
+            // после поворота ширина ложится вдоль радиуса (кольцо),
+            // высота — вдоль дуги (хорда на среднем радиусе).
+            contentRadius = meanRadius;
+            availWidth = ringWidth * CONTENT_BOX_FACTOR;
+            availHeight = isFullRing
+                ? 2 * meanRadius * CONTENT_BOX_FACTOR
+                : 2 * meanRadius * Math.sin(span / 2) * CONTENT_BOX_FACTOR;
+            rotate = true;
+            // В левой половине круга поворот на mid переворачивает контент
+            // «кверху ногами» (ось сектора смотрит влево). Дополнительный
+            // разворот на 180° делает текст читаемым: от внешнего края к внутреннему.
+            flip = Math.cos(mid) < 0;
+        }
+
         sectors.push({
             start,
             end,
@@ -107,10 +142,12 @@ export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRad
             span,
             spanInner,
             mid,
-            availWidth: isFullRing
-                ? 2 * meanRadius * CONTENT_BOX_FACTOR
-                : 2 * meanRadius * Math.sin(span / 2) * CONTENT_BOX_FACTOR,
-            availHeight: ringWidth * CONTENT_BOX_FACTOR
+            safeRadius,
+            contentRadius,
+            availWidth,
+            availHeight,
+            rotate,
+            flip
         });
     }
     return { sectors, gapAngle, gapAngleInner };

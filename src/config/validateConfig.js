@@ -10,6 +10,7 @@ import { BUTTON_NAMES } from './buttons.js';
 const DIRECTIONS = new Set(['clockwise', 'counterclockwise']);
 const INTERACTION_MODES = new Set(['hold', 'click']);
 const CONTENT_TYPES = new Set(['none', 'text', 'image', 'node']);
+const FITS = new Set(['circle', 'square']);
 
 /**
  * Префикс автоматически генерируемых id пунктов.
@@ -105,7 +106,7 @@ function validateItem(item, index) {
  * @param {Record<string, unknown>} config
  */
 export function validateConfig(config) {
-    const { size, centerSize, gap, startAngle, direction, interactionMode, button, closeDistance, items } = config;
+    const { size, centerSize, gap, startAngle, direction, interactionMode, button, closeDistance, items, fit } = config;
 
     if (!Array.isArray(items)) {
         throw err(`items must be a non-empty array, got ${String(items)}`);
@@ -123,6 +124,10 @@ export function validateConfig(config) {
         throw err(`button must be one of: ${Array.from(BUTTON_NAMES).join(', ')}; got ${String(button)}`);
     }
     if (closeDistance !== undefined) assertNumber(closeDistance, 'closeDistance', (v) => v >= 0, 'a non-negative number');
+
+    if (fit !== undefined && !FITS.has(fit)) {
+        throw err(`fit must be one of: ${Array.from(FITS).join(', ')}; got ${String(fit)}`);
+    }
 
     if (direction !== undefined && !DIRECTIONS.has(direction)) {
         throw err(`direction must be "clockwise" or "counterclockwise", got ${String(direction)}`);
@@ -151,6 +156,7 @@ export function normalizeConfig(rawConfig = {}) {
         interactionMode: config.interactionMode,
         button: config.button,
         closeDistance: config.closeDistance,
+        fit: config.fit,
         items: config.items.map((item) => ({ ...item, id: resolveItemId(item) }))
     };
     return normalized;

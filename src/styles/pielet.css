@@ -10,7 +10,6 @@
     --pielet-background-hover: #43475a;
     --pielet-opacity: 0.97;
     --pielet-color: #f2f2f4;
-    --pielet-font-size: 14px;
     --pielet-transition-duration: 150ms;
     --pielet-transition-easing: cubic-bezier(0.2, 0.6, 0.3, 1);
     --pielet-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);

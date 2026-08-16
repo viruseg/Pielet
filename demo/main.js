@@ -10,19 +10,25 @@ const controls = {
   mode: document.getElementById('mode'),
   button: document.getElementById('button'),
   closeDistance: document.getElementById('closeDistance'),
-  items: document.getElementById('items')
+  items: document.getElementById('items'),
+  fit: document.getElementById('fit')
 };
 
 const labels = ['Open', 'Save', 'Copy', 'Cut', 'Rename', 'Delete', 'Share', 'Print', 'Zoom', 'Flip', 'Rotate', 'Pin'];
+const emojis = ['📂', '💾', '📋', '✂️', '✏️', '🗑️', '📤', '🖨️', '🔍', '🔀', '🔄', '📌'];
 
-function assembleItems(count) {
+function assembleItems(count, fit) {
   return Array.from({ length: count }, (_, i) => {
     const label = labels[i % labels.length];
+    // В circle-режиме контент не поворачивается, поэтому вместо надписей
+    // удобнее смотреть на эмодзи; в square-режиме читаемые тексты наглядно
+    // показывают поворот секторов.
+    const content = fit === 'circle' ? emojis[i % emojis.length] : label;
     return {
       // первый пункт — явный id, остальные — автогенерация (префикс pielet-)
       id: i === 0 ? 'demo-open' : undefined,
       typeContent: i % 6 === 3 ? 'none' : 'text',
-      content: label,
+      content,
       action: (id, menu) => {
         window.__lastAction = { index: i, content: label, id, at: Date.now() };
         const sameMenu = menu === window.__menu ? 'этот же экземпляр' : 'другой экземпляр';
@@ -57,7 +63,8 @@ function readState() {
     interactionMode: controls.mode.value,
     button: controls.button.value,
     closeDistance: Number(controls.closeDistance.value),
-    items: assembleItems(Number(controls.items.value))
+    items: assembleItems(Number(controls.items.value), controls.fit.value),
+    fit: controls.fit.value
   };
 }
 
@@ -72,7 +79,8 @@ function openAt(x, y, button = controls.button.value) {
     interactionMode: state.interactionMode,
     button,
     closeDistance: state.closeDistance,
-    items: state.items
+    items: state.items,
+    fit: state.fit
   });
   menu.open(x, y);
 }

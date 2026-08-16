@@ -81,6 +81,7 @@ export default class Pielet extends EventTarget {
             meanRadius,
             ringWidth,
             gap: config.gap,
+            fit: config.fit,
             direction: config.direction
         });
 

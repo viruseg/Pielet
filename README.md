@@ -95,6 +95,7 @@ menu.addEventListener('select', (e) => {
 | `button` | `'left'` | Отслеживаемая кнопка: `'left'` \| `'middle'` \| `'right'` \| `'back'` \| `'forward'`. Меню выбирает/закрывается только по её отпусканию (и в hold, и в click). |
 | `closeDistance` | `48` | Дополнительный радиус вокруг меню: выход указателя за него закрывает меню. |
 | `items` | — (обязательно) | Массив пунктов `PieletItem`, непустой. |
+| `fit` | `'circle'` | Как вписывать контент в сектор: `'circle'` — по безопасной окружности (контент не поворачивается, текст всегда горизонтален); `'square'` — по прямоугольному боксу сектора (контент поворачивается вместе с сектором). |
 
 ### PieletItem
 
@@ -116,7 +117,6 @@ menu.addEventListener('select', (e) => {
   --pielet-background-hover: #43475a;  /* hover-подсветка */
   --pielet-opacity: 0.97;              /* непрозрачность меню */
   --pielet-color: #f2f2f4;             /* цвет текста/иконок */
-  --pielet-font-size: 14px;            /* базовый размер шрифта text-пунктов */
   --pielet-transition-duration: 150ms; /* длительность появления/закрытия */
   --pielet-transition-easing: cubic-bezier(0.2, 0.6, 0.3, 1);
   --pielet-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
