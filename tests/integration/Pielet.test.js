@@ -137,6 +137,43 @@ describe('Pielet.close', () => {
   });
 });
 
+describe('Pielet.closeAll', () => {
+  it('is a no-op when no menu is open (no close event, no DOM)', () => {
+    menu = makeMenu();
+    const onClose = vi.fn();
+    menu.addEventListener('close', onClose);
+    Pielet.closeAll();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(document.body.querySelector('.pielet')).toBeNull();
+  });
+
+  it('closes the open menu after the close animation', async () => {
+    menu = makeMenu();
+    const onClose = vi.fn();
+    menu.addEventListener('close', onClose);
+    menu.open(100, 100);
+    await sleep(30);
+    Pielet.closeAll();
+    expect(document.body.querySelector('.pielet')).toBeTruthy();
+    await sleep(400);
+    expect(document.body.querySelector('.pielet')).toBeNull();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('is a no-op while a menu is already closing (single close event)', async () => {
+    menu = makeMenu();
+    const onClose = vi.fn();
+    menu.addEventListener('close', onClose);
+    menu.open(100, 100);
+    await sleep(30);
+    menu.close();
+    Pielet.closeAll();
+    await sleep(400);
+    expect(document.body.querySelector('.pielet')).toBeNull();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('Pielet.config handling', () => {
   it('throws on invalid config at construction time', () => {
     expect(() => new Pielet({ items: [] })).toThrow(/Pielet config error/);

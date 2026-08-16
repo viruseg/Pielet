@@ -17,7 +17,7 @@ import { calculateVisibleRect } from './geometry/calculateVisibleRect.js';
 import { calculateSectorLayout } from './geometry/calculateSector.js';
 import { InteractionController } from './interaction/InteractionController.js';
 import { MenuRenderer } from './rendering/MenuRenderer.js';
-import { acquireActiveMenu, releaseActiveMenu } from './lifecycle/ActiveMenuRegistry.js';
+import { acquireActiveMenu, releaseActiveMenu, getActiveMenu } from './lifecycle/ActiveMenuRegistry.js';
 
 export default class Pielet extends EventTarget {
     /**
@@ -131,6 +131,17 @@ export default class Pielet extends EventTarget {
      */
     close() {
         this._close(false);
+    }
+
+    /**
+     * Закрывает открытое меню (плавно, как `close()`), не требуя
+     * ссылки на экземпляр. No-op, если ни одно меню не открыто.
+     */
+    static closeAll() {
+        const menu = getActiveMenu();
+        if (menu) {
+            menu.close();
+        }
     }
 
     /**
