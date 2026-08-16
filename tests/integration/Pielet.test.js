@@ -57,11 +57,13 @@ describe('Pielet.open', () => {
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
-  it('passes the visible rect in detail', () => {
+  it('passes the visible rect and the menu instance in detail', () => {
     menu = makeMenu();
     let rect;
+    let detailMenu;
     menu.addEventListener('open', (e) => {
       rect = e.detail.rect;
+      detailMenu = e.detail.menu;
     });
     menu.open(300, 250);
     // дефолтный конфиг: size 240, centerSize 72 → outerRadius 120, innerRadius 36.
@@ -76,6 +78,7 @@ describe('Pielet.open', () => {
       right: 420,
       bottom: 370
     });
+    expect(detailMenu).toBe(menu);
   });
 
   it('throws on non-finite coordinates', () => {
@@ -104,6 +107,19 @@ describe('Pielet.close', () => {
     await sleep(400);
     expect(document.body.querySelector('.pielet')).toBeNull();
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes the menu instance in the close event detail', async () => {
+    menu = makeMenu();
+    let detailMenu;
+    menu.addEventListener('close', (e) => {
+      detailMenu = e.detail.menu;
+    });
+    menu.open(100, 100);
+    await sleep(30);
+    menu.close();
+    await sleep(400);
+    expect(detailMenu).toBe(menu);
   });
 
   it('is a no-op when closed (no close event)', () => {
@@ -330,24 +346,29 @@ describe('Pielet selection pipeline', () => {
   it('select event detail.id and action argument match an explicit item id', async () => {
     const action = vi.fn();
     let detailId = null;
+    let detailMenu = null;
     menu = new Pielet({ items: [{ typeContent: 'text', content: 'A', id: 'custom-a', action }] });
     menu.addEventListener('select', (e) => {
       detailId = e.detail.id;
+      detailMenu = e.detail.menu;
     });
     menu.open(300, 300);
     window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 301, clientY: 380 }));
     window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
     expect(detailId).toBe('custom-a');
+    expect(detailMenu).toBe(menu);
     expect(action).toHaveBeenCalledTimes(1);
-    expect(action).toHaveBeenCalledWith('custom-a');
+    expect(action).toHaveBeenCalledWith('custom-a', menu);
   });
 
   it('select event detail.id and action argument use the generated id', async () => {
     const action = vi.fn();
     let detailId = null;
+    let detailMenu = null;
     menu = new Pielet({ items: [{ typeContent: 'text', content: 'A', action }] });
     menu.addEventListener('select', (e) => {
       detailId = e.detail.id;
+      detailMenu = e.detail.menu;
     });
     menu.open(300, 300);
     const itemId = menu.config.items[0].id;
@@ -355,7 +376,8 @@ describe('Pielet selection pipeline', () => {
     window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 301, clientY: 380 }));
     window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
     expect(detailId).toBe(itemId);
-    expect(action).toHaveBeenCalledWith(itemId);
+    expect(detailMenu).toBe(menu);
+    expect(action).toHaveBeenCalledWith(itemId, menu);
   });
 
   it('regenerates generated ids on each open while explicit ids stay stable', async () => {

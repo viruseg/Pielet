@@ -23,9 +23,10 @@ function assembleItems(count) {
       id: i === 0 ? 'demo-open' : undefined,
       typeContent: i % 6 === 3 ? 'none' : 'text',
       content: label,
-      action: (id) => {
+      action: (id, menu) => {
         window.__lastAction = { index: i, content: label, id, at: Date.now() };
-        statusEl.textContent = `action: ${label} (${i}) id: ${id} — ${new Date().toLocaleTimeString()}`;
+        const sameMenu = menu === window.__menu ? 'этот же экземпляр' : 'другой экземпляр';
+        statusEl.textContent = `action: ${label} (${i}) id: ${id} — ${sameMenu} — ${new Date().toLocaleTimeString()}`;
       }
     };
   });
@@ -93,8 +94,8 @@ document.addEventListener('contextmenu', (e) => {
 
 menu.addEventListener('open', (e) => {
   isOpen = true;
-  const { rect } = e.detail;
-  statusEl.textContent = `event: open — ${menu.config.items.length} items — ${new Date().toLocaleTimeString()}`;
+  const { rect, menu: eventMenu } = e.detail;
+  statusEl.textContent = `event: open — ${eventMenu.config.items.length} items — ${new Date().toLocaleTimeString()}`;
   console.log('Pielet open rect:', rect);
 });
 menu.addEventListener('select', (e) => {

@@ -121,7 +121,7 @@ export default class Pielet extends EventTarget {
             arc: visible.arc,
             direction: config.direction
         });
-        this.dispatchEvent(new CustomEvent('open', { detail: { rect } }));
+        this.dispatchEvent(new CustomEvent('open', { detail: { rect, menu: this } }));
     }
 
     /**
@@ -192,7 +192,7 @@ export default class Pielet extends EventTarget {
             releaseActiveMenu(this);
             if (!this._closeNotified) {
                 this._closeNotified = true;
-                this.dispatchEvent(new CustomEvent('close'));
+                this.dispatchEvent(new CustomEvent('close', { detail: { menu: this } }));
             }
         };
         if (immediate) {
@@ -206,8 +206,8 @@ export default class Pielet extends EventTarget {
     /**
      * Pipeline выбора пункта (спека §27):
      * select event → закрытие → удаление DOM/listeners → вызов action.
-     * select несёт `detail.id` — строковый идентификатор пункта; тот же id
-     * передаётся первым аргументом в `item.action`.
+     * select несёт `detail.id` — строковый идентификатор пункта — и `detail.menu`;
+     * тот же id первым аргументом и экземпляр меню вторым передаются в `item.action`.
      * Пункт с `keepOpen: true` не закрывает меню, но только в click-режиме:
      * в hold-режиме флаг игнорируется и меню закрывается как обычно.
      * @param {import('./types.js').PieletItem} item
@@ -216,14 +216,14 @@ export default class Pielet extends EventTarget {
     _select(item, index) {
         void index;
         const id = item && typeof item.id === 'string' ? item.id : '';
-        this.dispatchEvent(new CustomEvent('select', { detail: { id } }));
+        this.dispatchEvent(new CustomEvent('select', { detail: { id, menu: this } }));
         const keepOpen = this.config.interactionMode === 'click' && item && item.keepOpen === true;
         if (!keepOpen) {
             this._close(true);
         }
         if (item && typeof item.action === 'function') {
             const action = item.action;
-            action(id);
+            action(id, this);
         }
     }
 

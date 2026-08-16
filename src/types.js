@@ -35,6 +35,11 @@
  */
 
 /**
+ * Экземпляр кругового меню (см. `src/Pielet.js`).
+ * @typedef {import('./Pielet.js').default} Pielet
+ */
+
+/**
  * Пункт меню.
  * @typedef {object} PieletItem
  * @property {ContentType} typeContent - тип содержимого
@@ -43,9 +48,19 @@
  *   (или начинается с зарезервированного префикса `pielet-`) — генерируется
  *   автоматически при каждой нормализации в формате `pielet-<время>-<n>`.
  *   Этот id передаётся в `select` (event.detail.id) и первым аргументом в `action`.
- * @property {(id: string) => void} [action] - вызывается с id пункта после полного закрытия меню
+ * @property {(id: string, menu: Pielet) => void} [action] - вызывается после закрытия меню:
+ *   первый аргумент — id пункта, второй — экземпляр меню, для которого вызван action
  * @property {boolean} [keepOpen] - если true, выбор пункта в click-режиме не закрывает меню
  *   (select event и action по-прежнему вызываются). В hold-режиме флаг игнорируется.
+ */
+
+/**
+ * `detail` событий `open`, `close`, `select`. Все события — `CustomEvent`,
+ * диспатчатся на самом экземпляре меню; `detail.menu` — экземпляр, для которого вызвано событие.
+ * @typedef {object} PieletEventDetail
+ * @property {Pielet} menu - экземпляр меню, для которого вызвано событие
+ * @property {string} [id] - строковый id выбранного пункта (только `select`)
+ * @property {object} [rect] - DOMRect-совместимый bounding rect видимой части меню (только `open`)
  */
 
 /**

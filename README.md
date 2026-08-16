@@ -40,8 +40,8 @@ window.addEventListener('contextmenu', (e) => {
 | `menu.close()` | Плавно закрывает меню. No-op, если меню закрыто. |
 | `Pielet.closeAll()` | Статический метод: плавно закрывает открытое меню, не требуя ссылки на экземпляр. No-op, если ни одно меню не открыто. Удобен для глобальных обработчиков (клик мимо меню, `Escape` и т.п.). |
 | `menu.setItemContent(id, content)` | Меняет содержимое пункта по его `id` в живом открытом меню. Тип нового содержимого должен совпадать с `typeContent`, заданным при создании (сменить тип нельзя). Обновляет DOM и `config.items[i].content`. Бросает ошибку, если меню закрыто, `id` не найден, либо тип `content` не подходит. Типичный кейс — вызов из `action` пункта с `keepOpen: true`. |
-| События | `open` — `CustomEvent` с `detail: { rect }` (bounding rect видимой части меню); `close` — без `detail`; `select` — с `detail: { id }`, диспатчатся на экземпляре (`EventTarget`). |
-| `menu.config.items[i].action` | Вызывается после полного закрытия меню (DOM и слушатели уже убраны), с одним аргументом — `id` пункта (строка). |
+| События | `open` — `CustomEvent` с `detail: { rect, menu }` (bounding rect видимой части меню + экземпляр); `close` — с `detail: { menu }`; `select` — с `detail: { id, menu }` (id выбранного пункта + экземпляр), диспатчатся на экземпляре (`EventTarget`). |
+| `menu.config.items[i].action` | Вызывается после полного закрытия меню (DOM и слушатели уже убраны), с двумя аргументами — `id` пункта (строка) и экземпляром меню. |
 
 Исключения из `action` пробрасываются в консоль (не проглатываются); меню при этом остаётся закрытым и пригодным к переиспользованию.
 
@@ -52,7 +52,7 @@ window.addEventListener('contextmenu', (e) => {
 ```js
 const menu = new Pielet({
   items: [
-    { typeContent: 'text', content: 'Кликни', id: 'status', keepOpen: true, action: (id) => {
+    { typeContent: 'text', content: 'Кликни', id: 'status', keepOpen: true, action: (id, menu) => {
       menu.setItemContent(id, 'Обновлено');
     } }
   ]
@@ -63,20 +63,20 @@ const menu = new Pielet({
 
 ## События
 
-Экземпляр реализует `EventTarget`. Событие `open` несёт `detail: { rect }` — DOMRect-совместимый bounding rect видимой части меню; `close` — `CustomEvent` без `detail`; `select` несёт `detail: { id }` — строковый идентификатор выбранного пункта. Все диспатчатся на самом экземпляре:
+Экземпляр реализует `EventTarget`. Все события — `CustomEvent` с `detail.menu` — экземпляром меню, для которого событие вызвано. Событие `open` также несёт `detail.rect` — DOMRect-совместимый bounding rect видимой части меню; `select` несёт `detail.id` — строковый идентификатор выбранного пункта. Все диспатчатся на самом экземпляре:
 
 ```js
 const menu = new Pielet({ items: [{ typeContent: 'text', content: 'Открыть' }] });
 
 menu.addEventListener('open', (e) => {
-  const { rect } = e.detail;
+  const { rect, menu } = e.detail;
   console.log('меню открыто и готово к взаимодействию', rect);
 });
-menu.addEventListener('close', () => {
-  console.log('меню закрыто и удалено из DOM');
+menu.addEventListener('close', (e) => {
+  console.log('меню закрыто и удалено из DOM', e.detail.menu);
 });
 menu.addEventListener('select', (e) => {
-  console.log('выбран сектор с id', e.detail.id);
+  console.log('выбран сектор с id', e.detail.id, 'меню', e.detail.menu);
 });
 ```
 
@@ -102,8 +102,8 @@ menu.addEventListener('select', (e) => {
 | --- | --- |
 | `typeContent` | `'text'` \| `'image'` \| `'node'` \| `'none'`. `'none'` — пустой (некликабельный и неhover-ящийся) сектор-разделитель. |
 | `content` | Строка для text/image, `Node` (например, `SVGElement`) для node. |
-| `id` | Опциональный строковый идентификатор. Если не указан — генерируется автоматически при каждом `open()` в формате `pielet-<время>-<n>` (префикс `pielet-` зарезервирован). Передаётся в `select` (`event.detail.id`) и первым аргументом в `action`. |
-| `action` | Опциональная функция `(id) => {}`, вызываемая при выборе. |
+| `id` | Опциональный строковый идентификатор. Если не указан — генерируется автоматически при каждом `open()` в формате `pielet-<время>-<n>` (префикс `pielet-` зарезервирован). Передаётся в `select` (`event.detail.id`) и первым аргументом в `action` (вторым — экземпляр меню). |
+| `action` | Опциональная функция `(id, menu) => {}`, вызываемая при выборе. Первый аргумент — `id` пункта, второй — экземпляр меню, для которого вызван `action`. |
 | `keepOpen` | Опциональный `boolean`. Если `true`, выбор пункта в click-режиме не закрывает меню (`select` и `action` по-прежнему работают). В hold-режиме игнорируется. |
 
 ## Кастомизация темы
