@@ -357,6 +357,61 @@ describe('Pielet selection pipeline', () => {
     const secondEl = document.body.querySelector('.pielet');
     expect(secondEl.style.left).toBe('480px');
   });
+
+  it('click mode: selecting a keepOpen item fires select and action but keeps the menu open', () => {
+    const action = vi.fn();
+    const log = [];
+    menu = new Pielet({
+      interactionMode: 'click',
+      items: [
+        { typeContent: 'text', content: 'Keep', keepOpen: true, action },
+        { typeContent: 'text', content: 'Close' }
+      ]
+    });
+    menu.addEventListener('select', () => log.push('select'));
+    menu.addEventListener('close', () => log.push('close'));
+    menu.open(300, 300);
+    // сектор 0 (right half): клик на оси 0°
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 400, clientY: 300 }));
+    expect(action).toHaveBeenCalledTimes(1);
+    expect(log).toEqual(['select']);
+    expect(document.body.querySelector('.pielet')).toBeTruthy();
+  });
+
+  it('click mode: a regular item still closes the menu after a keepOpen selection', () => {
+    const keepAction = vi.fn();
+    const closeAction = vi.fn();
+    menu = new Pielet({
+      interactionMode: 'click',
+      items: [
+        { typeContent: 'text', content: 'Keep', keepOpen: true, action: keepAction },
+        { typeContent: 'text', content: 'Close', action: closeAction }
+      ]
+    });
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 400, clientY: 300 }));
+    expect(keepAction).toHaveBeenCalledTimes(1);
+    expect(document.body.querySelector('.pielet')).toBeTruthy();
+    // сектор 1 (bottom-left): клик на оси 180°
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 220, clientY: 300 }));
+    expect(closeAction).toHaveBeenCalledTimes(1);
+    expect(document.body.querySelector('.pielet')).toBeNull();
+  });
+
+  it('hold mode: keepOpen is ignored and the menu closes on select', () => {
+    const action = vi.fn();
+    menu = new Pielet({
+      interactionMode: 'hold',
+      items: [
+        { typeContent: 'text', content: 'A', keepOpen: true, action },
+        { typeContent: 'text', content: 'B' }
+      ]
+    });
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 400, clientY: 300 }));
+    expect(action).toHaveBeenCalledTimes(1);
+    expect(document.body.querySelector('.pielet')).toBeNull();
+  });
 });
 
 describe('Pielet — counterclockwise near viewport edges', () => {

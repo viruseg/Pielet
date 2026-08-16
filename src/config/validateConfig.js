@@ -74,9 +74,12 @@ function validateItem(item, index) {
     if (typeof item !== 'object' || item === null) {
         throw err(`items[${index}] must be an object, got ${String(item)}`);
     }
-    const { typeContent, content, action, id } = item;
+    const { typeContent, content, action, id, keepOpen } = item;
     if (id !== undefined && (typeof id !== 'string' || id.length === 0)) {
         throw err(`items[${index}].id must be a non-empty string, got ${String(id)}`);
+    }
+    if (keepOpen !== undefined && typeof keepOpen !== 'boolean') {
+        throw err(`items[${index}].keepOpen must be a boolean, got ${String(keepOpen)}`);
     }
     if (!CONTENT_TYPES.has(typeContent)) {
         throw err(`items[${index}].typeContent must be one of: none, text, image, node; got ${String(typeContent)}`);

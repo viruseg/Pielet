@@ -137,6 +137,12 @@ describe('validateConfig errors', () => {
       validateConfig({ items: [{ typeContent: 'text', content: 'A', action: 'click' }] })
     ).toThrow(/action/);
   });
+
+  it('throws when keepOpen is not a boolean', () => {
+    expect(() =>
+      validateConfig({ items: [{ typeContent: 'text', content: 'A', keepOpen: 'yes' }] })
+    ).toThrow(/keepOpen/);
+  });
 });
 
 describe('validateConfig valid inputs', () => {
@@ -169,6 +175,16 @@ describe('validateConfig valid inputs', () => {
     const items = [{ typeContent: 'text', content: 'first' }, { typeContent: 'none' }, { typeContent: 'text', content: 'last' }];
     const config = normalizeConfig({ items });
     expect(config.items.map((i) => i.content)).toEqual(['first', undefined, 'last']);
+  });
+
+  it('accepts keepOpen as a boolean', () => {
+    expect(() => validateConfig({ items: [{ typeContent: 'text', content: 'A', keepOpen: true }] })).not.toThrow();
+    expect(() => validateConfig({ items: [{ typeContent: 'text', content: 'A', keepOpen: false }] })).not.toThrow();
+  });
+
+  it('normalizes items preserving keepOpen', () => {
+    const config = normalizeConfig({ items: [{ typeContent: 'text', content: 'A', keepOpen: true }] });
+    expect(config.items[0].keepOpen).toBe(true);
   });
 });
 

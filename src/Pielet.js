@@ -164,6 +164,8 @@ export default class Pielet extends EventTarget {
      * select event → закрытие → удаление DOM/listeners → вызов action.
      * select несёт `detail.id` — строковый идентификатор пункта; тот же id
      * передаётся первым аргументом в `item.action`.
+     * Пункт с `keepOpen: true` не закрывает меню, но только в click-режиме:
+     * в hold-режиме флаг игнорируется и меню закрывается как обычно.
      * @param {import('./types.js').PieletItem} item
      * @param {number} index
      */
@@ -171,7 +173,10 @@ export default class Pielet extends EventTarget {
         void index;
         const id = item && typeof item.id === 'string' ? item.id : '';
         this.dispatchEvent(new CustomEvent('select', { detail: { id } }));
-        this._close(true);
+        const keepOpen = this.config.interactionMode === 'click' && item && item.keepOpen === true;
+        if (!keepOpen) {
+            this._close(true);
+        }
         if (item && typeof item.action === 'function') {
             const action = item.action;
             action(id);
