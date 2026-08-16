@@ -493,23 +493,23 @@ describe('MenuRenderer submenu indicators', () => {
     expect(caption.querySelector('.pielet__content--text').textContent).toBe('More');
   });
 
-  it('sizes the chevron proportionally to the ring width (28px cap) and positions it outside the outer radius', () => {
+  it('sizes the chevron proportionally to the ring width (28px cap) and positions it at the outer rim', () => {
     // makeGeometry: outer 100 / inner 30 → ring 70 → size = min(28, 25.2) = 25.2
     const itemEls = mountWith('both');
     const chevron = renderer.element.querySelector('.pielet__submenu-chevron');
     const size = parseFloat(chevron.style.fontSize);
     expect(size).toBeCloseTo(25.2, 5);
-    // центр шеврона: outerRadius + size*0.5, вдоль mid (для 4 пунктов cw от 0: mid = π/4)
+    // центр шеврона: outerRadius + size*0.25, вдоль mid (для 4 пунктов cw от 0: mid = π/4)
     // left/top задаются в координатах корня меню (origin — верхний левый угол меню)
-    const centerRadius = 100 + size * 0.5;
+    const centerRadius = 100 + size * 0.25;
     const mid = Math.PI / 4;
     expect(parseFloat(chevron.style.left)).toBeCloseTo(100 + centerRadius * Math.cos(mid), 3);
     expect(parseFloat(chevron.style.top)).toBeCloseTo(100 + centerRadius * Math.sin(mid), 3);
     expect(chevron.style.transform).toMatch(/rotate\(45(\.\d+)?deg\)/);
   });
 
-  it('keeps the chevron outside the ring, clear of the caption content (no overlap at size=120/centerSize=24)', () => {
-    // outer 60 / inner 12 → ring 48 → size = 17.28, центр на радиусе 60 + 8.64 = 68.64
+  it('keeps the chevron at the outer rim, radially clear of the caption content (size=120/centerSize=24)', () => {
+    // outer 60 / inner 12 → ring 48 → size = 17.28, центр на радиусе 60 + 4.32 = 64.32
     renderer.mount({
       centerX: 300,
       centerY: 300,
@@ -525,10 +525,10 @@ describe('MenuRenderer submenu indicators', () => {
     const captionRadius = Math.hypot(parseFloat(caption.style.left) - 60, parseFloat(caption.style.top) - 60);
 
     expect(parseFloat(chevron.style.fontSize)).toBeCloseTo(17.28, 5);
-    // шеврон полностью за внешним краем кольца (внутренняя кромка — на внешнем радиусе)
-    expect(chevronRadius).toBeCloseTo(68.64, 3);
+    // шеврон «сидит» на внешнем крае кольца (центр на 0.25·size за ним)
+    expect(chevronRadius).toBeCloseTo(64.32, 3);
     expect(chevronRadius).toBeGreaterThan(60);
-    expect(chevronRadius - 17.28 / 2).toBeCloseTo(60, 3);
+    expect(chevronRadius - 17.28 / 2).toBeCloseTo(60 - 17.28 * 0.25, 3);
     // радиально дальше от центра, чем контент (не сливается)
     expect(chevronRadius).toBeGreaterThan(captionRadius);
   });

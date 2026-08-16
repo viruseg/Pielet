@@ -323,7 +323,7 @@ test('chevron indicator: 28px (2x the original 14px) at the default size (240/72
   await page.evaluate(() => window.__parent.close());
 });
 
-test('chevron indicator: responsive size and position outside the ring clear of content (size=120, centerSize=24)', async ({ page }) => {
+test('chevron indicator: responsive size and position at the outer rim clear of content (size=120, centerSize=24)', async ({ page }) => {
   await page.evaluate(() => {
     window.__submenu = new window.Pielet({ items: [{ typeContent: 'text', content: 'Leaf' }] });
     window.__parent = new window.Pielet({
@@ -356,15 +356,15 @@ test('chevron indicator: responsive size and position outside the ring clear of 
   });
   // ring 48 → 48*0.36 = 17.28px (пропорционально кольцу, не фиксированные 14px)
   expect(geo.fontSize).toBeCloseTo(17.28, 1);
-  // шеврон полностью за внешним краем кольца (центр = outerRadius + size*0.5),
-  // радиально дальше контента — не пересекается ни при каком fit
-  expect(geo.chevronRadius).toBeCloseTo(60 + geo.fontSize * 0.5, 1);
+  // шеврон «сидит» на внешнем крае кольца (центр = outerRadius + size*0.25),
+  // радиально дальше контента — не сливается ни при каком fit
+  expect(geo.chevronRadius).toBeCloseTo(60 + geo.fontSize * 0.25, 1);
   expect(geo.chevronRadius).toBeGreaterThan(geo.captionRadius);
-  expect(geo.chevronRadius - geo.fontSize / 2).toBeGreaterThanOrEqual(geo.outerRadius - 0.5);
+  expect(geo.chevronRadius - geo.fontSize / 2).toBeCloseTo(geo.outerRadius - geo.fontSize * 0.25, 1);
   await page.evaluate(() => window.__parent.close());
 });
 
-test('square fit: chevron stays outside the ring, clear of the rotated content (no overlap)', async ({ page }) => {
+test('square fit: chevron stays at the outer rim, clear of the rotated content (no visible overlap)', async ({ page }) => {
   await page.evaluate(() => {
     window.__submenu = new window.Pielet({ items: [{ typeContent: 'text', content: 'Leaf' }] });
     // 6 пунктов + сабменю-пункт на индексе 5 (mid ≈ 240° — повёрнутый, как «Цвет» в демо)
@@ -391,17 +391,20 @@ test('square fit: chevron stays outside the ring, clear of the rotated content (
     // square-сектора — шириной вдоль радиуса (offsetWidth/offsetHeight — до transform)
     return {
       fontSize: size,
+      chevronRadius,
       chevronInner: chevronRadius - size / 2,
       captionOuter: captionRadius + caption.offsetWidth / 2,
       outerRadius: menuBox.width / 2
     };
   });
   expect(r.fontSize).toBe(28);
-  // контент всегда внутри кольца, шеврон — целиком за внешним краем:
-  // между ними гарантированный радиальный зазор (не пересекаются)
+  // контент всегда внутри кольца; шеврон «сидит» на внешнем крае (центр на
+  // 0.25·size за ним): внутренняя кромка бокса входит в кольцо не глубже чем
+  // на размер шеврона, а видимый глиф стрелки остаётся радиально за контентом
   expect(r.captionOuter).toBeLessThan(r.outerRadius);
-  expect(r.chevronInner).toBeGreaterThanOrEqual(r.outerRadius - 0.5);
-  expect(r.chevronInner).toBeGreaterThan(r.captionOuter);
+  expect(r.chevronRadius).toBeGreaterThan(r.captionOuter);
+  expect(r.chevronInner).toBeCloseTo(r.outerRadius - r.fontSize * 0.25, 1);
+  expect(r.chevronInner).toBeGreaterThan(r.captionOuter - 2);
   await page.evaluate(() => window.__sq.close());
 });
 

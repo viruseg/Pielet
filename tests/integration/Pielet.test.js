@@ -666,7 +666,7 @@ describe('Pielet — submenu (isSubMenu)', () => {
     menu.close();
   });
 
-  it('chevron is responsive to the ring width and stays outside the ring, clear of the content (size=120/centerSize=24)', () => {
+  it('chevron is responsive to the ring width and stays at the outer rim, clear of the content (size=120/centerSize=24)', () => {
     // close() угасает DOM ~310мс: свежее меню — последний .pielet в DOM
     const openEl = () => {
       const all = document.querySelectorAll('.pielet');
@@ -694,12 +694,12 @@ describe('Pielet — submenu (isSubMenu)', () => {
 
     // ring 48 → 17.28px (пропорционально, а не фиксированные 14px)
     expect(chevronSize).toBeCloseTo(17.28, 5);
-    // шеврон — полностью за внешним краем кольца (outerRadius=60): внутренняя
-    // кромка лежит на внешнем радиусе, контент внутри кольца — пересечения нет
-    expect(chevronRadius).toBeCloseTo(60 + chevronSize * 0.5, 3);
+    // шеврон — «сидит» на внешнем крае кольца (outerRadius=60): центр на
+    // 0.25·size за ним, внутренняя кромка на 0.25·size внутри кольца
+    expect(chevronRadius).toBeCloseTo(60 + chevronSize * 0.25, 3);
     expect(chevronRadius).toBeGreaterThan(captionRadius);
     expect(chevronRadius).toBeGreaterThan(60);
-    expect(chevronRadius - chevronSize / 2).toBeCloseTo(60, 3);
+    expect(chevronRadius - chevronSize / 2).toBeCloseTo(60 - chevronSize * 0.25, 3);
     menu.close();
   });
 

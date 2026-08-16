@@ -68,7 +68,7 @@ export class MenuRenderer {
      * @param {boolean} [options.unifyText] - выровнять шрифт text-пунктов
      *   по наименьшему влезающему размеру (только при fit 'square')
      * @param {'arc' | 'chevron' | 'both'} [options.submenuIndicator] - индикация
-     *   пунктов-сабменю (arc — дуга у внутреннего радиуса, chevron — стрелка за внешним краем кольца)
+     *   пунктов-сабменю (arc — дуга у внутреннего радиуса, chevron — стрелка на внешнем крае кольца)
      */
     mount({ centerX, centerY, geometry, items, unifyText = false, submenuIndicator = 'both' }) {
         const { outerRadius, innerRadius, sectors } = geometry;
@@ -140,10 +140,10 @@ export class MenuRenderer {
 
     /**
      * Добавляет индикаторы сабменю. Дуга — в пункт (до caption, чтобы контент
-     * отрисовывался поверх). Шеврон — в корень меню: он лежит за внешним краем
-     * кольца, а clip-path сектора срезает всё за ним, поэтому в itemEl он был бы
-     * невидим. Ни один индикатор не влияет на fitText: caption и его содержимое
-     * не затрагиваются.
+     * отрисовывался поверх). Шеврон — в корень меню: он «сидит» на внешнем крае
+     * кольца и наполовину выходит за него, а clip-path сектора срезает всё за
+     * внешним радиусом — в itemEl внешняя часть была бы невидима. Ни один
+     * индикатор не влияет на fitText: caption и его содержимое не затрагиваются.
      *
      * @param {HTMLElement} el - корневой элемент меню (для шеврона)
      * @param {HTMLElement} itemEl - элемент сектора (для дуги)
@@ -177,10 +177,10 @@ export class MenuRenderer {
             chevron.setAttribute('aria-hidden', 'true');
             chevron.textContent = '›';
             // Размер и положение считаются единым алгоритмом (buildSubmenuChevron):
-            // шеврон стоит за внешним краем кольца (внутренняя кромка — на внешнем
-            // радиусе), указывает радиально наружу и не пересекается с контентом
-            // ни при каком size/fit. Крепится к корню меню, т.к. clip-path
-            // сектора срезает всё, что вне кольца.
+            // шеврон «сидит» на внешнем крае кольца (центр на 0.25·size за ним),
+            // указывает радиально наружу и остаётся радиально дальше контента
+            // при любом size/fit. Крепится к корню меню, т.к. clip-path
+            // сектора срезает всё, что за внешним радиусом.
             const g = buildSubmenuChevron(sector.mid, outerRadius, innerRadius);
             chevron.style.fontSize = `${g.size}px`;
             chevron.style.left = `${g.x}px`;

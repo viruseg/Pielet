@@ -423,23 +423,23 @@ describe('buildSubmenuChevron', () => {
     expect(buildSubmenuChevron(0, 240, 10).size).toBe(28);
   });
 
-  it('places the chevron center outside the outer radius (fully clear of the ring)', () => {
-    // центр шеврона: outerRadius + size*0.5 — полностью за внешним краем кольца
+  it('places the chevron center just outside the outer radius (at the rim)', () => {
+    // центр шеврона: outerRadius + size*0.25 — чуть за внешним краем кольца
     const g = buildSubmenuChevron(0, 60, 12);
-    expect(g.radius).toBeCloseTo(60 + g.size * 0.5, 5);
+    expect(g.radius).toBeCloseTo(60 + g.size * 0.25, 5);
     expect(g.radius).toBeGreaterThan(60);
     expect(g.x).toBeCloseTo(60 + g.radius, 5);
     expect(g.y).toBeCloseTo(60, 5);
   });
 
-  it('keeps the chevron entirely outside the ring, so it can never overlap content', () => {
-    // контент при любом fit остаётся внутри кольца (в худшем случае square-fit —
-    // до outerRadius − 0.075·ringWidth), а внутренняя кромка шеврона лежит на
-    // внешнем радиусе: radius − size/2 == outerRadius
+  it('keeps the chevron at the outer rim, straddling it evenly around the outer radius', () => {
+    // центр — на 0.25·size за кольцом, внутренняя кромка — на 0.25·size внутри
+    // кольца: radius − size/2 == outerRadius − size*0.25
     for (const [outer, inner] of [[120, 36], [60, 12], [240, 10], [90, 30]]) {
       const g = buildSubmenuChevron(Math.PI / 5, outer, inner);
-      expect(g.radius - g.size / 2).toBeCloseTo(outer, 5);
-      expect(g.radius - g.size / 2).toBeGreaterThan(outer - 1e-9);
+      expect(g.radius - g.size / 2).toBeCloseTo(outer - g.size * 0.25, 5);
+      expect(g.radius - g.size / 2).toBeLessThan(outer);
+      expect(g.radius + g.size / 2).toBeGreaterThan(outer);
     }
   });
 
