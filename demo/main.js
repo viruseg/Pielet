@@ -28,7 +28,7 @@ function assembleItems(count, fit) {
     return {
       // первый пункт — явный id, остальные — автогенерация (префикс pielet-)
       id: i === 0 ? 'demo-open' : undefined,
-      typeContent: i % 6 === 3 ? 'none' : 'text',
+      typeContent: 'text',
       content,
       action: (id, menu) => {
         window.__lastAction = { index: i, content: label, id, at: Date.now() };
