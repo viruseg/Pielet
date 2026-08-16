@@ -181,3 +181,84 @@ export function buildSectorClipPath({ start, end, innerStart, innerEnd }, outerR
     }
     return `polygon(${points.join(', ')})`;
 }
+
+/**
+ * Строит SVG path-полилинию дуги для индикатора сабменю у внутреннего
+ * радиуса сектора. Координаты — в px квадрата размером 2*outerRadius
+ * (центр квадрата — в центре кольца), как в buildSectorClipPath.
+ * Использует innerStart/innerEnd, чтобы дуга не залезала в gap.
+ *
+ * @param {{ start: number, end: number, innerStart?: number, innerEnd?: number }} sector
+ * @param {number} radius - радиус дуги (у внутреннего радиуса сектора)
+ * @param {number} outerRadius
+ * @returns {string} значение атрибута `d` SVG-элемента path
+ */
+export function buildSubmenuArcPath({ start, end, innerStart, innerEnd }, radius, outerRadius) {
+    const startAngle = innerStart === undefined ? start : innerStart;
+    const endAngle = innerEnd === undefined ? end : innerEnd;
+    const span = endAngle - startAngle;
+    if (span <= EPS) return '';
+    const segments = Math.max(MIN_SEGMENTS, Math.min(MAX_SEGMENTS, Math.ceil(span * SEGMENTS_PER_RADIAN * 2)));
+    const point = (angle) =>
+        `${(outerRadius + radius * Math.cos(angle)).toFixed(2)} ${(outerRadius + radius * Math.sin(angle)).toFixed(2)}`;
+    const points = [];
+    for (let k = 0; k <= segments; k++) {
+        points.push(point(startAngle + (span * k) / segments));
+    }
+    return `M ${points.join(' L ')}`;
+}
+
+/**
+ * Максимальный размер шеврона индикатора сабменю (px) — в 2 раза больше
+ * исходного 14px, чтобы индикатор был хорошо заметен при стандартном размере меню.
+ * @type {number}
+ */
+const SUBMENU_CHEVRON_MAX_SIZE = 28;
+
+/**
+ * Доля ширины кольца, которую занимает шеврон: размер шеврона масштабируется
+ * с меню, чтобы в узком кольце (например size=120/centerSize=24) он не
+ * «съедал» сектор и не сливался с контентом.
+ * @type {number}
+ */
+const SUBMENU_CHEVRON_SIZE_RATIO = 0.36;
+
+/**
+ * Доля размера шеврона — вынос центра шеврона за внешний радиус кольца.
+ * Шеврон целиком лежит СНАРУЖИ кольца (внутренняя кромка — на внешнем
+ * радиусе), поэтому никогда не пересекается с контентом: контент при
+ * любом fit остаётся строго внутри кольца (максимум — outerRadius − 0.075·ringWidth
+ * в режиме fit='square'). Размер/положение от размера меню не зависят,
+ * стрелка всегда указывает радиально наружу.
+ * @type {number}
+ */
+const SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO = 0.5;
+
+/**
+ * Рассчитывает геометрию шеврона индикатора сабменю: размер (шрифт) —
+ * пропорционально ширине кольца с потолком SUBMENU_CHEVRON_MAX_SIZE,
+ * центр — за внешним краем кольца на луче mid (внутренняя кромка шеврона
+ * лежит на внешнем радиусе). Положение стабильно при любом размере меню
+ * и не зависит от контента пункта: контент всегда внутри кольца, поэтому
+ * шеврон не сливается с ним ни в circle-, ни в square-fit.
+ *
+ * @param {number} mid - средний угол сектора (рад)
+ * @param {number} outerRadius - внешний радиус кольца
+ * @param {number} innerRadius - внутренний радиус кольца
+ * @returns {{ x: number, y: number, radius: number, size: number, deg: number }}
+ *   x/y — координаты центра шеврона в px квадрата 2*outerRadius (origin —
+ *   верхний левый угол квадрата, центр кольца — (outerRadius, outerRadius)),
+ *   radius — радиальное расстояние центра от центра меню (> outerRadius),
+ *   size — размер шрифта шеврона (px), deg — угол поворота (градусы, радиально наружу)
+ */
+export function buildSubmenuChevron(mid, outerRadius, innerRadius) {
+    const size = Math.min(SUBMENU_CHEVRON_MAX_SIZE, (outerRadius - innerRadius) * SUBMENU_CHEVRON_SIZE_RATIO);
+    const radius = outerRadius + size * SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO;
+    return {
+        x: outerRadius + radius * Math.cos(mid),
+        y: outerRadius + radius * Math.sin(mid),
+        radius,
+        size,
+        deg: (mid * 180) / Math.PI
+    };
+}

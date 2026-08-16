@@ -619,6 +619,157 @@ describe('Pielet — submenu (isSubMenu)', () => {
     menu.close();
   });
 
+  it('submenu item renders arc and chevron indicators by default; plain items have none', () => {
+    const submenu = makeSubmenu();
+    menu = new Pielet({
+      items: [
+        { typeContent: 'text', content: 'More', isSubMenu: true, menu: submenu },
+        { typeContent: 'text', content: 'Plain' }
+      ]
+    });
+    menu.open(300, 300);
+    const root = document.querySelector('.pielet');
+    const itemEls = root.querySelectorAll('.pielet__item');
+    expect(itemEls[0].classList.contains('pielet__item--submenu')).toBe(true);
+    expect(itemEls[0].querySelector('.pielet__submenu-arc')).toBeTruthy();
+    expect(itemEls[1].classList.contains('pielet__item--submenu')).toBe(false);
+    expect(itemEls[1].querySelector('.pielet__submenu-arc')).toBeNull();
+    // шеврон крепится к корню меню (вне clip-path сектора) и только для сабменю-пунктов
+    expect(root.querySelectorAll('.pielet__submenu-chevron')).toHaveLength(1);
+    expect(itemEls[0].querySelector('.pielet__submenu-chevron')).toBeNull();
+    menu.close();
+  });
+
+  it('submenuIndicator: "arc" renders only the arc, "chevron" only the chevron', () => {
+    // close() угасает DOM ~310мс: свежее меню — последний .pielet в DOM
+    const openEl = () => {
+      const all = document.querySelectorAll('.pielet');
+      return all[all.length - 1];
+    };
+    const submenu = makeSubmenu();
+    menu = new Pielet({
+      submenuIndicator: 'arc',
+      items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: submenu }]
+    });
+    menu.open(300, 300);
+    expect(openEl().querySelector('.pielet__submenu-arc')).toBeTruthy();
+    expect(openEl().querySelectorAll('.pielet__submenu-chevron')).toHaveLength(0);
+    menu.close();
+
+    menu = new Pielet({
+      submenuIndicator: 'chevron',
+      items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: submenu }]
+    });
+    menu.open(300, 300);
+    expect(openEl().querySelectorAll('.pielet__submenu-arc')).toHaveLength(0);
+    expect(openEl().querySelectorAll('.pielet__submenu-chevron')).toHaveLength(1);
+    menu.close();
+  });
+
+  it('chevron is responsive to the ring width and stays outside the ring, clear of the content (size=120/centerSize=24)', () => {
+    // close() угасает DOM ~310мс: свежее меню — последний .pielet в DOM
+    const openEl = () => {
+      const all = document.querySelectorAll('.pielet');
+      return all[all.length - 1];
+    };
+    const submenu = makeSubmenu();
+    menu = new Pielet({
+      size: 120,
+      centerSize: 24,
+      items: [
+        { typeContent: 'text', content: 'More', isSubMenu: true, menu: submenu },
+        { typeContent: 'text', content: 'Plain' }
+      ]
+    });
+    menu.open(300, 300);
+    const root = openEl();
+    const itemEl = root.querySelector('.pielet__item');
+    const chevron = root.querySelector('.pielet__submenu-chevron');
+    const caption = itemEl.querySelector('.pielet__item-caption');
+
+    // left/top задаются в координатах корня меню: центр кольца — (outerRadius, outerRadius) = (60, 60)
+    const chevronRadius = Math.hypot(parseFloat(chevron.style.left) - 60, parseFloat(chevron.style.top) - 60);
+    const captionRadius = Math.hypot(parseFloat(caption.style.left) - 60, parseFloat(caption.style.top) - 60);
+    const chevronSize = parseFloat(chevron.style.fontSize);
+
+    // ring 48 → 17.28px (пропорционально, а не фиксированные 14px)
+    expect(chevronSize).toBeCloseTo(17.28, 5);
+    // шеврон — полностью за внешним краем кольца (outerRadius=60): внутренняя
+    // кромка лежит на внешнем радиусе, контент внутри кольца — пересечения нет
+    expect(chevronRadius).toBeCloseTo(60 + chevronSize * 0.5, 3);
+    expect(chevronRadius).toBeGreaterThan(captionRadius);
+    expect(chevronRadius).toBeGreaterThan(60);
+    expect(chevronRadius - chevronSize / 2).toBeCloseTo(60, 3);
+    menu.close();
+  });
+
+  it('submenu items keep content exactly on top of equivalent plain items (no content shift)', async () => {
+    // Одинаковое меню: в одном случае пункты обычные, в другом — с isSubMenu.
+    // Позиции контента (left/top/transform caption) должны полностью совпадать.
+    const openEl = () => {
+      const all = document.querySelectorAll('.pielet');
+      return all[all.length - 1];
+    };
+    const baseItems = [
+      { typeContent: 'text', content: 'More' },
+      { typeContent: 'text', content: 'Plain' }
+    ];
+    const submenu = makeSubmenu();
+
+    menu = new Pielet({ items: baseItems });
+    menu.open(300, 300);
+    const plain = Array.from(openEl().querySelectorAll('.pielet__item-caption')).map((el) => ({
+      left: el.style.left,
+      top: el.style.top,
+      transform: el.style.transform
+    }));
+    menu.close();
+    await sleep(350);
+
+    menu = new Pielet({
+      items: [
+        { typeContent: 'text', content: 'More', isSubMenu: true, menu: submenu },
+        { typeContent: 'text', content: 'Plain' }
+      ]
+    });
+    menu.open(300, 300);
+    const sub = Array.from(openEl().querySelectorAll('.pielet__item-caption')).map((el) => ({
+      left: el.style.left,
+      top: el.style.top,
+      transform: el.style.transform
+    }));
+
+    expect(sub).toEqual(plain);
+    menu.close();
+  });
+
+  it('palette case: content and chevron of both submenu items sit on one horizontal line', () => {
+    const openEl = () => {
+      const all = document.querySelectorAll('.pielet');
+      return all[all.length - 1];
+    };
+    const submenu = makeSubmenu();
+    menu = new Pielet({
+      items: [
+        { typeContent: 'text', content: 'Основные', isSubMenu: true, menu: submenu },
+        { typeContent: 'text', content: 'Пастельные', isSubMenu: true, menu: submenu }
+      ]
+    });
+    menu.open(400, 400);
+    const root = openEl();
+    const caps = Array.from(root.querySelectorAll('.pielet__item-caption'));
+    const chevrons = Array.from(root.querySelectorAll('.pielet__submenu-chevron'));
+    expect(caps).toHaveLength(2);
+    expect(chevrons).toHaveLength(2);
+    // контент обоих пунктов и оба шеврона — на одной горизонтальной линии
+    // (ось контента 2 пунктов лежит на Y центра меню, mid = 0 и π; left/top —
+    // в координатах корня, центр кольца = (outerRadius, outerRadius) = (120, 120))
+    const tops = [...caps.map((c) => parseFloat(c.style.top)), ...chevrons.map((c) => parseFloat(c.style.top))];
+    for (const t of tops) expect(t).toBeCloseTo(tops[0], 3);
+    expect(tops[0]).toBeCloseTo(120, 3);
+    menu.close();
+  });
+
   it('hold: hovering a submenu item for submenuDelay opens the submenu at the pointer, no select/action', async () => {
     vi.useFakeTimers();
     try {

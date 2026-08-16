@@ -10,6 +10,7 @@
     --pielet-background-hover: #43475a;
     --pielet-opacity: 0.97;
     --pielet-color: #f2f2f4;
+    --pielet-submenu-indicator: #c9cdd9;
     --pielet-transition-duration: 150ms;
     --pielet-transition-easing: cubic-bezier(0.2, 0.6, 0.3, 1);
     --pielet-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
@@ -65,4 +66,21 @@
 
 .pielet__item--none {
     background: transparent;
+}
+
+/* Индикаторы пунктов-сабменю */
+.pielet__submenu-arc {
+    pointer-events: none;
+    opacity: 0.65;
+}
+
+.pielet__submenu-chevron {
+    position: absolute;
+    pointer-events: none;
+    color: var(--pielet-submenu-indicator);
+    /* JS выставляет inline font-size (масштабируется с кольцом меню);
+       28px здесь — максимум алгоритма (в 2 раза больше исходного 14px). */
+    font-size: 28px;
+    line-height: 1;
+    opacity: 0.8;
 }

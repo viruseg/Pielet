@@ -303,6 +303,176 @@ test.describe('submenus (isSubMenu)', () => {
   });
 });
 
+test('chevron indicator: 28px (2x the original 14px) at the default size (240/72)', async ({ page }) => {
+  await page.evaluate(() => {
+    window.__submenu = new window.Pielet({ items: [{ typeContent: 'text', content: 'Leaf' }] });
+    window.__parent = new window.Pielet({
+      items: [
+        { typeContent: 'text', content: 'More', isSubMenu: true, menu: window.__submenu },
+        { typeContent: 'text', content: 'Other' }
+      ]
+    });
+    window.__parent.open(400, 400);
+  });
+  await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
+  const fontSize = await page.evaluate(() => {
+    const chevron = document.querySelector('.pielet__submenu-chevron');
+    return parseFloat(getComputedStyle(chevron).fontSize);
+  });
+  expect(fontSize).toBe(28);
+  await page.evaluate(() => window.__parent.close());
+});
+
+test('chevron indicator: responsive size and position outside the ring clear of content (size=120, centerSize=24)', async ({ page }) => {
+  await page.evaluate(() => {
+    window.__submenu = new window.Pielet({ items: [{ typeContent: 'text', content: 'Leaf' }] });
+    window.__parent = new window.Pielet({
+      size: 120,
+      centerSize: 24,
+      items: [
+        { typeContent: 'text', content: 'More', isSubMenu: true, menu: window.__submenu },
+        { typeContent: 'text', content: 'Other' }
+      ]
+    });
+    window.__parent.open(400, 400);
+  });
+  await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
+  const geo = await page.evaluate(() => {
+    const menu = document.querySelector('.pielet');
+    const item = menu.querySelector('.pielet__item--submenu');
+    const chevron = menu.querySelector('.pielet__submenu-chevron');
+    const caption = item.querySelector('.pielet__item-caption');
+    const chevronBox = chevron.getBoundingClientRect();
+    const captionBox = caption.getBoundingClientRect();
+    const menuBox = menu.getBoundingClientRect();
+    const cx = menuBox.x + menuBox.width / 2;
+    const cy = menuBox.y + menuBox.height / 2;
+    return {
+      fontSize: parseFloat(getComputedStyle(chevron).fontSize),
+      chevronRadius: Math.hypot(chevronBox.x + chevronBox.width / 2 - cx, chevronBox.y + chevronBox.height / 2 - cy),
+      captionRadius: Math.hypot(captionBox.x + captionBox.width / 2 - cx, captionBox.y + captionBox.height / 2 - cy),
+      outerRadius: menuBox.width / 2
+    };
+  });
+  // ring 48 → 48*0.36 = 17.28px (пропорционально кольцу, не фиксированные 14px)
+  expect(geo.fontSize).toBeCloseTo(17.28, 1);
+  // шеврон полностью за внешним краем кольца (центр = outerRadius + size*0.5),
+  // радиально дальше контента — не пересекается ни при каком fit
+  expect(geo.chevronRadius).toBeCloseTo(60 + geo.fontSize * 0.5, 1);
+  expect(geo.chevronRadius).toBeGreaterThan(geo.captionRadius);
+  expect(geo.chevronRadius - geo.fontSize / 2).toBeGreaterThanOrEqual(geo.outerRadius - 0.5);
+  await page.evaluate(() => window.__parent.close());
+});
+
+test('square fit: chevron stays outside the ring, clear of the rotated content (no overlap)', async ({ page }) => {
+  await page.evaluate(() => {
+    window.__submenu = new window.Pielet({ items: [{ typeContent: 'text', content: 'Leaf' }] });
+    // 6 пунктов + сабменю-пункт на индексе 5 (mid ≈ 240° — повёрнутый, как «Цвет» в демо)
+    const items = ['Один', 'Два', 'Три', 'Четыре', 'Пять'].map((content) => ({ typeContent: 'text', content }));
+    items.push({ typeContent: 'text', content: 'Цвет', isSubMenu: true, menu: window.__submenu });
+    window.__sq = new window.Pielet({ fit: 'square', items });
+    window.__sq.open(400, 400);
+  });
+  await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
+  const r = await page.evaluate(() => {
+    const menu = document.querySelector('.pielet');
+    const item = menu.querySelector('.pielet__item--submenu');
+    const chevron = menu.querySelector('.pielet__submenu-chevron');
+    const caption = item.querySelector('.pielet__item-caption');
+    const chevronBox = chevron.getBoundingClientRect();
+    const captionBox = caption.getBoundingClientRect();
+    const menuBox = menu.getBoundingClientRect();
+    const cx = menuBox.x + menuBox.width / 2;
+    const cy = menuBox.y + menuBox.height / 2;
+    const size = parseFloat(getComputedStyle(chevron).fontSize);
+    const chevronRadius = Math.hypot(chevronBox.x + chevronBox.width / 2 - cx, chevronBox.y + chevronBox.height / 2 - cy);
+    const captionRadius = Math.hypot(captionBox.x + captionBox.width / 2 - cx, captionBox.y + captionBox.height / 2 - cy);
+    // шеврон повёрнут так, что его высота ложится вдоль радиуса; контент
+    // square-сектора — шириной вдоль радиуса (offsetWidth/offsetHeight — до transform)
+    return {
+      fontSize: size,
+      chevronInner: chevronRadius - size / 2,
+      captionOuter: captionRadius + caption.offsetWidth / 2,
+      outerRadius: menuBox.width / 2
+    };
+  });
+  expect(r.fontSize).toBe(28);
+  // контент всегда внутри кольца, шеврон — целиком за внешним краем:
+  // между ними гарантированный радиальный зазор (не пересекаются)
+  expect(r.captionOuter).toBeLessThan(r.outerRadius);
+  expect(r.chevronInner).toBeGreaterThanOrEqual(r.outerRadius - 0.5);
+  expect(r.chevronInner).toBeGreaterThan(r.captionOuter);
+  await page.evaluate(() => window.__sq.close());
+});
+
+test('submenu items: content positions are identical to equivalent plain items', async ({ page }) => {
+  await page.evaluate(() => {
+    window.__submenu = new window.Pielet({ items: [{ typeContent: 'text', content: 'Leaf' }] });
+    window.__plain = new window.Pielet({
+      items: [
+        { typeContent: 'text', content: 'Один' },
+        { typeContent: 'text', content: 'Два' }
+      ]
+    });
+    window.__withsub = new window.Pielet({
+      items: [
+        { typeContent: 'text', content: 'Один', isSubMenu: true, menu: window.__submenu },
+        { typeContent: 'text', content: 'Два' }
+      ]
+    });
+    window.__plain.open(400, 400);
+  });
+  await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
+  const readCenters = () =>
+    page.evaluate(() => {
+      const menus = document.querySelectorAll('.pielet');
+      const menu = menus[menus.length - 1];
+      return Array.from(menu.querySelectorAll('.pielet__item-caption')).map((c) => {
+        const b = c.getBoundingClientRect();
+        return [b.x + b.width / 2, b.y + b.height / 2];
+      });
+    });
+  const plain = await readCenters();
+  await page.evaluate(() => window.__plain.close());
+  await page.waitForTimeout(350);
+  await page.evaluate(() => window.__withsub.open(400, 400));
+  await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
+  const withsub = await readCenters();
+  expect(withsub).toEqual(plain);
+  await page.evaluate(() => window.__withsub.close());
+});
+
+test('palette case: content and chevron of both submenu items sit on one horizontal line', async ({ page }) => {
+  await page.evaluate(() => {
+    window.__submenu = new window.Pielet({ items: [{ typeContent: 'text', content: 'Красный' }] });
+    window.__palette = new window.Pielet({
+      items: [
+        { typeContent: 'text', content: 'Основные', isSubMenu: true, menu: window.__submenu },
+        { typeContent: 'text', content: 'Пастельные', isSubMenu: true, menu: window.__submenu }
+      ]
+    });
+    window.__palette.open(400, 400);
+  });
+  await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
+  const dy = await page.evaluate(() => {
+    const menu = document.querySelector('.pielet');
+    const menuBox = menu.getBoundingClientRect();
+    const cy = menuBox.y + menuBox.height / 2;
+    const caps = Array.from(menu.querySelectorAll('.pielet__item-caption'));
+    const chevs = Array.from(menu.querySelectorAll('.pielet__submenu-chevron'));
+    const dyOf = (el) => {
+      const b = el.getBoundingClientRect();
+      return (b.y + b.height / 2) - cy;
+    };
+    return { capDy: caps.map(dyOf), chevDy: chevs.map(dyOf) };
+  });
+  // контент и шеврон обоих пунктов — на одной горизонтальной линии (Y центра меню)
+  expect(dy.capDy).toHaveLength(2);
+  expect(dy.chevDy).toHaveLength(2);
+  for (const d of [...dy.capDy, ...dy.chevDy]) expect(Math.abs(d)).toBeLessThan(1);
+  await page.evaluate(() => window.__palette.close());
+});
+
 test('demo: the «Цвет» item opens a double-nested submenu chain (Цвет → Основные → Красный)', async ({ page }) => {
   await openMenu(page, 500, 400);
   // 7 items демо: последний сектор (индекс 6) — пункт «Цвет» (isSubMenu)

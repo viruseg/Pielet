@@ -25,7 +25,8 @@ describe('DEFAULT_CONFIG', () => {
       closeDistance: 48,
       fit: 'circle',
       unifyText: false,
-      submenuDelay: 400
+      submenuDelay: 400,
+      submenuIndicator: 'both'
     });
   });
 
@@ -50,6 +51,7 @@ describe('normalizeConfig', () => {
     expect(config.fit).toBe('circle');
     expect(config.unifyText).toBe(false);
     expect(config.submenuDelay).toBe(400);
+    expect(config.submenuIndicator).toBe('both');
   });
 
   it('keeps user values', () => {
@@ -65,6 +67,7 @@ describe('normalizeConfig', () => {
       fit: 'square',
       unifyText: true,
       submenuDelay: 250,
+      submenuIndicator: 'chevron',
       items: validItems
     });
     expect(config.size).toBe(300);
@@ -78,6 +81,7 @@ describe('normalizeConfig', () => {
     expect(config.fit).toBe('square');
     expect(config.unifyText).toBe(true);
     expect(config.submenuDelay).toBe(250);
+    expect(config.submenuIndicator).toBe('chevron');
   });
 
   it('throws on an empty config object — items is required', () => {
@@ -174,6 +178,12 @@ describe('validateConfig errors', () => {
     expect(() => validateConfig({ items: validItems, submenuDelay: '400' })).toThrow(/submenuDelay/);
   });
 
+  it('throws when submenuIndicator is unknown', () => {
+    for (const bad of ['none', 'both-ish', 'arc chevron', 42, true, null]) {
+      expect(() => validateConfig({ items: validItems, submenuIndicator: bad })).toThrow(/submenuIndicator/);
+    }
+  });
+
   it('throws when isSubMenu is not a boolean', () => {
     expect(() =>
       validateConfig({ items: [{ typeContent: 'text', content: 'A', isSubMenu: 'yes' }] })
@@ -253,6 +263,13 @@ describe('validateConfig valid inputs', () => {
   it('accepts submenuDelay of 0 (disables hover-open) and normalizes it', () => {
     expect(() => validateConfig({ items: validItems, submenuDelay: 0 })).not.toThrow();
     expect(normalizeConfig({ items: validItems, submenuDelay: 0 }).submenuDelay).toBe(0);
+  });
+
+  it('accepts every submenuIndicator value and normalizes it', () => {
+    for (const value of ['arc', 'chevron', 'both']) {
+      expect(() => validateConfig({ items: validItems, submenuIndicator: value })).not.toThrow();
+      expect(normalizeConfig({ items: validItems, submenuIndicator: value }).submenuIndicator).toBe(value);
+    }
   });
 
   it('accepts an isSubMenu item with a menu that has open', () => {

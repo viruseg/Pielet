@@ -12,17 +12,15 @@ const items = [
   { typeContent: 'text', content: 'Save' }
 ];
 
-function makeGeometry({ itemCount = 4, arcStart = 0, arcLength = TAU, direction = 'clockwise', gap = 0, fit = 'circle' } = {}) {
-  const outerRadius = 100;
-  const innerRadius = 30;
+function makeGeometry({ itemCount = 4, arcStart = 0, arcLength = TAU, direction = 'clockwise', gap = 0, fit = 'circle', outerRadius = 100, innerRadius = 30 } = {}) {
   const { sectors } = calculateSectorLayout({
     itemCount,
     arcStart,
     arcLength,
-    outerRadius: 100,
-    innerRadius: 30,
-    meanRadius: 65,
-    ringWidth: 70,
+    outerRadius,
+    innerRadius,
+    meanRadius: (outerRadius + innerRadius) / 2,
+    ringWidth: outerRadius - innerRadius,
     gap,
     fit,
     direction
@@ -424,6 +422,115 @@ describe('MenuRenderer.unifyText (fit square)', () => {
     } finally {
       restore();
     }
+  });
+});
+
+describe('MenuRenderer submenu indicators', () => {
+  const submenuItems = [
+    { typeContent: 'text', content: 'More', isSubMenu: true },
+    { typeContent: 'text', content: 'Plain' },
+    { typeContent: 'image', content: '/icons/x.svg', isSubMenu: true },
+    { typeContent: 'text', content: 'Other' }
+  ];
+
+  function mountWith(indicator) {
+    renderer.mount({
+      centerX: 200,
+      centerY: 150,
+      geometry: makeGeometry(),
+      items: submenuItems,
+      submenuIndicator: indicator
+    });
+    return Array.from(renderer.element.querySelectorAll('.pielet__item'));
+  }
+
+  it('default (both): arc in submenu items, chevron on the menu root (outside the sector clip-path)', () => {
+    const itemEls = mountWith('both');
+    for (const index of [0, 2]) {
+      expect(itemEls[index].querySelector('.pielet__submenu-arc')).toBeTruthy();
+    }
+    for (const index of [1, 3]) {
+      expect(itemEls[index].querySelector('.pielet__submenu-arc')).toBeNull();
+    }
+    // шеврон крепится к корню меню, а не к itemEl: clip-path сектора
+    // срезает всё за внешним краем кольца
+    const chevrons = renderer.element.querySelectorAll('.pielet__submenu-chevron');
+    expect(chevrons).toHaveLength(2);
+    expect(itemEls[0].querySelector('.pielet__submenu-chevron')).toBeNull();
+    expect(renderer.element.contains(chevrons[0])).toBe(true);
+  });
+
+  it('submenuIndicator "arc": renders only the arc', () => {
+    const itemEls = mountWith('arc');
+    expect(itemEls[0].querySelector('.pielet__submenu-arc')).toBeTruthy();
+    expect(itemEls[0].querySelector('.pielet__submenu-chevron')).toBeNull();
+    expect(itemEls[1].querySelector('.pielet__submenu-arc')).toBeNull();
+  });
+
+  it('submenuIndicator "chevron": renders only the chevron on the menu root', () => {
+    const itemEls = mountWith('chevron');
+    expect(itemEls[0].querySelector('.pielet__submenu-arc')).toBeNull();
+    expect(itemEls[0].querySelector('.pielet__submenu-chevron')).toBeNull();
+    // оба сабменю-пункта (0 и 2) получают шеврон, обычные — нет
+    const chevrons = renderer.element.querySelectorAll('.pielet__submenu-chevron');
+    expect(chevrons).toHaveLength(2);
+    expect(chevrons[0].textContent).toBe('›');
+  });
+
+  it('arc element is an SVG with a non-empty path', () => {
+    const itemEls = mountWith('both');
+    const svg = itemEls[0].querySelector('.pielet__submenu-arc');
+    expect(svg.tagName.toLowerCase()).toBe('svg');
+    const path = svg.querySelector('path');
+    expect(path).toBeTruthy();
+    expect(path.getAttribute('d')).toBeTruthy();
+    expect(path.getAttribute('stroke')).toBeTruthy();
+  });
+
+  it('indicators do not affect caption content', () => {
+    const itemEls = mountWith('both');
+    const caption = itemEls[0].querySelector('.pielet__item-caption');
+    expect(caption.querySelector('.pielet__content--text').textContent).toBe('More');
+  });
+
+  it('sizes the chevron proportionally to the ring width (28px cap) and positions it outside the outer radius', () => {
+    // makeGeometry: outer 100 / inner 30 → ring 70 → size = min(28, 25.2) = 25.2
+    const itemEls = mountWith('both');
+    const chevron = renderer.element.querySelector('.pielet__submenu-chevron');
+    const size = parseFloat(chevron.style.fontSize);
+    expect(size).toBeCloseTo(25.2, 5);
+    // центр шеврона: outerRadius + size*0.5, вдоль mid (для 4 пунктов cw от 0: mid = π/4)
+    // left/top задаются в координатах корня меню (origin — верхний левый угол меню)
+    const centerRadius = 100 + size * 0.5;
+    const mid = Math.PI / 4;
+    expect(parseFloat(chevron.style.left)).toBeCloseTo(100 + centerRadius * Math.cos(mid), 3);
+    expect(parseFloat(chevron.style.top)).toBeCloseTo(100 + centerRadius * Math.sin(mid), 3);
+    expect(chevron.style.transform).toMatch(/rotate\(45(\.\d+)?deg\)/);
+  });
+
+  it('keeps the chevron outside the ring, clear of the caption content (no overlap at size=120/centerSize=24)', () => {
+    // outer 60 / inner 12 → ring 48 → size = 17.28, центр на радиусе 60 + 8.64 = 68.64
+    renderer.mount({
+      centerX: 300,
+      centerY: 300,
+      geometry: makeGeometry({ itemCount: 4, outerRadius: 60, innerRadius: 12 }),
+      items: submenuItems,
+      submenuIndicator: 'both'
+    });
+    const itemEls = Array.from(renderer.element.querySelectorAll('.pielet__item'));
+    const chevron = renderer.element.querySelector('.pielet__submenu-chevron');
+    const caption = itemEls[0].querySelector('.pielet__item-caption');
+
+    const chevronRadius = Math.hypot(parseFloat(chevron.style.left) - 60, parseFloat(chevron.style.top) - 60);
+    const captionRadius = Math.hypot(parseFloat(caption.style.left) - 60, parseFloat(caption.style.top) - 60);
+
+    expect(parseFloat(chevron.style.fontSize)).toBeCloseTo(17.28, 5);
+    // шеврон полностью за внешним краем кольца (внутренняя кромка — на внешнем радиусе)
+    expect(chevronRadius).toBeCloseTo(68.64, 3);
+    expect(chevronRadius).toBeGreaterThan(60);
+    expect(chevronRadius - 17.28 / 2).toBeCloseTo(60, 3);
+    // радиально дальше от центра, чем контент (не сливается)
+    expect(chevronRadius).toBeGreaterThan(captionRadius);
   });
 });
 

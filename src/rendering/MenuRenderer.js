@@ -5,10 +5,15 @@
  * Визуальные параметры задаются CSS custom properties (src/styles/pielet.css).
  */
 
-import { buildSectorClipPath } from '../geometry/calculateSector.js';
+import { buildSectorClipPath, buildSubmenuArcPath, buildSubmenuChevron } from '../geometry/calculateSector.js';
 import { createContentContainer, fitText } from './ContentRenderer.js';
 
 const DEFAULT_CLOSE_DURATION_MS = 250;
+
+/** Отступ дуги индикатора сабменю от внутреннего радиуса сектора (px). */
+const SUBMENU_ARC_INSET = 3;
+/** Толщина дуги индикатора (px). */
+const SUBMENU_ARC_STROKE = 2.5;
 
 /**
  * Парсит длительность перехода CSS (первый токен), например '150ms' или '0.15s'.
@@ -62,8 +67,10 @@ export class MenuRenderer {
      * @param {Array<object>} options.items - пункты меню
      * @param {boolean} [options.unifyText] - выровнять шрифт text-пунктов
      *   по наименьшему влезающему размеру (только при fit 'square')
+     * @param {'arc' | 'chevron' | 'both'} [options.submenuIndicator] - индикация
+     *   пунктов-сабменю (arc — дуга у внутреннего радиуса, chevron — стрелка за внешним краем кольца)
      */
-    mount({ centerX, centerY, geometry, items, unifyText = false }) {
+    mount({ centerX, centerY, geometry, items, unifyText = false, submenuIndicator = 'both' }) {
         const { outerRadius, innerRadius, sectors } = geometry;
         const size = outerRadius * 2;
 
@@ -92,7 +99,12 @@ export class MenuRenderer {
             const itemEl = document.createElement('div');
             itemEl.className = 'pielet__item';
             if (item.typeContent === 'none') itemEl.classList.add('pielet__item--none');
+            if (item.isSubMenu === true) itemEl.classList.add('pielet__item--submenu');
             itemEl.style.clipPath = buildSectorClipPath(sector, outerRadius, innerRadius);
+
+            if (item.isSubMenu === true) {
+                this._appendSubmenuIndicators(el, itemEl, sector, outerRadius, innerRadius, size, submenuIndicator);
+            }
 
             let caption = null;
             let contentEl = null;
@@ -124,6 +136,58 @@ export class MenuRenderer {
         setTimeout(() => {
             if (this._el === el) el.classList.add('pielet--open');
         }, 0);
+    }
+
+    /**
+     * Добавляет индикаторы сабменю. Дуга — в пункт (до caption, чтобы контент
+     * отрисовывался поверх). Шеврон — в корень меню: он лежит за внешним краем
+     * кольца, а clip-path сектора срезает всё за ним, поэтому в itemEl он был бы
+     * невидим. Ни один индикатор не влияет на fitText: caption и его содержимое
+     * не затрагиваются.
+     *
+     * @param {HTMLElement} el - корневой элемент меню (для шеврона)
+     * @param {HTMLElement} itemEl - элемент сектора (для дуги)
+     * @param {object} sector - геометрия сектора
+     * @param {number} outerRadius
+     * @param {number} innerRadius
+     * @param {number} size - размер квадрата меню (2*outerRadius)
+     * @param {'arc' | 'chevron' | 'both'} submenuIndicator
+     */
+    _appendSubmenuIndicators(el, itemEl, sector, outerRadius, innerRadius, size, submenuIndicator) {
+        if (submenuIndicator === 'arc' || submenuIndicator === 'both') {
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('class', 'pielet__submenu-arc');
+            svg.setAttribute('width', `${size}px`);
+            svg.setAttribute('height', `${size}px`);
+            svg.setAttribute('aria-hidden', 'true');
+            svg.style.position = 'absolute';
+            svg.style.top = '0';
+            svg.style.left = '0';
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', 'var(--pielet-submenu-indicator)');
+            path.setAttribute('stroke-width', String(SUBMENU_ARC_STROKE));
+            path.setAttribute('d', buildSubmenuArcPath(sector, innerRadius + SUBMENU_ARC_INSET, outerRadius));
+            svg.appendChild(path);
+            itemEl.appendChild(svg);
+        }
+        if (submenuIndicator === 'chevron' || submenuIndicator === 'both') {
+            const chevron = document.createElement('div');
+            chevron.className = 'pielet__submenu-chevron';
+            chevron.setAttribute('aria-hidden', 'true');
+            chevron.textContent = '›';
+            // Размер и положение считаются единым алгоритмом (buildSubmenuChevron):
+            // шеврон стоит за внешним краем кольца (внутренняя кромка — на внешнем
+            // радиусе), указывает радиально наружу и не пересекается с контентом
+            // ни при каком size/fit. Крепится к корню меню, т.к. clip-path
+            // сектора срезает всё, что вне кольца.
+            const g = buildSubmenuChevron(sector.mid, outerRadius, innerRadius);
+            chevron.style.fontSize = `${g.size}px`;
+            chevron.style.left = `${g.x}px`;
+            chevron.style.top = `${g.y}px`;
+            chevron.style.transform = `translate(-50%, -50%) rotate(${g.deg}deg)`;
+            el.appendChild(chevron);
+        }
     }
 
     /**

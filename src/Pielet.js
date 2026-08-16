@@ -97,7 +97,7 @@ export default class Pielet extends EventTarget {
             submenu: config.items.map((item) => item.isSubMenu === true)
         };
 
-        this._renderer.mount({ centerX: x, centerY: y, geometry, items: config.items, unifyText: config.unifyText });
+        this._renderer.mount({ centerX: x, centerY: y, geometry, items: config.items, unifyText: config.unifyText, submenuIndicator: config.submenuIndicator });
 
         const interaction = new InteractionController({
             interactionMode: config.interactionMode,

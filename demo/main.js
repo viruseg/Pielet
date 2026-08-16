@@ -13,7 +13,8 @@ const controls = {
   items: document.getElementById('items'),
   fit: document.getElementById('fit'),
   unifyText: document.getElementById('unifyText'),
-  submenuDelay: document.getElementById('submenuDelay')
+  submenuDelay: document.getElementById('submenuDelay'),
+  submenuIndicator: document.getElementById('submenuIndicator')
 };
 
 const labels = ['Open', 'Save', 'Copy', 'Cut', 'Rename', 'Delete', 'Share', 'Print', 'Zoom', 'Flip', 'Rotate', 'Pin'];
@@ -109,7 +110,8 @@ function readState() {
     items: assembleItems(Number(controls.items.value), controls.fit.value),
     fit: controls.fit.value,
     unifyText: controls.unifyText.value === 'true',
-    submenuDelay: Number(controls.submenuDelay.value)
+    submenuDelay: Number(controls.submenuDelay.value),
+    submenuIndicator: controls.submenuIndicator.value
   };
 }
 
@@ -127,7 +129,8 @@ function openAt(x, y, button = controls.button.value) {
     items: state.items,
     fit: state.fit,
     unifyText: state.unifyText,
-    submenuDelay: state.submenuDelay
+    submenuDelay: state.submenuDelay,
+    submenuIndicator: state.submenuIndicator
   });
   // Сабменю должны следовать за настройками демо (режим/кнопка/задержка),
   // чтобы hold-режим подхватывал зажатую кнопку и во вложенных меню.
@@ -135,6 +138,7 @@ function openAt(x, y, button = controls.button.value) {
     sub.config.interactionMode = state.interactionMode;
     sub.config.button = button;
     sub.config.submenuDelay = state.submenuDelay;
+    sub.config.submenuIndicator = state.submenuIndicator;
   }
   menu.open(x, y);
 }

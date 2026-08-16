@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateMenuGeometry } from '../../../src/geometry/calculateMenuGeometry.js';
-import { calculateSectorLayout, buildSectorClipPath } from '../../../src/geometry/calculateSector.js';
+import { calculateSectorLayout, buildSectorClipPath, buildSubmenuArcPath, buildSubmenuChevron } from '../../../src/geometry/calculateSector.js';
 
 const TAU = Math.PI * 2;
 const near = (a, b, eps = 1e-9) => expect(Math.abs(a - b)).toBeLessThan(eps);
@@ -375,5 +375,81 @@ describe('buildSectorClipPath', () => {
   it('handles sectors spanning across 2π', () => {
     const path = buildSectorClipPath({ start: 3 * Math.PI / 2, end: 3 * Math.PI / 2 + Math.PI / 4 }, 100, 20);
     expect(path.startsWith('polygon(')).toBe(true);
+  });
+});
+
+describe('buildSubmenuArcPath', () => {
+  const arcPoints = (d) => {
+    const nums = d.match(/-?[\d.]+/g).map(Number);
+    const pts = [];
+    for (let i = 0; i < nums.length; i += 2) pts.push([nums[i], nums[i + 1]]);
+    return pts;
+  };
+
+  it('draws a polyline arc at the requested radius from start to end', () => {
+    const sector = { start: 0, end: Math.PI / 2, innerStart: 0, innerEnd: Math.PI / 2 };
+    const d = buildSubmenuArcPath(sector, 39, 120);
+    expect(d.startsWith('M ')).toBe(true);
+    const pts = arcPoints(d);
+    expect(pts.length).toBeGreaterThanOrEqual(9);
+    for (const [x, y] of pts) {
+      expect(Math.hypot(x - 120, y - 120)).toBeCloseTo(39, 1);
+    }
+    // первая точка — под углом start (0° → справа), последняя — под углом end
+    expect(pts[0][0]).toBeCloseTo(159, 1);
+    expect(pts[0][1]).toBeCloseTo(120, 1);
+    expect(Math.atan2(pts[pts.length - 1][1] - 120, pts[pts.length - 1][0] - 120)).toBeCloseTo(Math.PI / 2, 2);
+  });
+
+  it('uses innerStart/innerEnd angles when provided', () => {
+    const sector = { start: 0, end: Math.PI / 2, innerStart: Math.PI / 8, innerEnd: 3 * Math.PI / 8 };
+    const pts = arcPoints(buildSubmenuArcPath(sector, 39, 120));
+    expect(Math.atan2(pts[0][1] - 120, pts[0][0] - 120)).toBeCloseTo(Math.PI / 8, 2);
+    expect(Math.atan2(pts[pts.length - 1][1] - 120, pts[pts.length - 1][0] - 120)).toBeCloseTo(3 * Math.PI / 8, 2);
+  });
+
+  it('returns an empty path for a degenerate span', () => {
+    expect(buildSubmenuArcPath({ start: 0, end: 1e-12 }, 39, 120)).toBe('');
+  });
+});
+
+describe('buildSubmenuChevron', () => {
+  it('sizes the chevron proportionally to the ring width, capped at 28px', () => {
+    // default ring (240/72): 84 * 0.36 = 30.24 -> cap at 28 (2x the old 14px)
+    expect(buildSubmenuChevron(0, 120, 36).size).toBe(28);
+    // size=120/centerSize=24 ring: 48 * 0.36 = 17.28
+    expect(buildSubmenuChevron(0, 60, 12).size).toBeCloseTo(17.28, 5);
+    // very wide ring: capped
+    expect(buildSubmenuChevron(0, 240, 10).size).toBe(28);
+  });
+
+  it('places the chevron center outside the outer radius (fully clear of the ring)', () => {
+    // центр шеврона: outerRadius + size*0.5 — полностью за внешним краем кольца
+    const g = buildSubmenuChevron(0, 60, 12);
+    expect(g.radius).toBeCloseTo(60 + g.size * 0.5, 5);
+    expect(g.radius).toBeGreaterThan(60);
+    expect(g.x).toBeCloseTo(60 + g.radius, 5);
+    expect(g.y).toBeCloseTo(60, 5);
+  });
+
+  it('keeps the chevron entirely outside the ring, so it can never overlap content', () => {
+    // контент при любом fit остаётся внутри кольца (в худшем случае square-fit —
+    // до outerRadius − 0.075·ringWidth), а внутренняя кромка шеврона лежит на
+    // внешнем радиусе: radius − size/2 == outerRadius
+    for (const [outer, inner] of [[120, 36], [60, 12], [240, 10], [90, 30]]) {
+      const g = buildSubmenuChevron(Math.PI / 5, outer, inner);
+      expect(g.radius - g.size / 2).toBeCloseTo(outer, 5);
+      expect(g.radius - g.size / 2).toBeGreaterThan(outer - 1e-9);
+    }
+  });
+
+  it('points the chevron radially outward along the sector mid angle', () => {
+    const mid = Math.PI / 3;
+    const g = buildSubmenuChevron(mid, 100, 30);
+    expect(g.deg).toBeCloseTo((mid * 180) / Math.PI, 5);
+    const dir = Math.atan2(g.y - 100, g.x - 100);
+    expect(dir).toBeCloseTo(mid, 5);
+    expect(g.x).toBeCloseTo(100 + g.radius * Math.cos(mid), 5);
+    expect(g.y).toBeCloseTo(100 + g.radius * Math.sin(mid), 5);
   });
 });
