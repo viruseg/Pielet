@@ -29,6 +29,12 @@ export class MenuRenderer {
         this._el = null;
         /** @type {HTMLElement[]} */
         this._itemEls = [];
+        /** @type {HTMLElement[]} */
+        this._captions = [];
+        /** @type {Array<object>} */
+        this._sectors = [];
+        /** @type {number} */
+        this._baseFontSize = 14;
         /** @type {boolean[]} */
         this._selectable = [];
         /** @type {number} */
@@ -75,8 +81,11 @@ export class MenuRenderer {
         const baseFontSize = baseFontSizeOption !== undefined
             ? baseFontSizeOption
             : this.getBaseFontSize();
+        this._baseFontSize = baseFontSize;
 
         this._itemEls = [];
+        this._captions = [];
+        this._sectors = sectors;
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
             const sector = sectors[i];
@@ -86,8 +95,9 @@ export class MenuRenderer {
             if (item.typeContent === 'none') itemEl.classList.add('pielet__item--none');
             itemEl.style.clipPath = buildSectorClipPath(sector, outerRadius, innerRadius);
 
+            let caption = null;
             if (item.typeContent !== 'none') {
-                const caption = document.createElement('div');
+                caption = document.createElement('div');
                 caption.className = 'pielet__item-caption';
                 caption.style.position = 'absolute';
                 caption.style.left = `${outerRadius + meanRadius * Math.cos(sector.mid)}px`;
@@ -97,6 +107,7 @@ export class MenuRenderer {
                 if (contentEl) caption.appendChild(contentEl);
                 itemEl.appendChild(caption);
             }
+            this._captions.push(caption);
 
             el.appendChild(itemEl);
             this._itemEls.push(itemEl);
@@ -146,6 +157,21 @@ export class MenuRenderer {
     }
 
     /**
+     * Перерисовывает содержимое пункта «на месте» (тип содержимого тот же,
+     * что и при mount). Заменяет контент внутри существующего caption.
+     * No-op для none-пунктов и при отсутствии caption.
+     * @param {number} index - индекс пункта
+     * @param {import('../types.js').PieletItem} item - пункт с новым content
+     */
+    setItemContent(index, item) {
+        const caption = this._captions[index];
+        const sector = this._sectors[index];
+        if (!caption || !sector) return;
+        const contentEl = createContentContainer(item, sector, this._baseFontSize);
+        caption.replaceChildren(contentEl || '');
+    }
+
+    /**
      * Запускает анимацию закрытия (opacity → 0) и после завершения
      * удаляет DOM и вызывает onDone. Если меню не смонтировано — onDone сразу.
      * @param {() => void} onDone
@@ -166,6 +192,8 @@ export class MenuRenderer {
             if (this._el === el) {
                 this._el = null;
                 this._itemEls = [];
+                this._captions = [];
+                this._sectors = [];
             }
             el.remove();
             onDone();
@@ -185,6 +213,8 @@ export class MenuRenderer {
             this._el.remove();
             this._el = null;
             this._itemEls = [];
+            this._captions = [];
+            this._sectors = [];
         }
     }
 }

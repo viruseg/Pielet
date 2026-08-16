@@ -186,6 +186,52 @@ describe('MenuRenderer.setHover', () => {
   });
 });
 
+describe('MenuRenderer.setItemContent', () => {
+  function mounted(geometry = makeGeometry()) {
+    renderer.mount({ centerX: 200, centerY: 150, geometry, items, baseFontSize: 14 });
+    return renderer.element.querySelectorAll('.pielet__item');
+  }
+
+  it('replaces the text content of the item in place', () => {
+    const els = mounted();
+    renderer.setItemContent(0, { typeContent: 'text', content: 'Renamed' });
+    const textEl = els[0].querySelector('.pielet__content--text');
+    expect(textEl).toBeTruthy();
+    expect(textEl.textContent).toBe('Renamed');
+  });
+
+  it('replaces the image src of the item in place', () => {
+    const els = mounted();
+    renderer.setItemContent(2, { typeContent: 'image', content: '/icons/new.svg' });
+    const img = els[2].querySelector('.pielet__content--image');
+    expect(img).toBeTruthy();
+    expect(img.getAttribute('src')).toBe('/icons/new.svg');
+  });
+
+  it('replaces a node item without cloning and removes the old node', () => {
+    const oldNode = document.createElement('span');
+    oldNode.textContent = 'old';
+    const nodeItems = [
+      { typeContent: 'node', content: oldNode },
+      { typeContent: 'text', content: 'B' }
+    ];
+    renderer.mount({ centerX: 200, centerY: 150, geometry: makeGeometry({ itemCount: 2 }), items: nodeItems, baseFontSize: 14 });
+    const replacement = document.createElement('strong');
+    replacement.textContent = 'new';
+    renderer.setItemContent(0, { typeContent: 'node', content: replacement });
+    const caption = renderer.element.querySelectorAll('.pielet__item')[0].querySelector('.pielet__item-caption');
+    expect(caption.contains(replacement)).toBe(true);
+    expect(caption.contains(oldNode)).toBe(false);
+    expect(oldNode.parentNode).toBeNull();
+  });
+
+  it('does not affect other items', () => {
+    const els = mounted();
+    renderer.setItemContent(0, { typeContent: 'text', content: 'Renamed' });
+    expect(els[3].querySelector('.pielet__content--text').textContent).toBe('Save');
+  });
+});
+
 describe('MenuRenderer.animateClose', () => {
   it('removes the open class, then removes the DOM and calls back once', async () => {
     vi.useFakeTimers();

@@ -134,6 +134,39 @@ export default class Pielet extends EventTarget {
     }
 
     /**
+     * Меняет содержимое пункта меню по его `id` в живом открытом меню.
+     * Тип нового содержимого должен совпадать с `typeContent`, заданным
+     * при инициализации (сменить тип нельзя). Обновляет и DOM, и
+     * `config.items[i].content` — следующее `open()` покажет новый контент.
+     * Работает только пока меню открыто (типичный кейс — вызов из action
+     * пункта с `keepOpen: true`).
+     * @param {string} id - id пункта
+     * @param {string | Node} content - новое содержимое (строка для text/image, Node для node)
+     */
+    setItemContent(id, content) {
+        if (!this._runtime) {
+            throw new Error('Pielet: setItemContent(id, content) requires an open menu');
+        }
+        const index = this.config.items.findIndex((item) => item.id === id);
+        if (index === -1) {
+            throw new Error(`Pielet: setItemContent(id, content): no item with id "${id}"`);
+        }
+        const item = this.config.items[index];
+        if (item.typeContent === 'none') {
+            throw new Error(`Pielet: setItemContent(id, content): item "${id}" has typeContent "none" and cannot be updated`);
+        }
+        if (item.typeContent === 'text' || item.typeContent === 'image') {
+            if (typeof content !== 'string' || content.length === 0) {
+                throw new Error(`Pielet: setItemContent(id, content): content must be a non-empty string for typeContent "${item.typeContent}"`);
+            }
+        } else if (!(content instanceof Node)) {
+            throw new Error('Pielet: setItemContent(id, content): content must be a DOM Node for typeContent "node"');
+        }
+        item.content = content;
+        this._renderer.setItemContent(index, item);
+    }
+
+    /**
      * Внутреннее закрытие.
      * @param {boolean} immediate - true: мгновенное удаление DOM (выбор пункта,
      * viewport-изменения, открытие другого экземпляра); false: fade-out.

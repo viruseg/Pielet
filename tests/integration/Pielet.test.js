@@ -414,6 +414,90 @@ describe('Pielet selection pipeline', () => {
   });
 });
 
+describe('Pielet.setItemContent', () => {
+  it('updates the DOM and config content of a text item by id', () => {
+    menu = new Pielet({ items: [{ typeContent: 'text', content: 'Old', id: 'item-a' }] });
+    menu.open(300, 300);
+    menu.setItemContent('item-a', 'New');
+    const textEl = document.querySelector('.pielet__content--text');
+    expect(textEl.textContent).toBe('New');
+    expect(menu.config.items[0].content).toBe('New');
+  });
+
+  it('updates the image src of an image item by id', () => {
+    menu = new Pielet({ items: [{ typeContent: 'image', content: '/a.png', id: 'img' }] });
+    menu.open(300, 300);
+    menu.setItemContent('img', '/b.png');
+    const img = document.querySelector('.pielet__content--image');
+    expect(img.getAttribute('src')).toBe('/b.png');
+    expect(menu.config.items[0].content).toBe('/b.png');
+  });
+
+  it('replaces the node of a node item by id', () => {
+    const oldNode = document.createElement('span');
+    oldNode.textContent = 'old';
+    menu = new Pielet({ items: [{ typeContent: 'node', content: oldNode, id: 'node' }] });
+    menu.open(300, 300);
+    const replacement = document.createElement('strong');
+    replacement.textContent = 'new';
+    menu.setItemContent('node', replacement);
+    const caption = document.querySelector('.pielet__item-caption');
+    expect(caption.contains(replacement)).toBe(true);
+    expect(caption.contains(oldNode)).toBe(false);
+  });
+
+  it('throws when the menu is not open', () => {
+    menu = new Pielet({ items: [{ typeContent: 'text', content: 'A', id: 'a' }] });
+    expect(() => menu.setItemContent('a', 'B')).toThrow(/open menu/);
+  });
+
+  it('throws when the id is unknown', () => {
+    menu = makeMenu();
+    menu.open(300, 300);
+    expect(() => menu.setItemContent('missing', 'X')).toThrow(/no item with id/i);
+  });
+
+  it('throws for a none item', () => {
+    menu = makeMenu();
+    menu.open(300, 300);
+    const noneId = menu.config.items[2].id;
+    expect(() => menu.setItemContent(noneId, 'X')).toThrow(/none/i);
+  });
+
+  it('throws when the new content type mismatches a text item', () => {
+    menu = new Pielet({ items: [{ typeContent: 'text', content: 'A', id: 'a' }] });
+    menu.open(300, 300);
+    expect(() => menu.setItemContent('a', document.createElement('div'))).toThrow(/string/i);
+  });
+
+  it('throws when the new content is an empty string for a text item', () => {
+    menu = new Pielet({ items: [{ typeContent: 'text', content: 'A', id: 'a' }] });
+    menu.open(300, 300);
+    expect(() => menu.setItemContent('a', '')).toThrow(/string/i);
+  });
+
+  it('throws when the new content type mismatches a node item', () => {
+    menu = new Pielet({ items: [{ typeContent: 'node', content: document.createElement('span'), id: 'n' }] });
+    menu.open(300, 300);
+    expect(() => menu.setItemContent('n', 'not a node')).toThrow(/Node/i);
+  });
+
+  it('works from the action of a keepOpen item and leaves the menu open', () => {
+    menu = new Pielet({
+      interactionMode: 'click',
+      items: [
+        { typeContent: 'text', content: 'Old', id: 'keep', keepOpen: true, action: (id) => menu.setItemContent(id, 'New') },
+        { typeContent: 'text', content: 'Other' }
+      ]
+    });
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 400, clientY: 300 }));
+    const textEls = document.querySelectorAll('.pielet__content--text');
+    expect(textEls[0].textContent).toBe('New');
+    expect(document.body.querySelector('.pielet')).toBeTruthy();
+  });
+});
+
 describe('Pielet — counterclockwise near viewport edges', () => {
   function setViewport(width, height) {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
