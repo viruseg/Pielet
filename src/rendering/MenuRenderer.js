@@ -35,6 +35,10 @@ export class MenuRenderer {
         this._sectors = [];
         /** @type {boolean[]} */
         this._selectable = [];
+        /** @type {Array<object>} */
+        this._items = [];
+        /** @type {boolean} */
+        this._unifyText = false;
         /** @type {number} */
         this._closeDuration = DEFAULT_CLOSE_DURATION_MS;
     }
@@ -56,8 +60,10 @@ export class MenuRenderer {
      * @param {number} options.centerY
      * @param {object} options.geometry - результат calculateMenuGeometry/calculateSectorLayout
      * @param {Array<object>} options.items - пункты меню
+     * @param {boolean} [options.unifyText] - выровнять шрифт text-пунктов
+     *   по наименьшему влезающему размеру (только при fit 'square')
      */
-    mount({ centerX, centerY, geometry, items }) {
+    mount({ centerX, centerY, geometry, items, unifyText = false }) {
         const { outerRadius, innerRadius, sectors } = geometry;
         const size = outerRadius * 2;
 
@@ -77,6 +83,8 @@ export class MenuRenderer {
         this._itemEls = [];
         this._captions = [];
         this._sectors = sectors;
+        this._items = items;
+        this._unifyText = unifyText;
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
             const sector = sectors[i];
@@ -105,12 +113,11 @@ export class MenuRenderer {
 
             el.appendChild(itemEl);
             this._itemEls.push(itemEl);
-
-            // fitText требует, чтобы элемент был в DOM (scrollWidth/scrollHeight).
-            if (item.typeContent === 'text' && contentEl) {
-                fitText(contentEl, sector.availWidth, sector.availHeight);
-            }
         }
+
+        // fitText требует, чтобы элемент был в DOM (scrollWidth/scrollHeight),
+        // поэтому выравнивание выполняется после монтирования всех пунктов.
+        this._fitTextItems(items);
 
         this._selectable = items.map((item) => item.typeContent !== 'none');
 
@@ -141,6 +148,41 @@ export class MenuRenderer {
     }
 
     /**
+     * Вписывает текст всех text-пунктов в их боксы (fitText). Если `unifyText`
+     * активен — дополнительно выравнивает шрифт: все text-пункты получают
+     * наименьший из влезающих размеров (размер пункта с самым длинным текстом).
+     * Требует, чтобы все пункты были в DOM.
+     * @param {Array<object>} items
+     */
+    _fitTextItems(items) {
+        const textItems = [];
+        // unifyText действует только при fit 'square' (секторы с rotate).
+        const squareFit = items.length > 0 && this._sectors[0] && this._sectors[0].rotate;
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            const sector = this._sectors[i];
+            const contentEl = this._captions[i] && this._captions[i].querySelector('.pielet__content--text');
+            if (item.typeContent === 'text' && sector && contentEl) {
+                fitText(contentEl, sector.availWidth, sector.availHeight);
+                textItems.push({ el: contentEl });
+            }
+        }
+
+        if (this._unifyText && squareFit && textItems.length > 1) {
+            let min = Infinity;
+            for (const { el } of textItems) {
+                const size = parseFloat(el.style.fontSize);
+                if (Number.isFinite(size)) min = Math.min(min, size);
+            }
+            if (Number.isFinite(min)) {
+                for (const { el } of textItems) {
+                    el.style.fontSize = `${min}px`;
+                }
+            }
+        }
+    }
+
+    /**
      * Перерисовывает содержимое пункта «на месте» (тип содержимого тот же,
      * что и при mount). Заменяет контент внутри существующего caption.
      * No-op для none-пунктов и при отсутствии caption.
@@ -154,9 +196,8 @@ export class MenuRenderer {
         const contentEl = createContentContainer(item, sector);
         caption.replaceChildren(contentEl || '');
         // caption уже в DOM (перерисовка «на месте»), можно измерять сразу.
-        if (item.typeContent === 'text' && contentEl) {
-            fitText(contentEl, sector.availWidth, sector.availHeight);
-        }
+        this._items[index] = item;
+        this._fitTextItems(this._items);
     }
 
     /**
@@ -182,6 +223,7 @@ export class MenuRenderer {
                 this._itemEls = [];
                 this._captions = [];
                 this._sectors = [];
+                this._items = [];
             }
             el.remove();
             onDone();
@@ -203,6 +245,7 @@ export class MenuRenderer {
             this._itemEls = [];
             this._captions = [];
             this._sectors = [];
+            this._items = [];
         }
     }
 }

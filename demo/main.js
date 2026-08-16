@@ -11,7 +11,8 @@ const controls = {
   button: document.getElementById('button'),
   closeDistance: document.getElementById('closeDistance'),
   items: document.getElementById('items'),
-  fit: document.getElementById('fit')
+  fit: document.getElementById('fit'),
+  unifyText: document.getElementById('unifyText')
 };
 
 const labels = ['Open', 'Save', 'Copy', 'Cut', 'Rename', 'Delete', 'Share', 'Print', 'Zoom', 'Flip', 'Rotate', 'Pin'];
@@ -64,7 +65,8 @@ function readState() {
     button: controls.button.value,
     closeDistance: Number(controls.closeDistance.value),
     items: assembleItems(Number(controls.items.value), controls.fit.value),
-    fit: controls.fit.value
+    fit: controls.fit.value,
+    unifyText: controls.unifyText.value === 'true'
   };
 }
 
@@ -80,7 +82,8 @@ function openAt(x, y, button = controls.button.value) {
     button,
     closeDistance: state.closeDistance,
     items: state.items,
-    fit: state.fit
+    fit: state.fit,
+    unifyText: state.unifyText
   });
   menu.open(x, y);
 }

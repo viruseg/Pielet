@@ -42,6 +42,41 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+// jsdom не считает layout: моким scrollWidth/scrollHeight так, чтобы они
+// зависели от font-size и длины текста (длинный текст => меньший влезающий шрифт).
+function mockTextLayout({ widthPerChar = 0.6, lineHeight = 1.5 } = {}) {
+  const proto = HTMLElement.prototype;
+  const origW = Object.getOwnPropertyDescriptor(proto, 'scrollWidth');
+  const origH = Object.getOwnPropertyDescriptor(proto, 'scrollHeight');
+  Object.defineProperty(proto, 'scrollWidth', {
+    configurable: true,
+    get() {
+      const size = parseFloat(this.style.fontSize) || 0;
+      const len = (this.textContent || '').length;
+      return Math.round(size * len * widthPerChar);
+    }
+  });
+  Object.defineProperty(proto, 'scrollHeight', {
+    configurable: true,
+    get() {
+      const size = parseFloat(this.style.fontSize) || 0;
+      return Math.round(size * lineHeight);
+    }
+  });
+  return () => {
+    if (origW) Object.defineProperty(proto, 'scrollWidth', origW);
+    else delete proto.scrollWidth;
+    if (origH) Object.defineProperty(proto, 'scrollHeight', origH);
+    else delete proto.scrollHeight;
+  };
+}
+
+function textSizes(root) {
+  return Array.from(root.querySelectorAll('.pielet__content--text')).map(
+    (el) => parseFloat(el.style.fontSize)
+  );
+}
+
 describe('MenuRenderer.mount', () => {
   it('creates the menu element inside document.body', () => {
     renderer.mount({ centerX: 200, centerY: 150, geometry: makeGeometry(), items });
@@ -283,6 +318,112 @@ describe('MenuRenderer.setItemContent', () => {
     const els = mounted();
     renderer.setItemContent(0, { typeContent: 'text', content: 'Renamed' });
     expect(els[3].querySelector('.pielet__content--text').textContent).toBe('Save');
+  });
+});
+
+describe('MenuRenderer.unifyText (fit square)', () => {
+  const textItems = [
+    { typeContent: 'text', content: 'Open' },
+    { typeContent: 'text', content: 'Save' },
+    { typeContent: 'text', content: 'A much longer label' }
+  ];
+
+  it('mount with unifyText: all text items share the smallest fitted font size', () => {
+    const restore = mockTextLayout();
+    try {
+      renderer.mount({
+        centerX: 200,
+        centerY: 150,
+        geometry: makeGeometry({ fit: 'square', itemCount: textItems.length }),
+        items: textItems,
+        unifyText: true
+      });
+      const sizes = textSizes(renderer.element);
+      expect(sizes).toHaveLength(3);
+      // все шрифты одинаковые
+      expect(new Set(sizes).size).toBe(1);
+      // и равны самому маленькому индивидуальному размеру (у самого длинного текста)
+      expect(sizes[0]).toBe(Math.min(...sizes));
+    } finally {
+      restore();
+    }
+  });
+
+  it('mount without unifyText: text items keep their individual fitted sizes', () => {
+    const restore = mockTextLayout();
+    try {
+      renderer.mount({
+        centerX: 200,
+        centerY: 150,
+        geometry: makeGeometry({ fit: 'square', itemCount: textItems.length }),
+        items: textItems
+      });
+      const sizes = textSizes(renderer.element);
+      expect(sizes).toHaveLength(3);
+      // длинный текст ужался сильнее короткого
+      expect(sizes[0]).toBeGreaterThan(sizes[2]);
+      expect(sizes[1]).toBeGreaterThan(sizes[2]);
+    } finally {
+      restore();
+    }
+  });
+
+  it('unifyText is ignored in fit circle mode', () => {
+    const restore = mockTextLayout();
+    try {
+      renderer.mount({
+        centerX: 200,
+        centerY: 150,
+        geometry: makeGeometry({ itemCount: textItems.length }),
+        items: textItems,
+        unifyText: true
+      });
+      const sizes = textSizes(renderer.element);
+      expect(sizes).toHaveLength(3);
+      expect(sizes[0]).toBeGreaterThan(sizes[2]);
+      expect(sizes[1]).toBeGreaterThan(sizes[2]);
+    } finally {
+      restore();
+    }
+  });
+
+  it('setItemContent re-unifies all text items when unifyText is active', () => {
+    const restore = mockTextLayout();
+    try {
+      renderer.mount({
+        centerX: 200,
+        centerY: 150,
+        geometry: makeGeometry({ fit: 'square', itemCount: textItems.length }),
+        items: textItems,
+        unifyText: true
+      });
+      // заменяем короткий текст на самый длинный — минимум должен уменьшиться
+      renderer.setItemContent(0, { typeContent: 'text', content: 'An extremely long label here' });
+      const sizes = textSizes(renderer.element);
+      expect(new Set(sizes).size).toBe(1);
+      expect(sizes[0]).toBeLessThan(16);
+    } finally {
+      restore();
+    }
+  });
+
+  it('setItemContent does not re-unify when unifyText is off', () => {
+    const restore = mockTextLayout();
+    try {
+      renderer.mount({
+        centerX: 200,
+        centerY: 150,
+        geometry: makeGeometry({ fit: 'square', itemCount: textItems.length }),
+        items: textItems
+      });
+      renderer.setItemContent(0, { typeContent: 'text', content: 'An extremely long label here' });
+      const sizes = textSizes(renderer.element);
+      // пункт 0 ужался, остальные не тронуты (разные размеры)
+      expect(sizes[0]).toBeLessThan(sizes[1]);
+      expect(new Set(sizes).size).toBeGreaterThan(1);
+    } finally {
+      restore();
+    }
   });
 });
 

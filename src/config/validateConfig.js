@@ -106,7 +106,7 @@ function validateItem(item, index) {
  * @param {Record<string, unknown>} config
  */
 export function validateConfig(config) {
-    const { size, centerSize, gap, startAngle, direction, interactionMode, button, closeDistance, items, fit } = config;
+    const { size, centerSize, gap, startAngle, direction, interactionMode, button, closeDistance, items, fit, unifyText } = config;
 
     if (!Array.isArray(items)) {
         throw err(`items must be a non-empty array, got ${String(items)}`);
@@ -127,6 +127,10 @@ export function validateConfig(config) {
 
     if (fit !== undefined && !FITS.has(fit)) {
         throw err(`fit must be one of: ${Array.from(FITS).join(', ')}; got ${String(fit)}`);
+    }
+
+    if (unifyText !== undefined && typeof unifyText !== 'boolean') {
+        throw err(`unifyText must be a boolean, got ${String(unifyText)}`);
     }
 
     if (direction !== undefined && !DIRECTIONS.has(direction)) {
@@ -157,6 +161,7 @@ export function normalizeConfig(rawConfig = {}) {
         button: config.button,
         closeDistance: config.closeDistance,
         fit: config.fit,
+        unifyText: config.unifyText,
         items: config.items.map((item) => ({ ...item, id: resolveItemId(item) }))
     };
     return normalized;

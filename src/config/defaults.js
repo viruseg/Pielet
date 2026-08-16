@@ -20,5 +20,8 @@ export const DEFAULT_CONFIG = {
     button: 'left',
     closeDistance: 48,
 
-    fit: 'circle'
+    fit: 'circle',
+
+    // Выравнивание шрифта text-пунктов (только при fit: 'square')
+    unifyText: false
 };

@@ -96,7 +96,7 @@ export default class Pielet extends EventTarget {
             selectable: config.items.map((item) => item.typeContent !== 'none')
         };
 
-        this._renderer.mount({ centerX: x, centerY: y, geometry, items: config.items });
+        this._renderer.mount({ centerX: x, centerY: y, geometry, items: config.items, unifyText: config.unifyText });
 
         const interaction = new InteractionController({
             interactionMode: config.interactionMode,

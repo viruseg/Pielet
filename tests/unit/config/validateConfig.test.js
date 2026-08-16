@@ -21,7 +21,8 @@ describe('DEFAULT_CONFIG', () => {
       interactionMode: 'click',
       button: 'left',
       closeDistance: 48,
-      fit: 'circle'
+      fit: 'circle',
+      unifyText: false
     });
   });
 
@@ -44,6 +45,7 @@ describe('normalizeConfig', () => {
     expect(config.button).toBe('left');
     expect(config.closeDistance).toBe(48);
     expect(config.fit).toBe('circle');
+    expect(config.unifyText).toBe(false);
   });
 
   it('keeps user values', () => {
@@ -57,6 +59,7 @@ describe('normalizeConfig', () => {
       button: 'right',
       closeDistance: 60,
       fit: 'square',
+      unifyText: true,
       items: validItems
     });
     expect(config.size).toBe(300);
@@ -68,6 +71,7 @@ describe('normalizeConfig', () => {
     expect(config.button).toBe('right');
     expect(config.closeDistance).toBe(60);
     expect(config.fit).toBe('square');
+    expect(config.unifyText).toBe(true);
   });
 
   it('throws on an empty config object — items is required', () => {
@@ -95,7 +99,9 @@ describe('validateConfig errors', () => {
     ['closeDistance negative', { closeDistance: -1 }],
     ['closeDistance NaN', { closeDistance: NaN }],
     ['unknown fit', { fit: 'ellipse' }],
-    ['fit wrong case', { fit: 'Circle' }]
+    ['fit wrong case', { fit: 'Circle' }],
+    ['unifyText string', { unifyText: 'yes' }],
+    ['unifyText numeric', { unifyText: 1 }]
   ];
 
   for (const [label, partial] of cases) {
@@ -193,6 +199,13 @@ describe('validateConfig valid inputs', () => {
       expect(() => validateConfig({ items: validItems, fit })).not.toThrow();
       expect(normalizeConfig({ items: validItems, fit }).fit).toBe(fit);
     }
+  });
+
+  it('accepts unifyText as a boolean and normalizes it', () => {
+    expect(() => validateConfig({ items: validItems, unifyText: true })).not.toThrow();
+    expect(() => validateConfig({ items: validItems, unifyText: false })).not.toThrow();
+    expect(normalizeConfig({ items: validItems, unifyText: true }).unifyText).toBe(true);
+    expect(normalizeConfig({ items: validItems, unifyText: false }).unifyText).toBe(false);
   });
 
   it('normalizes items preserving keepOpen', () => {

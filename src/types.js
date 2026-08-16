@@ -84,6 +84,9 @@
  * @property {MouseButtonName} button - отслеживаемая кнопка мыши (default 'left'). Меню реагирует только на неё
  * @property {number} closeDistance - доп. расстояние за внешним краем, после которого меню закрывается (default 48)
  * @property {Fit} fit - способ вписывания контента в сектор (default 'circle')
+ * @property {boolean} unifyText - выровнять размер шрифта всех text-пунктов по
+ *   самому длинному тексту (наименьший влезающий шрифт). Действует только при
+ *   fit 'square', в 'circle' игнорируется (default false)
  * @property {PieletItem[]} items - пункты меню (обязательно, минимум один)
  */
 
