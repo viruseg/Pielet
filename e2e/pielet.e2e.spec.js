@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { SUBMENU_CHEVRON_MAX_SIZE, SUBMENU_CHEVRON_SIZE_RATIO, SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO } from '../src/geometry/calculateSector.js';
 
 const MENU_OPEN_TIMED_OUT = 5000;
 
@@ -303,7 +304,7 @@ test.describe('submenus (isSubMenu)', () => {
   });
 });
 
-test('chevron indicator: 28px (2x the original 14px) at the default size (240/72)', async ({ page }) => {
+test('chevron indicator: 14px at the default size (240/72)', async ({ page }) => {
   await page.evaluate(() => {
     window.__submenu = new window.Pielet({ items: [{ typeContent: 'text', content: 'Leaf' }] });
     window.__parent = new window.Pielet({
@@ -315,11 +316,11 @@ test('chevron indicator: 28px (2x the original 14px) at the default size (240/72
     window.__parent.open(400, 400);
   });
   await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
-  const fontSize = await page.evaluate(() => {
+  const size = await page.evaluate(() => {
     const chevron = document.querySelector('.pielet__submenu-chevron');
-    return parseFloat(getComputedStyle(chevron).fontSize);
+    return parseFloat(chevron.getAttribute('width'));
   });
-  expect(fontSize).toBe(28);
+  expect(size).toBe(SUBMENU_CHEVRON_MAX_SIZE);
   await page.evaluate(() => window.__parent.close());
 });
 
@@ -348,19 +349,19 @@ test('chevron indicator: responsive size and position at the outer rim clear of 
     const cx = menuBox.x + menuBox.width / 2;
     const cy = menuBox.y + menuBox.height / 2;
     return {
-      fontSize: parseFloat(getComputedStyle(chevron).fontSize),
+      size: parseFloat(chevron.getAttribute('width')),
       chevronRadius: Math.hypot(chevronBox.x + chevronBox.width / 2 - cx, chevronBox.y + chevronBox.height / 2 - cy),
       captionRadius: Math.hypot(captionBox.x + captionBox.width / 2 - cx, captionBox.y + captionBox.height / 2 - cy),
       outerRadius: menuBox.width / 2
     };
   });
-  // ring 48 → 48*0.36 = 17.28px (пропорционально кольцу, не фиксированные 14px)
-  expect(geo.fontSize).toBeCloseTo(17.28, 1);
-  // шеврон «сидит» на внешнем крае кольца (центр = outerRadius + size*0.25),
+  // ring 48 → 48*SIZE_RATIO (пропорционально кольцу, не фиксированный потолок)
+  expect(geo.size).toBeCloseTo(48 * SUBMENU_CHEVRON_SIZE_RATIO, 1);
+  // шеврон «сидит» на внешнем крае кольца (центр = outerRadius + size*EXTERNAL_OFFSET_RATIO),
   // радиально дальше контента — не сливается ни при каком fit
-  expect(geo.chevronRadius).toBeCloseTo(60 + geo.fontSize * 0.25, 1);
+  expect(geo.chevronRadius).toBeCloseTo(60 + geo.size * SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO, 1);
   expect(geo.chevronRadius).toBeGreaterThan(geo.captionRadius);
-  expect(geo.chevronRadius - geo.fontSize / 2).toBeCloseTo(geo.outerRadius - geo.fontSize * 0.25, 1);
+  expect(geo.chevronRadius - geo.size / 2).toBeCloseTo(geo.outerRadius - geo.size * (0.5 - SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO), 1);
   await page.evaluate(() => window.__parent.close());
 });
 
@@ -384,26 +385,26 @@ test('square fit: chevron stays at the outer rim, clear of the rotated content (
     const menuBox = menu.getBoundingClientRect();
     const cx = menuBox.x + menuBox.width / 2;
     const cy = menuBox.y + menuBox.height / 2;
-    const size = parseFloat(getComputedStyle(chevron).fontSize);
+    const size = parseFloat(chevron.getAttribute('width'));
     const chevronRadius = Math.hypot(chevronBox.x + chevronBox.width / 2 - cx, chevronBox.y + chevronBox.height / 2 - cy);
     const captionRadius = Math.hypot(captionBox.x + captionBox.width / 2 - cx, captionBox.y + captionBox.height / 2 - cy);
     // шеврон повёрнут так, что его высота ложится вдоль радиуса; контент
     // square-сектора — шириной вдоль радиуса (offsetWidth/offsetHeight — до transform)
     return {
-      fontSize: size,
+      size,
       chevronRadius,
       chevronInner: chevronRadius - size / 2,
       captionOuter: captionRadius + caption.offsetWidth / 2,
       outerRadius: menuBox.width / 2
     };
   });
-  expect(r.fontSize).toBe(28);
+  expect(r.size).toBe(SUBMENU_CHEVRON_MAX_SIZE);
   // контент всегда внутри кольца; шеврон «сидит» на внешнем крае (центр на
-  // 0.25·size за ним): внутренняя кромка бокса входит в кольцо не глубже чем
-  // на размер шеврона, а видимый глиф стрелки остаётся радиально за контентом
+  // EXTERNAL_OFFSET_RATIO·size за ним): внутренняя кромка бокса ровно на
+  // внешнем радиусе, а видимый глиф стрелки остаётся радиально за контентом
   expect(r.captionOuter).toBeLessThan(r.outerRadius);
   expect(r.chevronRadius).toBeGreaterThan(r.captionOuter);
-  expect(r.chevronInner).toBeCloseTo(r.outerRadius - r.fontSize * 0.25, 1);
+  expect(r.chevronInner).toBeCloseTo(r.outerRadius - r.size * (0.5 - SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO), 1);
   expect(r.chevronInner).toBeGreaterThan(r.captionOuter - 2);
   await page.evaluate(() => window.__sq.close());
 });
@@ -462,18 +463,59 @@ test('palette case: content and chevron of both submenu items sit on one horizon
     const menuBox = menu.getBoundingClientRect();
     const cy = menuBox.y + menuBox.height / 2;
     const caps = Array.from(menu.querySelectorAll('.pielet__item-caption'));
-    const chevs = Array.from(menu.querySelectorAll('.pielet__submenu-chevron'));
+    // измеряем визуальный центр ГЛИФА (path), а не бокса svg: у текстового '›'
+    // метрики шрифта смещали глиф и ломали горизонтальное выравнивание
+    const glyphs = Array.from(menu.querySelectorAll('.pielet__submenu-chevron path'));
     const dyOf = (el) => {
       const b = el.getBoundingClientRect();
       return (b.y + b.height / 2) - cy;
     };
-    return { capDy: caps.map(dyOf), chevDy: chevs.map(dyOf) };
+    return { capDy: caps.map(dyOf), chevDy: glyphs.map(dyOf) };
   });
-  // контент и шеврон обоих пунктов — на одной горизонтальной линии (Y центра меню)
+  // контент и глиф шеврона обоих пунктов — на одной горизонтальной линии (Y центра меню)
   expect(dy.capDy).toHaveLength(2);
   expect(dy.chevDy).toHaveLength(2);
   for (const d of [...dy.capDy, ...dy.chevDy]) expect(Math.abs(d)).toBeLessThan(1);
   await page.evaluate(() => window.__palette.close());
+});
+
+test('4 submenu items at startAngle -135: chevron glyphs — two on a horizontal line, two on a vertical line', async ({ page }) => {
+  await page.evaluate(() => {
+    window.__sub = new window.Pielet({ items: [{ typeContent: 'text', content: 'Leaf' }] });
+    window.__four = new window.Pielet({
+      startAngle: -135,
+      items: Array.from({ length: 4 }, (_, i) => ({
+        typeContent: 'text',
+        content: `S${i}`,
+        isSubMenu: true,
+        menu: window.__sub
+      }))
+    });
+    window.__four.open(400, 400);
+  });
+  await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
+  const res = await page.evaluate(() => {
+    const menu = document.querySelector('.pielet');
+    const menuBox = menu.getBoundingClientRect();
+    const cx = menuBox.x + menuBox.width / 2;
+    const cy = menuBox.y + menuBox.height / 2;
+    const glyphs = Array.from(menu.querySelectorAll('.pielet__submenu-chevron path')).map((p) => {
+      const b = p.getBoundingClientRect();
+      return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+    });
+    return { glyphs, cx, cy };
+  });
+  // mid секторов: -90° (0), 0° (1), 90° (2), 180° (3)
+  expect(res.glyphs).toHaveLength(4);
+  // вертикальная пара (0 и 2) — на одной вертикали; горизонтальная пара (1 и 3) — на одной горизонтали
+  expect(Math.abs(res.glyphs[0].x - res.glyphs[2].x)).toBeLessThan(1);
+  expect(Math.abs(res.glyphs[1].y - res.glyphs[3].y)).toBeLessThan(1);
+  // и стоят на осях центра меню: горизонтальная пара на Y центра, вертикальная — на X центра
+  expect(Math.abs(res.glyphs[1].y - res.cy)).toBeLessThan(1);
+  expect(Math.abs(res.glyphs[3].y - res.cy)).toBeLessThan(1);
+  expect(Math.abs(res.glyphs[0].x - res.cx)).toBeLessThan(1);
+  expect(Math.abs(res.glyphs[2].x - res.cx)).toBeLessThan(1);
+  await page.evaluate(() => window.__four.close());
 });
 
 test('demo: the «Цвет» item opens a double-nested submenu chain (Цвет → Основные → Красный)', async ({ page }) => {

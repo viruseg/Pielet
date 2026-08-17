@@ -78,9 +78,9 @@
     position: absolute;
     pointer-events: none;
     color: var(--pielet-submenu-indicator);
-    /* JS выставляет inline font-size (масштабируется с кольцом меню);
-       28px здесь — максимум алгоритма (в 2 раза больше исходного 14px). */
-    font-size: 28px;
-    line-height: 1;
     opacity: 0.8;
+    /* SVG-глиф: display блоковый (иначе baseline-зазор), overflow видимый,
+       чтобы повёрнутый шеврон не срезался квадратным боксом. */
+    display: block;
+    overflow: visible;
 }

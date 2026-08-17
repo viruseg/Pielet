@@ -5,7 +5,7 @@
  * Визуальные параметры задаются CSS custom properties (src/styles/pielet.css).
  */
 
-import { buildSectorClipPath, buildSubmenuArcPath, buildSubmenuChevron } from '../geometry/calculateSector.js';
+import { buildSectorClipPath, buildSubmenuArcPath, buildSubmenuChevron, SUBMENU_CHEVRON_PATH, SUBMENU_CHEVRON_VIEWBOX } from '../geometry/calculateSector.js';
 import { createContentContainer, fitText } from './ContentRenderer.js';
 
 const DEFAULT_CLOSE_DURATION_MS = 250;
@@ -172,21 +172,31 @@ export class MenuRenderer {
             itemEl.appendChild(svg);
         }
         if (submenuIndicator === 'chevron' || submenuIndicator === 'both') {
-            const chevron = document.createElement('div');
-            chevron.className = 'pielet__submenu-chevron';
-            chevron.setAttribute('aria-hidden', 'true');
-            chevron.textContent = '›';
-            // Размер и положение считаются единым алгоритмом (buildSubmenuChevron):
-            // шеврон «сидит» на внешнем крае кольца (центр на 0.25·size за ним),
-            // указывает радиально наружу и остаётся радиально дальше контента
-            // при любом size/fit. Крепится к корню меню, т.к. clip-path
-            // сектора срезает всё, что за внешним радиусом.
+            // Шеврон — SVG-глиф (не текст '›'): у текстового глифа метрики
+            // шрифта смещают визуальный центр относительно бокса, и парные
+            // шевроны (mid=0 и mid=π, после поворота на 180°) визуально уходят
+            // с общей горизонтальной линии. SVG-глиф симметричен относительно
+            // центра бокса, поэтому выравнивание точное.
             const g = buildSubmenuChevron(sector.mid, outerRadius, innerRadius);
-            chevron.style.fontSize = `${g.size}px`;
-            chevron.style.left = `${g.x}px`;
-            chevron.style.top = `${g.y}px`;
-            chevron.style.transform = `translate(-50%, -50%) rotate(${g.deg}deg)`;
-            el.appendChild(chevron);
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('class', 'pielet__submenu-chevron');
+            svg.setAttribute('aria-hidden', 'true');
+            svg.setAttribute('viewBox', SUBMENU_CHEVRON_VIEWBOX);
+            svg.setAttribute('width', `${g.size}px`);
+            svg.setAttribute('height', `${g.size}px`);
+            svg.style.position = 'absolute';
+            svg.style.left = `${g.x}px`;
+            svg.style.top = `${g.y}px`;
+            svg.style.transform = `translate(-50%, -50%) rotate(${g.deg}deg)`;
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', SUBMENU_CHEVRON_PATH);
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', 'currentColor');
+            path.setAttribute('stroke-width', '2');
+            path.setAttribute('stroke-linecap', 'round');
+            path.setAttribute('stroke-linejoin', 'round');
+            svg.appendChild(path);
+            el.appendChild(svg);
         }
     }
 

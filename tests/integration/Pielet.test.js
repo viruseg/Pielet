@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Pielet from '../../src/Pielet.js';
+import { SUBMENU_CHEVRON_SIZE_RATIO, SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO } from '../../src/geometry/calculateSector.js';
 
 const items = [
   { typeContent: 'text', content: 'Open', action: vi.fn(() => {}) },
@@ -690,16 +691,16 @@ describe('Pielet — submenu (isSubMenu)', () => {
     // left/top задаются в координатах корня меню: центр кольца — (outerRadius, outerRadius) = (60, 60)
     const chevronRadius = Math.hypot(parseFloat(chevron.style.left) - 60, parseFloat(chevron.style.top) - 60);
     const captionRadius = Math.hypot(parseFloat(caption.style.left) - 60, parseFloat(caption.style.top) - 60);
-    const chevronSize = parseFloat(chevron.style.fontSize);
+    const chevronSize = parseFloat(chevron.getAttribute('width'));
 
-    // ring 48 → 17.28px (пропорционально, а не фиксированные 14px)
-    expect(chevronSize).toBeCloseTo(17.28, 5);
+    // ring 48 → 48*SIZE_RATIO (пропорционально, не фиксированный потолок)
+    expect(chevronSize).toBeCloseTo(48 * SUBMENU_CHEVRON_SIZE_RATIO, 5);
     // шеврон — «сидит» на внешнем крае кольца (outerRadius=60): центр на
-    // 0.25·size за ним, внутренняя кромка на 0.25·size внутри кольца
-    expect(chevronRadius).toBeCloseTo(60 + chevronSize * 0.25, 3);
+    // EXTERNAL_OFFSET_RATIO·size за ним, внутренняя кромка на внешнем радиусе
+    expect(chevronRadius).toBeCloseTo(60 + chevronSize * SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO, 3);
     expect(chevronRadius).toBeGreaterThan(captionRadius);
     expect(chevronRadius).toBeGreaterThan(60);
-    expect(chevronRadius - chevronSize / 2).toBeCloseTo(60 - chevronSize * 0.25, 3);
+    expect(chevronRadius - chevronSize / 2).toBeCloseTo(60 - chevronSize * (0.5 - SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO), 3);
     menu.close();
   });
 

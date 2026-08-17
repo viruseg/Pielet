@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateMenuGeometry } from '../../../src/geometry/calculateMenuGeometry.js';
-import { calculateSectorLayout, buildSectorClipPath, buildSubmenuArcPath, buildSubmenuChevron } from '../../../src/geometry/calculateSector.js';
+import { calculateSectorLayout, buildSectorClipPath, buildSubmenuArcPath, buildSubmenuChevron, SUBMENU_CHEVRON_PATH, SUBMENU_CHEVRON_VIEWBOX, SUBMENU_CHEVRON_MAX_SIZE, SUBMENU_CHEVRON_SIZE_RATIO, SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO } from '../../../src/geometry/calculateSector.js';
 
 const TAU = Math.PI * 2;
 const near = (a, b, eps = 1e-9) => expect(Math.abs(a - b)).toBeLessThan(eps);
@@ -414,31 +414,31 @@ describe('buildSubmenuArcPath', () => {
 });
 
 describe('buildSubmenuChevron', () => {
-  it('sizes the chevron proportionally to the ring width, capped at 28px', () => {
-    // default ring (240/72): 84 * 0.36 = 30.24 -> cap at 28 (2x the old 14px)
-    expect(buildSubmenuChevron(0, 120, 36).size).toBe(28);
-    // size=120/centerSize=24 ring: 48 * 0.36 = 17.28
-    expect(buildSubmenuChevron(0, 60, 12).size).toBeCloseTo(17.28, 5);
+  it('sizes the chevron proportionally to the ring width, capped at SUBMENU_CHEVRON_MAX_SIZE', () => {
+    // default ring (240/72): 84 * SIZE_RATIO = 15.12 -> cap at MAX_SIZE
+    expect(buildSubmenuChevron(0, 120, 36).size).toBe(SUBMENU_CHEVRON_MAX_SIZE);
+    // size=120/centerSize=24 ring: 48 * SIZE_RATIO = 8.64
+    expect(buildSubmenuChevron(0, 60, 12).size).toBeCloseTo((60 - 12) * SUBMENU_CHEVRON_SIZE_RATIO, 5);
     // very wide ring: capped
-    expect(buildSubmenuChevron(0, 240, 10).size).toBe(28);
+    expect(buildSubmenuChevron(0, 240, 10).size).toBe(SUBMENU_CHEVRON_MAX_SIZE);
   });
 
   it('places the chevron center just outside the outer radius (at the rim)', () => {
-    // центр шеврона: outerRadius + size*0.25 — чуть за внешним краем кольца
+    // центр шеврона: outerRadius + size*EXTERNAL_OFFSET_RATIO — чуть за внешним краем кольца
     const g = buildSubmenuChevron(0, 60, 12);
-    expect(g.radius).toBeCloseTo(60 + g.size * 0.25, 5);
+    expect(g.radius).toBeCloseTo(60 + g.size * SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO, 5);
     expect(g.radius).toBeGreaterThan(60);
     expect(g.x).toBeCloseTo(60 + g.radius, 5);
     expect(g.y).toBeCloseTo(60, 5);
   });
 
-  it('keeps the chevron at the outer rim, straddling it evenly around the outer radius', () => {
-    // центр — на 0.25·size за кольцом, внутренняя кромка — на 0.25·size внутри
-    // кольца: radius − size/2 == outerRadius − size*0.25
+  it('keeps the chevron outside the rim: inner edge flush with the outer radius, outer edge beyond it', () => {
+    // центр — на EXTERNAL_OFFSET_RATIO·size за кольцом, поэтому
+    // radius − size/2 == outerRadius − size*(0.5 − EXTERNAL_OFFSET_RATIO)
     for (const [outer, inner] of [[120, 36], [60, 12], [240, 10], [90, 30]]) {
       const g = buildSubmenuChevron(Math.PI / 5, outer, inner);
-      expect(g.radius - g.size / 2).toBeCloseTo(outer - g.size * 0.25, 5);
-      expect(g.radius - g.size / 2).toBeLessThan(outer);
+      expect(g.radius - g.size / 2).toBeCloseTo(outer - g.size * (0.5 - SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO), 5);
+      expect(g.radius - g.size / 2).toBeLessThanOrEqual(outer);
       expect(g.radius + g.size / 2).toBeGreaterThan(outer);
     }
   });
@@ -451,5 +451,84 @@ describe('buildSubmenuChevron', () => {
     expect(dir).toBeCloseTo(mid, 5);
     expect(g.x).toBeCloseTo(100 + g.radius * Math.cos(mid), 5);
     expect(g.y).toBeCloseTo(100 + g.radius * Math.sin(mid), 5);
+  });
+});
+
+describe('buildSubmenuChevron — alignment of chevron centers across sectors', () => {
+  const base = {
+    arcStart: 0, arcLength: TAU, meanRadius: 78, outerRadius: 120, innerRadius: 36, ringWidth: 84, gap: 4,
+    direction: 'clockwise'
+  };
+
+  it('2 items at startAngle -90: both chevrons lie on the horizontal line (same y = menu center)', () => {
+    const { sectors } = calculateSectorLayout({ ...base, arcStart: -Math.PI / 2, itemCount: 2 });
+    const a = buildSubmenuChevron(sectors[0].mid, 120, 36);
+    const b = buildSubmenuChevron(sectors[1].mid, 120, 36);
+    expect(a.y).toBeCloseTo(b.y, 9);
+    expect(a.y).toBeCloseTo(120, 9);
+  });
+
+  for (const fit of ['circle', 'square']) {
+    it(`4 items at startAngle -135 (fit=${fit}): two chevrons on the horizontal line, two on the vertical line`, () => {
+      const arcStart = (-135 * Math.PI) / 180;
+      const { sectors } = calculateSectorLayout({ ...base, fit, arcStart, itemCount: 4 });
+      const chevrons = sectors.map((s) => buildSubmenuChevron(s.mid, 120, 36));
+      // mid секторов: -90° (0), 0° (1), 90° (2), 180° (3)
+      // вертикальная пара (0 и 2) — одинаковый X, горизонтальная пара (1 и 3) — одинаковый Y
+      expect(chevrons[0].x).toBeCloseTo(chevrons[2].x, 9);
+      expect(chevrons[1].y).toBeCloseTo(chevrons[3].y, 9);
+      // все четыре центра — на одном радиальном расстоянии (одна окружность)
+      const radii = chevrons.map((c) => Math.hypot(c.x - 120, c.y - 120));
+      for (const r of radii) expect(r).toBeCloseTo(chevrons[0].radius, 9);
+    });
+  }
+
+  it('chevron geometry does not depend on fit (identical x/y/size for the same sectors)', () => {
+    const arcStart = (-135 * Math.PI) / 180;
+    const circle = calculateSectorLayout({ ...base, fit: 'circle', arcStart, itemCount: 4 });
+    const square = calculateSectorLayout({ ...base, fit: 'square', arcStart, itemCount: 4 });
+    for (let i = 0; i < 4; i++) {
+      const c = buildSubmenuChevron(circle.sectors[i].mid, 120, 36);
+      const s = buildSubmenuChevron(square.sectors[i].mid, 120, 36);
+      expect(s).toEqual(c);
+    }
+  });
+});
+
+describe('SUBMENU_CHEVRON_PATH — SVG glyph geometry (replaces text chevron "›")', () => {
+  const nums = () => SUBMENU_CHEVRON_PATH.match(/-?\d+(?:\.\d+)?/g).map(Number);
+  const pts = () => {
+    const n = nums();
+    const out = [];
+    for (let i = 0; i < n.length; i += 2) out.push([n[i], n[i + 1]]);
+    return out;
+  };
+
+  it('is symmetric about the horizontal center line of the viewBox (guarantees visual y-alignment of the horizontally-paired chevrons)', () => {
+    // Текстовый глиф '›' имеет метрический сдвиг внутри своего бокса, поэтому
+    // шевроны на mid=0 и mid=π визуально уходят с общей горизонтальной линии.
+    // SVG-глиф должен быть симметричен относительно горизонтальной оси бокса,
+    // тогда его визуальный центр лежит точно на линии (как и у бокса).
+    const [vx, vy, vw, vh] = SUBMENU_CHEVRON_VIEWBOX.split(' ').map(Number);
+    const cy = vy + vh / 2;
+    const points = pts();
+    expect(points.length).toBeGreaterThanOrEqual(3);
+    for (const [x, y] of points) {
+      if (Math.abs(y - cy) < 1e-9) continue; // точка на оси — сама себе пара
+      const mirrored = points.some(([mx, my]) => Math.abs(mx - x) < 1e-9 && Math.abs(my - (2 * cy - y)) < 1e-9);
+      expect(mirrored).toBe(true);
+    }
+  });
+
+  it('stays inside the viewBox with room for the stroke (not clipped by the svg box)', () => {
+    const [vx, vy, vw, vh] = SUBMENU_CHEVRON_VIEWBOX.split(' ').map(Number);
+    const n = nums();
+    for (let i = 0; i < n.length; i++) {
+      expect(n[i]).toBeGreaterThanOrEqual(vx);
+      expect(n[i]).toBeLessThanOrEqual(vx + vw);
+    }
+    // и рисуется «вправо» (вершина правее точек основания — узнаваемый шеврон)
+    const xs = n.filter((_, i) => i % 2 === 0);
+    expect(Math.max(...xs)).toBe(xs[1]);
   });
 });
