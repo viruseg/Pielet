@@ -20,39 +20,57 @@ const controls = {
 const labels = ['Open', 'Save', 'Copy', 'Cut', 'Rename', 'Delete', 'Share', 'Print', 'Zoom', 'Flip', 'Rotate', 'Pin'];
 const emojis = ['📂', '💾', '📋', '✂️', '✏️', '🗑️', '📤', '🖨️', '🔍', '🔀', '🔄', '📌'];
 
-// Сабменю: «Цвет» → палитра → «Основные» / «Пастельные» (двойная вложенность).
+// Сабменю: «Цвет» → палитра → «Основные»/«Пастельные» (двойная вложенность).
+// Контент сабменю следует за контролом fit, как в главном меню: circle →
+// визуальный (SVG-квадраты цветов / эмодзи), square → текст.
 function pickColor(hex) {
   document.documentElement.style.setProperty('--pielet-background', hex);
 }
 
 function submenuAction(label, id, menu, coords) {
   window.__lastAction = { id, at: Date.now(), coords };
-  const sameMenu = menu === window.__menu ? 'этот же экземпляр' : 'другой экземпляр';
-  statusEl.textContent = `action: ${label} — id: ${id} — ${sameMenu} — точка: ${coords.x}, ${coords.y} — ${new Date().toLocaleTimeString()}`;
+  const sameMenu = menu === window.__menu ? 'the same instance' : 'another instance';
+  statusEl.textContent = `action: ${label} — id: ${id} — ${sameMenu} — point: ${coords.x}, ${coords.y} — ${new Date().toLocaleTimeString()}`;
 }
 
-const basic = new Pielet({
-  items: [
-    { typeContent: 'text', content: 'Красный', id: 'palette-red', action: (id, menu, coords) => { pickColor('#e5484d'); submenuAction('Красный', id, menu, coords); } },
-    { typeContent: 'text', content: 'Зелёный', id: 'palette-green', action: (id, menu, coords) => { pickColor('#2f9e63'); submenuAction('Зелёный', id, menu, coords); } },
-    { typeContent: 'text', content: 'Синий', id: 'palette-blue', action: (id, menu, coords) => { pickColor('#3b82f6'); submenuAction('Синий', id, menu, coords); } }
-  ]
-});
+// SVG-квадрат с чёрной обводкой, залитый цветом пункта — image-контент
+// (typeContent: 'image') цветовых сабменю в circle-режиме.
+function colorSquareDataUri(hex) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="6" y="6" width="88" height="88" fill="${hex}" stroke="#000" stroke-width="8"/></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
 
-const pastel = new Pielet({
-  items: [
-    { typeContent: 'text', content: 'Розовый', id: 'pastel-pink', action: (id, menu, coords) => { pickColor('#f472b6'); submenuAction('Розовый', id, menu, coords); } },
-    { typeContent: 'text', content: 'Мятный', id: 'pastel-mint', action: (id, menu, coords) => { pickColor('#4ade80'); submenuAction('Мятный', id, menu, coords); } },
-    { typeContent: 'text', content: 'Лаванда', id: 'pastel-lavender', action: (id, menu, coords) => { pickColor('#a78bfa'); submenuAction('Лаванда', id, menu, coords); } }
-  ]
-});
+const BASIC_COLORS = [
+  { name: 'Red', hex: '#e5484d', id: 'palette-red' },
+  { name: 'Green', hex: '#2f9e63', id: 'palette-green' },
+  { name: 'Blue', hex: '#3b82f6', id: 'palette-blue' }
+];
 
-const palette = new Pielet({
-  items: [
-    { typeContent: 'text', content: 'Основные', id: 'palette-basic', isSubMenu: true, menu: basic },
-    { typeContent: 'text', content: 'Пастельные', id: 'palette-pastel', isSubMenu: true, menu: pastel }
-  ]
-});
+const PASTEL_COLORS = [
+  { name: 'Pink', hex: '#f472b6', id: 'pastel-pink' },
+  { name: 'Mint', hex: '#4ade80', id: 'pastel-mint' },
+  { name: 'Lavender', hex: '#a78bfa', id: 'pastel-lavender' }
+];
+
+function buildColorItems(colors, fit) {
+  return colors.map(({ name, hex, id }) => ({
+    typeContent: fit === 'circle' ? 'image' : 'text',
+    content: fit === 'circle' ? colorSquareDataUri(hex) : name,
+    id,
+    action: (id, menu, coords) => { pickColor(hex); submenuAction(name, id, menu, coords); }
+  }));
+}
+
+function buildPaletteItems(fit) {
+  return [
+    { typeContent: 'text', content: fit === 'circle' ? '🌈' : 'Basic', id: 'palette-basic', isSubMenu: true, menu: basic },
+    { typeContent: 'text', content: fit === 'circle' ? '🌸' : 'Pastel', id: 'palette-pastel', isSubMenu: true, menu: pastel }
+  ];
+}
+
+const basic = new Pielet({ items: buildColorItems(BASIC_COLORS, 'circle') });
+const pastel = new Pielet({ items: buildColorItems(PASTEL_COLORS, 'circle') });
+const palette = new Pielet({ items: buildPaletteItems('circle') });
 
 function assembleItems(count, fit) {
   const items = Array.from({ length: count }, (_, i) => {
@@ -68,15 +86,15 @@ function assembleItems(count, fit) {
       content,
       action: (id, menu, coords) => {
         window.__lastAction = { index: i, content: label, id, at: Date.now(), coords };
-        const sameMenu = menu === window.__menu ? 'этот же экземпляр' : 'другой экземпляр';
-        statusEl.textContent = `action: ${label} (${i}) id: ${id} — ${sameMenu} — точка: ${coords.x}, ${coords.y} — ${new Date().toLocaleTimeString()}`;
+        const sameMenu = menu === window.__menu ? 'the same instance' : 'another instance';
+        statusEl.textContent = `action: ${label} (${i}) id: ${id} — ${sameMenu} — point: ${coords.x}, ${coords.y} — ${new Date().toLocaleTimeString()}`;
       }
     };
   });
   // Пункт-сабменю: двойная вложенность «Цвет» → палитра → «Основные»/«Пастельные».
   items.push({
     typeContent: 'text',
-    content: fit === 'circle' ? '🎨' : 'Цвет',
+    content: fit === 'circle' ? '🎨' : 'Color',
     id: 'demo-color',
     isSubMenu: true,
     menu: palette
@@ -132,13 +150,27 @@ function openAt(x, y, button = controls.button.value) {
     submenuDelay: state.submenuDelay,
     submenuIndicator: state.submenuIndicator
   });
-  // Сабменю должны следовать за настройками демо (режим/кнопка/задержка),
-  // чтобы hold-режим подхватывал зажатую кнопку и во вложенных меню.
+  // Сабменю должны следовать за всеми настройками демо (как главное меню),
+  // чтобы hold-режим подхватывал зажатую кнопку, а fit/unifyText работали
+  // и во вложенных меню. items у каждого сабменю свои.
+  basic.config.items = buildColorItems(BASIC_COLORS, state.fit);
+  pastel.config.items = buildColorItems(PASTEL_COLORS, state.fit);
+  palette.config.items = buildPaletteItems(state.fit);
   for (const sub of [palette, basic, pastel]) {
-    sub.config.interactionMode = state.interactionMode;
-    sub.config.button = button;
-    sub.config.submenuDelay = state.submenuDelay;
-    sub.config.submenuIndicator = state.submenuIndicator;
+    Object.assign(sub.config, {
+      size: state.size,
+      centerSize: state.centerSize,
+      gap: state.gap,
+      startAngle: state.startAngle,
+      direction: state.direction,
+      interactionMode: state.interactionMode,
+      button,
+      closeDistance: state.closeDistance,
+      fit: state.fit,
+      unifyText: state.unifyText,
+      submenuDelay: state.submenuDelay,
+      submenuIndicator: state.submenuIndicator
+    });
   }
   menu.open(x, y);
 }
@@ -165,7 +197,7 @@ menu.addEventListener('open', (e) => {
   console.log('Pielet open rect:', rect);
 });
 menu.addEventListener('select', (e) => {
-  statusEl.textContent = `event: select — id: ${e.detail.id} — точка: ${e.detail.coords.x}, ${e.detail.coords.y} — ${new Date().toLocaleTimeString()}`;
+  statusEl.textContent = `event: select — id: ${e.detail.id} — point: ${e.detail.coords.x}, ${e.detail.coords.y} — ${new Date().toLocaleTimeString()}`;
 });
 menu.addEventListener('close', () => {
   statusEl.textContent = `event: close — menu removed from DOM — ${new Date().toLocaleTimeString()}`;
