@@ -29,13 +29,13 @@ describe('createContentContainer', () => {
     expect(el.style.fontSize).toBe('');
   });
 
-  it('image: creates an img with src and contain-fit constraints', () => {
+  it('image: creates an img with a definite box (explicit width/height), never zero-sized', () => {
     const el = createContentContainer({ typeContent: 'image', content: '/icons/open.svg' }, sector);
     expect(el.tagName).toBe('IMG');
     expect(el.className).toBe('pielet__content--image');
     expect(el.getAttribute('src')).toBe('/icons/open.svg');
-    expect(el.style.maxWidth).toBe('200px');
-    expect(el.style.maxHeight).toBe('70px');
+    expect(el.style.width).toBe('200px');
+    expect(el.style.height).toBe('70px');
   });
 
   it('node: returns the very same node without cloning or modification', () => {

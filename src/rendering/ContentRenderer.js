@@ -76,8 +76,10 @@ export function createContentContainer(item, sector) {
         const img = document.createElement('img');
         img.className = 'pielet__content--image';
         img.setAttribute('src', content);
-        img.style.maxWidth = `${sector.availWidth}px`;
-        img.style.maxHeight = `${sector.availHeight}px`;
+        // Явный бокс сектора: без него img с нулевым intrinsic-размером
+        // (например, SVG data-URI только с viewBox) схлопывается в 0×0.
+        img.style.width = `${sector.availWidth}px`;
+        img.style.height = `${sector.availHeight}px`;
         return img;
     }
 

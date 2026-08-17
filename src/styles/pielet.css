@@ -60,6 +60,12 @@
     display: block;
 }
 
+.pielet__content--image {
+    /* Изображение вписывается в явный бокс (width/height из геометрии сектора)
+       с сохранением пропорций; без object-fit содержимое растягивается. */
+    object-fit: contain;
+}
+
 .pielet__item--hover {
     background: var(--pielet-background-hover);
     box-shadow: var(--pielet-shadow);
