@@ -4,6 +4,8 @@
  * Визуальные параметры задаются CSS custom properties, не JS-конфигом.
  */
 
+import { CONTENT_TYPES } from '../config/constants.js';
+
 const MIN_FONT_SIZE = 8;
 const MAX_FIT_ITERATIONS = 24;
 const MAX_FONT_SIZE = 1024;
@@ -60,7 +62,7 @@ export function fitText(el, availWidth, availHeight, minFontSize = MIN_FONT_SIZE
 export function createContentContainer(item, sector) {
     const { typeContent, content } = item;
 
-    if (typeContent === 'text') {
+    if (typeContent === CONTENT_TYPES.TEXT) {
         const el = document.createElement('div');
         el.className = 'pielet__content--text';
         el.style.maxWidth = `${sector.availWidth}px`;
@@ -70,7 +72,7 @@ export function createContentContainer(item, sector) {
         return el;
     }
 
-    if (typeContent === 'image') {
+    if (typeContent === CONTENT_TYPES.IMAGE) {
         const img = document.createElement('img');
         img.className = 'pielet__content--image';
         img.setAttribute('src', content);
@@ -79,7 +81,7 @@ export function createContentContainer(item, sector) {
         return img;
     }
 
-    if (typeContent === 'node') {
+    if (typeContent === CONTENT_TYPES.NODE) {
         return content;
     }
 

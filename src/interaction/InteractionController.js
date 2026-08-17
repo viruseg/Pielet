@@ -7,6 +7,7 @@
 
 import { getSelectedSector } from '../geometry/hitTestSector.js';
 import { BUTTON_CODES, BUTTON_BITS } from '../config/buttons.js';
+import { INTERACTION_MODES } from '../config/constants.js';
 
 /**
  * Grace-окно (мс) после открытия: отпускание кнопки, которым завершается
@@ -103,7 +104,7 @@ export class InteractionController {
         // hold-режим: меню живёт, пока отслеживаемая кнопка удержана. Если кнопка
         // не зажата (например, сабменю открыто кнопкой, не совпадающей с его
         // config.button) — меню закрывается на первом же движении.
-        if (this._mode === 'hold' && !held) {
+        if (this._mode === INTERACTION_MODES.HOLD && !held) {
             this._clearSubmenuTimer();
             this._onClose();
             return;
@@ -112,7 +113,7 @@ export class InteractionController {
         const submenuItem = hoverIndex !== null && this._geometry.submenu != null && this._geometry.submenu[hoverIndex] === true;
         // Hover-задержка сабменю действует в hold-режиме, а также в click-режиме,
         // пока отслеживаемая кнопка удержана (меню работает как hold).
-        if (submenuItem && this._submenuDelay > 0 && (this._mode === 'hold' || held)) {
+        if (submenuItem && this._submenuDelay > 0 && (this._mode === INTERACTION_MODES.HOLD || held)) {
             this._armSubmenuTimer(hoverIndex);
         } else {
             this._clearSubmenuTimer();
@@ -129,7 +130,7 @@ export class InteractionController {
             this._onSelect(hit.itemIndex, { x: event.clientX, y: event.clientY });
             return;
         }
-        if (this._mode === 'hold') {
+        if (this._mode === INTERACTION_MODES.HOLD) {
             this._onClose();
             return;
         }

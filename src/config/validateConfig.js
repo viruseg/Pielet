@@ -6,12 +6,13 @@
 
 import { DEFAULT_CONFIG } from './defaults.js';
 import { BUTTON_NAMES } from './buttons.js';
+import { CONTENT_TYPES, DIRECTIONS, FITS, INTERACTION_MODES, SUBMENU_INDICATORS } from './constants.js';
 
-const DIRECTIONS = new Set(['clockwise', 'counterclockwise']);
-const INTERACTION_MODES = new Set(['hold', 'click']);
-const CONTENT_TYPES = new Set(['none', 'text', 'image', 'node']);
-const FITS = new Set(['circle', 'square']);
-const SUBMENU_INDICATORS = new Set(['arc', 'chevron', 'both']);
+const DIRECTIONS_SET = new Set(Object.values(DIRECTIONS));
+const INTERACTION_MODES_SET = new Set(Object.values(INTERACTION_MODES));
+const CONTENT_TYPES_SET = new Set(Object.values(CONTENT_TYPES));
+const FITS_SET = new Set(Object.values(FITS));
+const SUBMENU_INDICATORS_SET = new Set(Object.values(SUBMENU_INDICATORS));
 
 /**
  * Префикс автоматически генерируемых id пунктов.
@@ -86,20 +87,20 @@ function validateItem(item, index) {
     if (isSubMenu !== undefined && typeof isSubMenu !== 'boolean') {
         throw err(`items[${index}].isSubMenu must be a boolean, got ${String(isSubMenu)}`);
     }
-    if (!CONTENT_TYPES.has(typeContent)) {
-        throw err(`items[${index}].typeContent must be one of: none, text, image, node; got ${String(typeContent)}`);
+    if (!CONTENT_TYPES_SET.has(typeContent)) {
+        throw err(`items[${index}].typeContent must be one of: ${Array.from(CONTENT_TYPES_SET).join(', ')}; got ${String(typeContent)}`);
     }
-    if (typeContent === 'text' || typeContent === 'image') {
+    if (typeContent === CONTENT_TYPES.TEXT || typeContent === CONTENT_TYPES.IMAGE) {
         if (typeof content !== 'string' || content.length === 0) {
             throw err(`items[${index}].content must be a non-empty string for typeContent "${typeContent}"`);
         }
-    } else if (typeContent === 'node') {
+    } else if (typeContent === CONTENT_TYPES.NODE) {
         if (!(content instanceof Node)) {
             throw err(`items[${index}].content must be a DOM Node for typeContent "node"`);
         }
     }
     if (isSubMenu === true) {
-        if (typeContent === 'none') {
+        if (typeContent === CONTENT_TYPES.NONE) {
             throw err(`items[${index}].isSubMenu cannot be true for typeContent "none"`);
         }
         if (typeof menu !== 'object' || menu === null || typeof menu.open !== 'function') {
@@ -138,23 +139,23 @@ export function validateConfig(config) {
     if (closeDistance !== undefined) assertNumber(closeDistance, 'closeDistance', (v) => v >= 0, 'a non-negative number');
     if (submenuDelay !== undefined) assertNumber(submenuDelay, 'submenuDelay', (v) => v >= 0, 'a non-negative number');
 
-    if (fit !== undefined && !FITS.has(fit)) {
-        throw err(`fit must be one of: ${Array.from(FITS).join(', ')}; got ${String(fit)}`);
+    if (fit !== undefined && !FITS_SET.has(fit)) {
+        throw err(`fit must be one of: ${Array.from(FITS_SET).join(', ')}; got ${String(fit)}`);
     }
 
     if (unifyText !== undefined && typeof unifyText !== 'boolean') {
         throw err(`unifyText must be a boolean, got ${String(unifyText)}`);
     }
 
-    if (submenuIndicator !== undefined && !SUBMENU_INDICATORS.has(submenuIndicator)) {
-        throw err(`submenuIndicator must be one of: ${Array.from(SUBMENU_INDICATORS).join(', ')}; got ${String(submenuIndicator)}`);
+    if (submenuIndicator !== undefined && !SUBMENU_INDICATORS_SET.has(submenuIndicator)) {
+        throw err(`submenuIndicator must be one of: ${Array.from(SUBMENU_INDICATORS_SET).join(', ')}; got ${String(submenuIndicator)}`);
     }
 
-    if (direction !== undefined && !DIRECTIONS.has(direction)) {
-        throw err(`direction must be "clockwise" or "counterclockwise", got ${String(direction)}`);
+    if (direction !== undefined && !DIRECTIONS_SET.has(direction)) {
+        throw err(`direction must be one of: ${Array.from(DIRECTIONS_SET).join(', ')}; got ${String(direction)}`);
     }
-    if (interactionMode !== undefined && !INTERACTION_MODES.has(interactionMode)) {
-        throw err(`interactionMode must be "hold" or "click", got ${String(interactionMode)}`);
+    if (interactionMode !== undefined && !INTERACTION_MODES_SET.has(interactionMode)) {
+        throw err(`interactionMode must be one of: ${Array.from(INTERACTION_MODES_SET).join(', ')}; got ${String(interactionMode)}`);
     }
 }
 

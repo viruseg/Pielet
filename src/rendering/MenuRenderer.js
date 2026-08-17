@@ -7,13 +7,29 @@
 
 import { buildSectorClipPath, buildSubmenuArcPath, buildSubmenuChevron, SUBMENU_CHEVRON_PATH, SUBMENU_CHEVRON_VIEWBOX } from '../geometry/calculateSector.js';
 import { createContentContainer, fitText } from './ContentRenderer.js';
+import { CONTENT_TYPES, SUBMENU_INDICATORS } from '../config/constants.js';
 
+/**
+ * Длительность закрытия (мс), используемая как фолбэк, когда длительность
+ * перехода не удаётся получить из CSS (например, стили не подключены).
+ * Должна соответствовать значению `--pielet-transition-duration` в pielet.css.
+ * @type {number}
+ */
 const DEFAULT_CLOSE_DURATION_MS = 250;
+
+/**
+ * Запас (мс) сверх длительности перехода: если transitionend по opacity
+ * не сработает, DOM удаляется принудительно по этому таймеру.
+ * @type {number}
+ */
+const CLOSE_FALLBACK_BUFFER_MS = 60;
 
 /** Отступ дуги индикатора сабменю от внутреннего радиуса сектора (px). */
 const SUBMENU_ARC_INSET = 3;
 /** Толщина дуги индикатора (px). */
 const SUBMENU_ARC_STROKE = 2.5;
+/** Толщина штриха шеврона индикатора сабменю (px). */
+const SUBMENU_CHEVRON_STROKE = 2;
 
 /**
  * Парсит длительность перехода CSS (первый токен), например '150ms' или '0.15s'.
@@ -70,7 +86,7 @@ export class MenuRenderer {
      * @param {'arc' | 'chevron' | 'both'} [options.submenuIndicator] - индикация
      *   пунктов-сабменю (arc — дуга у внутреннего радиуса, chevron — стрелка на внешнем крае кольца)
      */
-    mount({ centerX, centerY, geometry, items, unifyText = false, submenuIndicator = 'both' }) {
+    mount({ centerX, centerY, geometry, items, unifyText = false, submenuIndicator = SUBMENU_INDICATORS.BOTH }) {
         const { outerRadius, innerRadius, sectors } = geometry;
         const size = outerRadius * 2;
 
@@ -98,7 +114,7 @@ export class MenuRenderer {
 
             const itemEl = document.createElement('div');
             itemEl.className = 'pielet__item';
-            if (item.typeContent === 'none') itemEl.classList.add('pielet__item--none');
+            if (item.typeContent === CONTENT_TYPES.NONE) itemEl.classList.add('pielet__item--none');
             if (item.isSubMenu === true) itemEl.classList.add('pielet__item--submenu');
             itemEl.style.clipPath = buildSectorClipPath(sector, outerRadius, innerRadius);
 
@@ -108,7 +124,7 @@ export class MenuRenderer {
 
             let caption = null;
             let contentEl = null;
-            if (item.typeContent !== 'none') {
+            if (item.typeContent !== CONTENT_TYPES.NONE) {
                 caption = document.createElement('div');
                 caption.className = 'pielet__item-caption';
                 caption.style.position = 'absolute';
@@ -131,7 +147,7 @@ export class MenuRenderer {
         // поэтому выравнивание выполняется после монтирования всех пунктов.
         this._fitTextItems(items);
 
-        this._selectable = items.map((item) => item.typeContent !== 'none');
+        this._selectable = items.map((item) => item.typeContent !== CONTENT_TYPES.NONE);
 
         setTimeout(() => {
             if (this._el === el) el.classList.add('pielet--open');
@@ -154,7 +170,7 @@ export class MenuRenderer {
      * @param {'arc' | 'chevron' | 'both'} submenuIndicator
      */
     _appendSubmenuIndicators(el, itemEl, sector, outerRadius, innerRadius, size, submenuIndicator) {
-        if (submenuIndicator === 'arc' || submenuIndicator === 'both') {
+        if (submenuIndicator === SUBMENU_INDICATORS.ARC || submenuIndicator === SUBMENU_INDICATORS.BOTH) {
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svg.setAttribute('class', 'pielet__submenu-arc');
             svg.setAttribute('width', `${size}px`);
@@ -171,7 +187,7 @@ export class MenuRenderer {
             svg.appendChild(path);
             itemEl.appendChild(svg);
         }
-        if (submenuIndicator === 'chevron' || submenuIndicator === 'both') {
+        if (submenuIndicator === SUBMENU_INDICATORS.CHEVRON || submenuIndicator === SUBMENU_INDICATORS.BOTH) {
             // Шеврон — SVG-глиф (не текст '›'): у текстового глифа метрики
             // шрифта смещают визуальный центр относительно бокса, и парные
             // шевроны (mid=0 и mid=π, после поворота на 180°) визуально уходят
@@ -192,7 +208,7 @@ export class MenuRenderer {
             path.setAttribute('d', SUBMENU_CHEVRON_PATH);
             path.setAttribute('fill', 'none');
             path.setAttribute('stroke', 'currentColor');
-            path.setAttribute('stroke-width', '2');
+            path.setAttribute('stroke-width', String(SUBMENU_CHEVRON_STROKE));
             path.setAttribute('stroke-linecap', 'round');
             path.setAttribute('stroke-linejoin', 'round');
             svg.appendChild(path);
@@ -236,7 +252,7 @@ export class MenuRenderer {
             const item = items[i];
             const sector = this._sectors[i];
             const contentEl = this._captions[i] && this._captions[i].querySelector('.pielet__content--text');
-            if (item.typeContent === 'text' && sector && contentEl) {
+            if (item.typeContent === CONTENT_TYPES.TEXT && sector && contentEl) {
                 fitText(contentEl, sector.availWidth, sector.availHeight);
                 textItems.push({ el: contentEl });
             }
@@ -306,7 +322,7 @@ export class MenuRenderer {
             if (event.target === el && event.propertyName === 'opacity') finish();
         };
         el.addEventListener('transitionend', onTransitionEnd);
-        setTimeout(finish, this._closeDuration + 60);
+        setTimeout(finish, this._closeDuration + CLOSE_FALLBACK_BUFFER_MS);
     }
 
     /**

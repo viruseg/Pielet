@@ -3,6 +3,14 @@
  * Чистая математика, без DOM.
  */
 
+import { DIRECTIONS, FITS } from '../config/constants.js';
+
+/**
+ * Точность (знаков после запятой) координат точек polygon/path в px.
+ * @type {number}
+ */
+const CLIP_PRECISION = 2;
+
 /**
  * Множитель безопасности области контента внутри сектора.
  * @type {number}
@@ -66,7 +74,7 @@ const EPS = 1e-9;
  * @param {'clockwise' | 'counterclockwise'} options.direction - порядок распределения
  * @returns {{ sectors: Array<{ start: number, end: number, innerStart: number, innerEnd: number, relStart: number, span: number, spanInner: number, mid: number, safeRadius: number, contentRadius: number, availWidth: number, availHeight: number, rotate: boolean, flip: boolean }>, gapAngle: number, gapAngleInner: number }}
  */
-export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRadius, innerRadius, meanRadius, ringWidth, gap, fit = 'circle', direction }) {
+export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRadius, innerRadius, meanRadius, ringWidth, gap, fit = FITS.CIRCLE, direction }) {
     const nominalSpan = arcLength / itemCount;
     const isSingle = itemCount === 1;
     const maxGapAngle = nominalSpan * MAX_GAP_FRACTION;
@@ -74,7 +82,7 @@ export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRad
     const gapAngleInner = isSingle ? 0 : Math.min(gap / innerRadius, maxGapAngle);
     const span = nominalSpan - gapAngle;
     const spanInner = nominalSpan - gapAngleInner;
-    const dir = direction === 'counterclockwise' ? -1 : 1;
+    const dir = direction === DIRECTIONS.COUNTERCLOCKWISE ? -1 : 1;
     // Полное кольцо: хорда дуги вырождается в 0, контент ограничен диаметром.
     const isFullRing = isSingle && arcLength >= TAU - EPS;
 
@@ -101,7 +109,7 @@ export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRad
         }
 
         let safeRadius, contentRadius, availWidth, availHeight, rotate, flip;
-        if (fit === 'circle') {
+        if (fit === FITS.CIRCLE) {
             // Безопасная зона — окружность, касающаяся границ сектора:
             // r1 ограничена кольцом (внутренний/внешний радиус),
             // r2 — боковыми гранями сектора. Для полного кольца r2 вырождается.
@@ -170,7 +178,7 @@ export function buildSectorClipPath({ start, end, innerStart, innerEnd }, outerR
     const innerSpan = innerEndAngle - innerStartAngle;
     const segments = Math.max(MIN_SEGMENTS, Math.min(MAX_SEGMENTS, Math.ceil(span * SEGMENTS_PER_RADIAN)));
     const point = (radius, angle) =>
-        `${(outerRadius + radius * Math.cos(angle)).toFixed(2)}px ${(outerRadius + radius * Math.sin(angle)).toFixed(2)}px`;
+        `${(outerRadius + radius * Math.cos(angle)).toFixed(CLIP_PRECISION)}px ${(outerRadius + radius * Math.sin(angle)).toFixed(CLIP_PRECISION)}px`;
 
     const points = [];
     for (let k = 0; k <= segments; k++) {
@@ -200,7 +208,7 @@ export function buildSubmenuArcPath({ start, end, innerStart, innerEnd }, radius
     if (span <= EPS) return '';
     const segments = Math.max(MIN_SEGMENTS, Math.min(MAX_SEGMENTS, Math.ceil(span * SEGMENTS_PER_RADIAN * 2)));
     const point = (angle) =>
-        `${(outerRadius + radius * Math.cos(angle)).toFixed(2)} ${(outerRadius + radius * Math.sin(angle)).toFixed(2)}`;
+        `${(outerRadius + radius * Math.cos(angle)).toFixed(CLIP_PRECISION)} ${(outerRadius + radius * Math.sin(angle)).toFixed(CLIP_PRECISION)}`;
     const points = [];
     for (let k = 0; k <= segments; k++) {
         points.push(point(startAngle + (span * k) / segments));

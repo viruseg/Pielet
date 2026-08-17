@@ -20,6 +20,7 @@
     position: fixed;
     pointer-events: none;
     touch-action: none;
+    /* Поверх любого пользовательского контента: близко к INT32_MAX (2147483647). */
     z-index: 2147483000;
     opacity: 0;
     will-change: opacity;

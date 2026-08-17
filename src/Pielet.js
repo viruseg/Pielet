@@ -11,6 +11,7 @@
 
 import { normalizeConfig } from './config/validateConfig.js';
 import { BUTTON_CODES } from './config/buttons.js';
+import { CONTENT_TYPES, INTERACTION_MODES } from './config/constants.js';
 import { calculateMenuGeometry } from './geometry/calculateMenuGeometry.js';
 import { calculateVisibleArc } from './geometry/calculateVisibleArc.js';
 import { calculateVisibleRect } from './geometry/calculateVisibleRect.js';
@@ -93,7 +94,7 @@ export default class Pielet extends EventTarget {
             arcLength: visible.arc,
             direction: config.direction,
             sectors: layout.sectors,
-            selectable: config.items.map((item) => item.typeContent !== 'none'),
+            selectable: config.items.map((item) => item.typeContent !== CONTENT_TYPES.NONE),
             submenu: config.items.map((item) => item.isSubMenu === true)
         };
 
@@ -167,10 +168,10 @@ export default class Pielet extends EventTarget {
             throw new Error(`Pielet: setItemContent(id, content): no item with id "${id}"`);
         }
         const item = this.config.items[index];
-        if (item.typeContent === 'none') {
+        if (item.typeContent === CONTENT_TYPES.NONE) {
             throw new Error(`Pielet: setItemContent(id, content): item "${id}" has typeContent "none" and cannot be updated`);
         }
-        if (item.typeContent === 'text' || item.typeContent === 'image') {
+        if (item.typeContent === CONTENT_TYPES.TEXT || item.typeContent === CONTENT_TYPES.IMAGE) {
             if (typeof content !== 'string' || content.length === 0) {
                 throw new Error(`Pielet: setItemContent(id, content): content must be a non-empty string for typeContent "${item.typeContent}"`);
             }
@@ -226,7 +227,7 @@ export default class Pielet extends EventTarget {
         void index;
         const id = item && typeof item.id === 'string' ? item.id : '';
         this.dispatchEvent(new CustomEvent('select', { detail: { id, menu: this, coords: point } }));
-        const keepOpen = this.config.interactionMode === 'click' && item && item.keepOpen === true;
+        const keepOpen = this.config.interactionMode === INTERACTION_MODES.CLICK && item && item.keepOpen === true;
         if (!keepOpen) {
             this._close(true);
         }

@@ -12,6 +12,8 @@
  * left, top, right, bottom (left = x, top = y).
  */
 
+import { DIRECTIONS } from '../config/constants.js';
+
 const TAU = Math.PI * 2;
 const EPS = 1e-9;
 
@@ -39,7 +41,7 @@ function rectFrom(x, y, width, height) {
  * @param {'clockwise' | 'counterclockwise'} [options.direction] - направление развёртки
  * @returns {{ x: number, y: number, width: number, height: number, left: number, top: number, right: number, bottom: number }}
  */
-export function calculateVisibleRect({ centerX, centerY, outerRadius, innerRadius, startAngle, arc, direction = 'clockwise' }) {
+export function calculateVisibleRect({ centerX, centerY, outerRadius, innerRadius, startAngle, arc, direction = DIRECTIONS.CLOCKWISE }) {
     void innerRadius;
     if (!(outerRadius > 0)) {
         return rectFrom(centerX, centerY, 0, 0);
@@ -48,7 +50,7 @@ export function calculateVisibleRect({ centerX, centerY, outerRadius, innerRadiu
         return rectFrom(centerX - outerRadius, centerY - outerRadius, outerRadius * 2, outerRadius * 2);
     }
 
-    const dir = direction === 'counterclockwise' ? -1 : 1;
+    const dir = direction === DIRECTIONS.COUNTERCLOCKWISE ? -1 : 1;
     const end = startAngle + dir * arc;
     const a0 = Math.min(startAngle, end);
     const a1 = Math.max(startAngle, end);

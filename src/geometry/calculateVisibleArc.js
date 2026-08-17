@@ -8,6 +8,8 @@
  * MIN_EDGE_REALLOCATION_ARC — используется обычная геометрия полного круга.
  */
 
+import { DIRECTIONS } from '../config/constants.js';
+
 const TAU = Math.PI * 2;
 const EPS = 1e-9;
 
@@ -124,7 +126,7 @@ function intersectIntervals(a, b) {
  * @param {number} options.viewportHeight - высота viewport в CSS-пикселях
  * @returns {{ startAngle: number, arc: number }}
  */
-export function calculateVisibleArc({ centerX, centerY, outerRadius, startAngle, direction = 'clockwise', viewportWidth, viewportHeight }) {
+export function calculateVisibleArc({ centerX, centerY, outerRadius, startAngle, direction = DIRECTIONS.CLOCKWISE, viewportWidth, viewportHeight }) {
     const cfgStart = (startAngle * Math.PI) / 180;
     const full = { startAngle: cfgStart, arc: TAU };
     if (!(outerRadius > 0) || !(viewportWidth > 0) || !(viewportHeight > 0)) return full;
@@ -162,7 +164,7 @@ export function calculateVisibleArc({ centerX, centerY, outerRadius, startAngle,
         if (dist < bestDist) {
             // CW-развёртка идёт от начала дуги вверх по углу;
             // CCW — от конца вниз, поэтому якорь для CCW — конец видимой дуги
-            best = { startAngle: direction === 'counterclockwise' ? e : s, arc: len };
+            best = { startAngle: direction === DIRECTIONS.COUNTERCLOCKWISE ? e : s, arc: len };
             bestDist = dist;
         }
     }
