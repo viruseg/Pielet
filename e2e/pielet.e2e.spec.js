@@ -175,6 +175,25 @@ test('menu larger than viewport still opens centered without errors', async ({ p
   expect(box.y + box.height / 2).toBeCloseTo(200, 1);
 });
 
+test('text items are always rendered on a single line (white-space: nowrap)', async ({ page }) => {
+  await page.evaluate(() => {
+    window.__wrap = new window.Pielet({
+      items: [
+        { typeContent: 'text', content: 'Some quite long label that would previously wrap' },
+        { typeContent: 'text', content: 'Short' }
+      ]
+    });
+    window.__wrap.open(400, 400);
+  });
+  await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
+  const styles = await page.evaluate(() => {
+    const menu = document.querySelector('.pielet');
+    return Array.from(menu.querySelectorAll('.pielet__content--text')).map((el) => getComputedStyle(el).whiteSpace);
+  });
+  expect(styles).toEqual(['nowrap', 'nowrap']);
+  await page.evaluate(() => window.__wrap.close());
+});
+
 test('clicking the page opens the menu under the cursor (demo behavior)', async ({ page }) => {
   await page.mouse.move(411, 263);
   await page.mouse.down();

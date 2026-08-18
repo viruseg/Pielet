@@ -6,7 +6,7 @@
 
 import { CONTENT_TYPES } from '../config/constants.js';
 
-const MIN_FONT_SIZE = 8;
+const MIN_FONT_SIZE = 1;
 const MAX_FIT_ITERATIONS = 24;
 const MAX_FONT_SIZE = 1024;
 

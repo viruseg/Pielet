@@ -108,6 +108,24 @@ describe('fitText', () => {
     expect(Number(el.style.fontSize.slice(0, -2))).toBe(8);
   });
 
+  it('shrinks below the old 8px floor when a single line fits only below 8px', () => {
+    const el = makeBox();
+    // ширина = 10 * size: влезает при size <= 5 (10*5=50 <= 50), не при 6 (60 > 50)
+    mockLinear(el, { w: 10, h: 1 });
+    fitText(el, 50, 40);
+    const size = Number(el.style.fontSize.slice(0, -2));
+    expect(size).toBeGreaterThan(0);
+    expect(size).toBeLessThan(8);
+  });
+
+  it('shrinks to the 1px floor (default) when a single line cannot fit even at 1px', () => {
+    const el = makeBox();
+    // даже при 1px строка шире бокса: 100 * 1 = 100 > 40
+    mockLinear(el, { w: 100, h: 1 });
+    fitText(el, 40, 40);
+    expect(Number(el.style.fontSize.slice(0, -2))).toBe(1);
+  });
+
   it('keeps the minimum font size when the box is extremely small', () => {
     const el = makeBox();
     mockLinear(el, { w: 1, h: 1 });
