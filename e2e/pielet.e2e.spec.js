@@ -17,7 +17,7 @@ test.beforeEach(async ({ page }) => {
 test('menu DOM lifecycle: open → DOM present, close → DOM removed', async ({ page }) => {
   await openMenu(page, 400, 400);
   await expect(page.locator('.pielet')).toHaveCount(1);
-  await expect(page.locator('.pielet__item')).toHaveCount(7);
+  await expect(page.locator('.pielet__item')).toHaveCount(6);
   // инертный центр: нода-хук присутствует, не перехватывает события (pointer-events: none)
   await expect(page.locator('.pielet__center')).toHaveCount(1);
   await page.evaluate(() => {
@@ -243,10 +243,10 @@ test('click mode: clicking outside an item closes the menu', async ({ page }) =>
 });
 
 test('click mode: clicking a none sector closes the menu without action', async ({ page }) => {
-  // третий item демо — typeContent 'none' (i % 6 === 3): 7 items → none на индексе 3
+  // третий item демо — typeContent 'none' (i % 6 === 3): 6 items → none на индексе 3
   await openMenu(page, 500, 400);
   await page.waitForTimeout(400);
-  const angle = -90 + (3 + 0.5) * (360 / 7); // центр третьего сектора (pitch 360/7)
+  const angle = -90 + (3 + 0.5) * (360 / 6); // центр третьего сектора (pitch 360/6)
   const rad = (angle * Math.PI) / 180;
   await page.mouse.click(500 + 80 * Math.cos(rad), 400 + 80 * Math.sin(rad));
   await expect(page.locator('.pielet')).toHaveCount(0);
@@ -561,9 +561,9 @@ test('4 submenu items at startAngle -135: chevron glyphs — two on a horizontal
 
 test('demo: the «Цвет» item opens a double-nested submenu chain (Цвет → Основные → Красный)', async ({ page }) => {
   await openMenu(page, 500, 400);
-  // 7 items демо: последний сектор (индекс 6) — пункт «Цвет» (isSubMenu)
+  // 6 items демо: последний сектор (индекс 5) — пункт «Цвет» (isSubMenu)
   const colorItem = (() => {
-    const angle = -90 + (6 + 0.5) * (360 / 7);
+    const angle = -90 + (5 + 0.5) * (360 / 6);
     const rad = (angle * Math.PI) / 180;
     return { x: 500 + 80 * Math.cos(rad), y: 400 + 80 * Math.sin(rad) };
   })();

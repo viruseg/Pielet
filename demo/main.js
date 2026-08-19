@@ -72,8 +72,9 @@ const basic = new Pielet({ items: buildColorItems(BASIC_COLORS, 'circle') });
 const pastel = new Pielet({ items: buildColorItems(PASTEL_COLORS, 'circle') });
 const palette = new Pielet({ items: buildPaletteItems('circle') });
 
+// count — общее число пунктов меню, включая пункт-сабменю.
 function assembleItems(count, fit) {
-  const items = Array.from({ length: count }, (_, i) => {
+  const items = Array.from({ length: count - 1 }, (_, i) => {
     const label = labels[i % labels.length];
     // В circle-режиме контент не поворачивается, поэтому вместо надписей
     // удобнее смотреть на эмодзи; в square-режиме читаемые тексты наглядно
