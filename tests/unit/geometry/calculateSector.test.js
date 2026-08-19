@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateMenuGeometry } from '../../../src/geometry/calculateMenuGeometry.js';
-import { calculateSectorLayout, buildSectorClipPath, buildSubmenuArcPath, buildSubmenuChevron, contentHeightLimit, SUBMENU_CHEVRON_PATH, SUBMENU_CHEVRON_VIEWBOX, SUBMENU_CHEVRON_MAX_SIZE, SUBMENU_CHEVRON_SIZE_RATIO, SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO } from '../../../src/geometry/calculateSector.js';
+import { calculateSectorLayout, buildSectorClipPath, buildSubmenuArcPath, buildSubmenuChevron, contentHeightLimit, OUTER_CONTENT_INSET, SUBMENU_CHEVRON_PATH, SUBMENU_CHEVRON_VIEWBOX, SUBMENU_CHEVRON_MAX_SIZE, SUBMENU_CHEVRON_SIZE_RATIO, SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO } from '../../../src/geometry/calculateSector.js';
 
 const TAU = Math.PI * 2;
 const near = (a, b, eps = 1e-9) => expect(Math.abs(a - b)).toBeLessThan(eps);
@@ -162,15 +162,17 @@ describe('calculateSectorLayout', () => {
   it('square fit: radial box rotated with the sector (chord/ring swapped)', () => {
     const { sectors } = calculateSectorLayout({ ...base, fit: 'square', itemCount: 4 });
     // после поворота ширина ложится вдоль радиуса (кольцо), высота — вдоль дуги (хорда)
-    near(sectors[0].availWidth, 84 * 0.85, 1e-9);
+    // внутренний край бокса: симметричный отступ (84 * (1-0.85)/2 = 6.3) от innerRadius=36
+    // внешний край: на OUTER_CONTENT_INSET ближе внешнего радиуса 120
+    near(sectors[0].availWidth, 120 - OUTER_CONTENT_INSET - 42.3, 1e-9);
     near(sectors[0].availHeight, 2 * 78 * Math.sin(sectors[0].span / 2) * 0.85, 1e-9);
-    near(sectors[0].contentRadius, 78, 1e-9);
+    near(sectors[0].contentRadius, (42.3 + 120 - OUTER_CONTENT_INSET) / 2, 1e-9);
     expect(sectors[0].rotate).toBe(true);
   });
 
   it('square fit: single item full ring uses the diameter for the tangential extent', () => {
     const { sectors } = calculateSectorLayout({ ...base, fit: 'square', itemCount: 1 });
-    near(sectors[0].availWidth, 84 * 0.85, 1e-9);
+    near(sectors[0].availWidth, 120 - OUTER_CONTENT_INSET - 42.3, 1e-9);
     near(sectors[0].availHeight, 2 * 78 * 0.85, 1e-9);
     expect(sectors[0].rotate).toBe(true);
   });

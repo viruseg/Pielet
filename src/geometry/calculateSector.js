@@ -18,6 +18,15 @@ const CLIP_PRECISION = 2;
 export const CONTENT_BOX_FACTOR = 0.85;
 
 /**
+ * Отступ внешнего края контент-бокса от внешней дуги кольца (px) в square-fit.
+ * Внутренний отступ остаётся симметричным от CONTENT_BOX_FACTOR (как раньше),
+ * а внешний фиксируется минимальным: текст заполняет кольцо до внешнего края,
+ * а не центрируется с равными отступами с обеих сторон.
+ * @type {number}
+ */
+export const OUTER_CONTENT_INSET = 10;
+
+/**
  * Максимальная доля номинальной ширины сектора, которую может занять gap.
  * Уменьшает эффективный gap пропорционально, когда места не хватает:
  * пункты никогда не исчезают из-за недостатка места.
@@ -188,8 +197,13 @@ export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRad
             // Прямоугольный бокс сектора, поворачивается вместе с сектором:
             // после поворота ширина ложится вдоль радиуса (кольцо),
             // высота — вдоль дуги (хорда на среднем радиусе).
-            contentRadius = meanRadius;
-            availWidth = ringWidth * CONTENT_BOX_FACTOR;
+            // Внутренний край бокса оставлен на месте (симметричный отступ
+            // от CONTENT_BOX_FACTOR), внешний прижат к внешней дуге на
+            // OUTER_CONTENT_INSET — текст заполняет кольцо до внешнего края.
+            const boxInner = innerRadius + (ringWidth * (1 - CONTENT_BOX_FACTOR)) / 2;
+            const boxOuter = Math.max(outerRadius - OUTER_CONTENT_INSET, boxInner);
+            contentRadius = (boxInner + boxOuter) / 2;
+            availWidth = boxOuter - boxInner;
             availHeight = isFullRing
                 ? 2 * meanRadius * CONTENT_BOX_FACTOR
                 : 2 * meanRadius * Math.sin(span / 2) * CONTENT_BOX_FACTOR;
@@ -296,8 +310,10 @@ export const SUBMENU_CHEVRON_SIZE_RATIO = 0.18;
  * Шеврон «сидит» на внешнем крае сектора: центр — на 0.5·size за кольцом,
  * внутренняя кромка совпадает с внешним радиусом (входит в кольцо ровно на 0),
  * внешняя торчит за него на size. Положение от размера меню не зависит, стрелка
- * всегда указывает радиально наружу и остаётся радиально дальше контента
- * (контент при любом fit центрируется внутри кольца, на contentRadius ≤ meanRadius).
+ * всегда указывает радиально наружу и остаётся радиально дальше контента:
+ * контент-бокс при любом fit заканчивается на внешнем радиусе или ближе
+ * (в circle-fit — на contentRadius + side/2 ≤ outerRadius, в square-fit —
+ * внешний край прижат на OUTER_CONTENT_INSET внутрь кольца).
  * @type {number}
  */
 export const SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO = 0.5;
