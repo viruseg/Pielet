@@ -39,7 +39,7 @@ const EPS = 1e-9;
  * @param {number} options.geometry.arcStart - начало дуги в радианах
  * @param {number} options.geometry.arcLength - длина дуги в радианах
  * @param {'clockwise' | 'counterclockwise'} options.geometry.direction
- * @param {Array<{ relStart: number, span: number }>} options.geometry.sectors
+ * @param {Array<{ span: number }>} options.geometry.sectors
  * @param {boolean[]} options.geometry.selectable - параллельный sectors массив
  * @returns {SectorHit}
  */

@@ -89,12 +89,9 @@ export function contentHeightLimit(sector, innerRadius, outerRadius, contentWidt
 
     let maxHalfHeight;
     if (sector.span >= TAU - EPS) {
-        // Полное кольцо: боковых граней клина нет — бокс ограничен только кольцом.
-        const outerCap = Math.sqrt(Math.max(0, outerRadius * outerRadius - xOuter * xOuter));
-        const innerCap = xInner < innerRadius
-            ? Math.sqrt(Math.max(0, innerRadius * innerRadius - xInner * xInner))
-            : Infinity;
-        maxHalfHeight = Math.min(outerCap, innerCap);
+        // Полное кольцо: боковых граней клина нет — бокс ограничен только
+        // внешней окружностью (внутренняя грань гарантирована guard'ом выше).
+        maxHalfHeight = Math.sqrt(Math.max(0, outerRadius * outerRadius - xOuter * xOuter));
     } else {
         // Верхняя грань клина (в системе сектора, mid = 0): прямая между точками
         // внешней дуги (span/2) и внутренней дуги (spanInner/2).
@@ -140,7 +137,7 @@ export function contentHeightLimit(sector, innerRadius, outerRadius, contentWidt
  *   (угловые диапазоны дуг считаются независимо); при N = 1 игнорируется
  * @param {'circle' | 'square'} options.fit - способ вписывания контента в сектор
  * @param {'clockwise' | 'counterclockwise'} options.direction - порядок распределения
- * @returns {{ sectors: Array<{ start: number, end: number, innerStart: number, innerEnd: number, relStart: number, span: number, spanInner: number, mid: number, safeRadius: number, contentRadius: number, availWidth: number, availHeight: number, rotate: boolean, flip: boolean }>, gapAngle: number, gapAngleInner: number }}
+ * @returns {{ sectors: Array<{ start: number, end: number, innerStart: number, innerEnd: number, span: number, spanInner: number, mid: number, safeRadius: number, contentRadius: number, availWidth: number, availHeight: number, rotate: boolean, flip: boolean }>, gapAngle: number, gapAngleInner: number }}
  */
 export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRadius, innerRadius, meanRadius, ringWidth, gap, fit = FITS.CIRCLE, direction }) {
     const nominalSpan = arcLength / itemCount;
@@ -219,7 +216,6 @@ export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRad
             end,
             innerStart,
             innerEnd,
-            relStart: i * nominalSpan,
             span,
             spanInner,
             mid,

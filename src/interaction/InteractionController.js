@@ -148,7 +148,12 @@ export class InteractionController {
     }
 
     _onContextMenu(event) {
-        event.preventDefault();
+        // Подавляем браузерное контекстное меню только для отслеживаемой
+        // кнопки: меню, открытое левой кнопкой, не лишает страницу её
+        // собственного правого клика.
+        if (event.button === this._button) {
+            event.preventDefault();
+        }
     }
 
     /**

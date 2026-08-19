@@ -159,7 +159,12 @@ export function validateConfig(config) {
     items.forEach(validateItem);
 
     if (size !== undefined) assertNumber(size, 'size', (v) => v > 0, 'a positive number');
-    if (centerSize !== undefined) assertNumber(centerSize, 'centerSize', (v) => v > 0 && v < size, `a number greater than 0 and less than size (${size})`);
+    if (centerSize !== undefined) {
+        const message = size === undefined
+            ? 'a number greater than 0 (and, when size is set, less than size)'
+            : `a number greater than 0 and less than size (${size})`;
+        assertNumber(centerSize, 'centerSize', (v) => v > 0 && (size === undefined || v < size), message);
+    }
     if (gap !== undefined) assertNumber(gap, 'gap', (v) => v >= 0, 'a non-negative number');
     if (startAngle !== undefined) assertNumber(startAngle, 'startAngle', () => true, 'a finite number');
     if (button !== undefined && !BUTTON_NAMES.has(button)) {

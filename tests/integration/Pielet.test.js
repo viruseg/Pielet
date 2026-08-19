@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import Pielet from '../../src/Pielet.js';
+import Pielet from '../../src/pielet.js';
 import { SUBMENU_CHEVRON_SIZE_RATIO, SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO } from '../../src/geometry/calculateSector.js';
 
 const items = [
@@ -487,6 +487,19 @@ describe('Pielet selection pipeline', () => {
     expect(action).toHaveBeenCalledTimes(1);
     expect(document.body.querySelector('.pielet')).toBeNull();
   });
+
+  it('a select handler can reopen the menu without the same select closing it', async () => {
+    menu = new Pielet({ items: [{ typeContent: 'text', content: 'A' }] });
+    menu.addEventListener('select', () => menu.open(500, 200));
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 301, clientY: 380 }));
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
+    // обработчик переоткрыл меню — оно осталось открытым на новых координатах
+    expect(document.body.querySelectorAll('.pielet')).toHaveLength(1);
+    const el = document.body.querySelector('.pielet');
+    expect(el.style.left).toBe('380px');
+    expect(el.style.top).toBe('80px');
+  });
 });
 
 describe('Pielet.setItemContent', () => {
@@ -963,6 +976,26 @@ describe('Pielet — single active menu across instances', () => {
     menu.close();
     await sleep(400);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('reopening the same instance during a fade close does not emit a false close or corrupt the registry', async () => {
+    menu = makeMenu();
+    const onClose = vi.fn();
+    menu.addEventListener('close', onClose);
+    menu.open(200, 200);
+    await sleep(30);
+    menu.close();
+    // reopen в пределах fade-окна (~310ms): старый finish ещё не сработал
+    menu.open(600, 100);
+    await sleep(400); // старый fade завершился
+    expect(onClose).not.toHaveBeenCalled();
+    expect(document.body.querySelectorAll('.pielet')).toHaveLength(1);
+    // реестр цел: открытие второго экземпляра закрывает переоткрытое меню
+    const second = new Pielet({ items: [{ typeContent: 'text', content: 'B' }] });
+    second.open(700, 300);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(document.body.querySelectorAll('.pielet')).toHaveLength(1);
+    menu = second;
   });
 });
 

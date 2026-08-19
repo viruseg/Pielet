@@ -96,7 +96,7 @@ describe('validateConfig errors', () => {
     ['size NaN', { size: NaN }],
     ['centerSize <= 0', { centerSize: 0 }],
     ['centerSize negative', { centerSize: -5 }],
-    ['centerSize >= size', { centerSize: 240 }],
+    ['centerSize >= size', { size: 120, centerSize: 240 }],
     ['centerSize NaN', { centerSize: NaN }],
     ['gap negative', { gap: -1 }],
     ['gap NaN', { gap: NaN }],
@@ -233,6 +233,17 @@ describe('validateConfig valid inputs', () => {
   it('accepts boundary sizes', () => {
     expect(() => validateConfig({ items: validItems, size: 240, centerSize: 239.9 })).not.toThrow();
     expect(() => validateConfig({ items: validItems, gap: 0, closeDistance: 0 })).not.toThrow();
+  });
+
+  it('accepts centerSize without size (defaults applied later in normalizeConfig)', () => {
+    expect(() => validateConfig({ items: validItems, centerSize: 72 })).not.toThrow();
+    expect(normalizeConfig({ items: validItems, centerSize: 72 }).size).toBe(240);
+    expect(normalizeConfig({ items: validItems, centerSize: 72 }).centerSize).toBe(72);
+  });
+
+  it('keeps the less-than-size error message when size is present', () => {
+    expect(() => validateConfig({ items: validItems, size: 120, centerSize: 121 }))
+      .toThrow(/centerSize must be a number greater than 0 and less than size \(120\)/);
   });
 
   it('normalizes items preserving order', () => {

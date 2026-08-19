@@ -196,10 +196,14 @@ export default class Pielet extends EventTarget {
         this._removeViewportListeners();
         runtime.interaction.detach();
         const finish = () => {
-            releaseActiveMenu(this);
-            if (!this._closeNotified) {
-                this._closeNotified = true;
-                this.dispatchEvent(new CustomEvent('close', { detail: { menu: this } }));
+            // Если за время fade меню уже переоткрыто этим же экземпляром,
+            // реестр по-прежнему держит его, а события close быть не должно.
+            if (!this._runtime) {
+                releaseActiveMenu(this);
+                if (!this._closeNotified) {
+                    this._closeNotified = true;
+                    this.dispatchEvent(new CustomEvent('close', { detail: { menu: this } }));
+                }
             }
         };
         if (immediate) {
@@ -228,9 +232,10 @@ export default class Pielet extends EventTarget {
     _select(item, index, point) {
         void index;
         const id = item && typeof item.id === 'string' ? item.id : '';
+        const runtimeAtSelect = this._runtime;
         this.dispatchEvent(new CustomEvent('select', { detail: { id, menu: this, coords: point } }));
         const keepOpen = this.config.interactionMode === INTERACTION_MODES.CLICK && item && item.keepOpen === true;
-        if (!keepOpen) {
+        if (!keepOpen && this._runtime === runtimeAtSelect) {
             this._close(true);
         }
         if (item && item.isSubMenu === true) {

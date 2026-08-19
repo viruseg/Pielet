@@ -264,6 +264,7 @@ describe('InteractionController — pointerup (hold mode)', () => {
   let controller, onClose, onSelect;
 
   function make(button = 'left') {
+    if (controller) controller.detach();
     onClose = vi.fn();
     onSelect = vi.fn();
     controller = new InteractionController({
@@ -315,6 +316,7 @@ describe('InteractionController — cancellation and context menu', () => {
     controller.attach();
     fire(window, 'pointercancel');
     expect(onClose).toHaveBeenCalledTimes(1);
+    controller.detach();
   });
 
   it('suppresses the browser context menu while open', () => {
@@ -328,9 +330,42 @@ describe('InteractionController — cancellation and context menu', () => {
       onSelect: vi.fn()
     });
     controller.attach();
-    const event = fire(window, 'contextmenu');
+    const event = fire(window, 'contextmenu', { button: 0 });
     expect(event.defaultPrevented).toBe(true);
     expect(event.cancelable).toBe(true);
+    controller.detach();
+  });
+
+  it('does not suppress the context menu for a button the menu does not track', () => {
+    const controller = new InteractionController({
+      interactionMode: 'click',
+      button: 'left',
+      geometry: makeGeometry(),
+      ...CENTER,
+      onHover: vi.fn(),
+      onClose: vi.fn(),
+      onSelect: vi.fn()
+    });
+    controller.attach();
+    const event = fire(window, 'contextmenu', { button: 2 });
+    expect(event.defaultPrevented).toBe(false);
+    controller.detach();
+  });
+
+  it('suppresses the context menu when the event button matches the tracked button', () => {
+    const controller = new InteractionController({
+      interactionMode: 'click',
+      button: 'right',
+      geometry: makeGeometry(),
+      ...CENTER,
+      onHover: vi.fn(),
+      onClose: vi.fn(),
+      onSelect: vi.fn()
+    });
+    controller.attach();
+    const event = fire(window, 'contextmenu', { button: 2 });
+    expect(event.defaultPrevented).toBe(true);
+    controller.detach();
   });
 });
 

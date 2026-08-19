@@ -61,8 +61,8 @@
  */
 
 /**
- * Экземпляр кругового меню (см. `src/Pielet.js`).
- * @typedef {import('./Pielet.js').default} Pielet
+ * Экземпляр кругового меню (см. `src/pielet.js`).
+ * @typedef {import('./pielet.js').default} Pielet
  */
 
 /**
@@ -92,30 +92,31 @@
  * @typedef {object} PieletEventDetail
  * @property {Pielet} menu - экземпляр меню, для которого вызвано событие
  * @property {string} [id] - строковый id выбранного пункта (только `select`)
- * @property {object} [coords] - координаты указателя (clientX/clientY) в момент клика по пункту (только `select`)
- * @property {object} [rect] - DOMRect-совместимый bounding rect видимой части меню (только `open`)
+ * @property {{ x: number, y: number }} [coords] - координаты указателя (clientX/clientY) в момент клика по пункту (только `select`)
+ * @property {{ x: number, y: number, width: number, height: number, left: number, top: number, right: number, bottom: number }} [rect] - DOMRect-совместимый bounding rect видимой части меню (только `open`)
  */
 
 /**
- * Конфигурация меню Pielet.
+ * Конфигурация меню Pielet. Все поля, кроме `items`, опциональны —
+ * отсутствующие получают дефолты из `DEFAULT_CONFIG`.
  * @typedef {object} PieletConfig
- * @property {number} size - внешний диаметр меню в CSS-пикселях (default 240)
- * @property {number} centerSize - диаметр центральной прозрачной области (default 72)
- * @property {number} gap - зазор между секторами в px по средней окружности (default 4)
- * @property {number} startAngle - угол начала первого пункта в градусах (default -90)
- * @property {Direction} direction - порядок распределения пунктов (default 'clockwise')
- * @property {InteractionMode} interactionMode - режим поведения меню (default 'click')
- * @property {MouseButtonName} button - отслеживаемая кнопка мыши (default 'left'). Меню реагирует только на неё
- * @property {number} closeDistance - доп. расстояние за внешним краем, после которого меню закрывается (default 48)
- * @property {Fit} fit - способ вписывания контента в сектор (default 'circle')
- * @property {boolean} unifyText - выровнять размер шрифта всех text-пунктов по
+ * @property {number} [size] - внешний диаметр меню в CSS-пикселях (default 240)
+ * @property {number} [centerSize] - диаметр центральной прозрачной области (default 72)
+ * @property {number} [gap] - зазор между секторами в px по средней окружности (default 4)
+ * @property {number} [startAngle] - угол начала первого пункта в градусах (default -90)
+ * @property {Direction} [direction] - порядок распределения пунктов (default 'clockwise')
+ * @property {InteractionMode} [interactionMode] - режим поведения меню (default 'click')
+ * @property {MouseButtonName} [button] - отслеживаемая кнопка мыши (default 'left'). Меню реагирует только на неё
+ * @property {number} [closeDistance] - доп. расстояние за внешним краем, после которого меню закрывается (default 48)
+ * @property {Fit} [fit] - способ вписывания контента в сектор (default 'circle')
+ * @property {boolean} [unifyText] - выровнять размер шрифта всех text-пунктов по
  *   самому длинному тексту (наименьший влезающий шрифт). Действует только при
  *   fit 'square', в 'circle' игнорируется (default false)
- * @property {number} submenuDelay - задержка (мс) открытия сабменю при наведении
+ * @property {number} [submenuDelay] - задержка (мс) открытия сабменю при наведении
  *   на пункт с `isSubMenu: true`. Действует в hold-режиме и в click-режиме, пока
  *   отслеживаемая кнопка удержана (меню работает как hold). 0 отключает
  *   hover-открытие, оставляя только открытие по клику (default 400)
- * @property {SubmenuIndicator} submenuIndicator - индикация пунктов-сабменю:
+ * @property {SubmenuIndicator} [submenuIndicator] - индикация пунктов-сабменю:
  *   'arc' — дуга у внутреннего радиуса, 'chevron' — стрелка у внешнего края,
  *   'both' — и дуга, и стрелка. Варианта без индикации нет (default 'both')
  * @property {ArcPartName[]} [availableArc] - доступные для показа пунктов части дуги.

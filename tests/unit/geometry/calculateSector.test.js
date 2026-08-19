@@ -201,22 +201,6 @@ describe('calculateSectorLayout', () => {
     const { sectors } = calculateSectorLayout({ ...base, itemCount: 4 });
     for (const s of sectors) expect(s.flip).toBe(false);
   });
-
-  it('computes relStart for hit testing (clockwise: positive offsets)', () => {
-    const { sectors, gapAngle } = calculateSectorLayout({ ...base, itemCount: 4 });
-    const stepq = sectors[0].span + gapAngle;
-    near(sectors[0].relStart, 0);
-    near(sectors[1].relStart, stepq);
-    near(sectors[2].relStart, 2 * stepq);
-  });
-
-  it('computes relStart for hit testing (counterclockwise: positive offsets in unfolded p-space)', () => {
-    const { sectors } = calculateSectorLayout({ ...base, direction: 'counterclockwise', itemCount: 4 });
-    const stepq = sectors[0].span + 4 / 120; // gapAngle (внешний)
-    near(sectors[0].relStart, 0);
-    near(sectors[1].relStart, stepq);
-    near(sectors[2].relStart, 2 * stepq);
-  });
 });
 
 describe('sector alignment: gap lines and content centers', () => {

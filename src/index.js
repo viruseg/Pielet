@@ -3,6 +3,6 @@
  * Ноль зависимостей, ESM, работает в любом современном браузере.
  */
 
-import Pielet from './Pielet.js';
+import Pielet from './pielet.js';
 
 export default Pielet;

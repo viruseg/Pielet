@@ -182,6 +182,57 @@ for (const point of [
   });
 }
 
+test('availableArc right: items span the right half at the center and mirror to the left half at the right edge', async ({ page }) => {
+  const install = () =>
+    page.evaluate(() => {
+      window.__arc = new window.Pielet({
+        availableArc: ['right'],
+        items: [
+          { typeContent: 'text', content: 'A' },
+          { typeContent: 'text', content: 'B' },
+          { typeContent: 'text', content: 'C' }
+        ]
+      });
+    });
+  const itemCenters = () =>
+    page.evaluate(() => {
+      const menu = document.querySelector('.pielet');
+      const box = menu.getBoundingClientRect();
+      const cx = box.x + box.width / 2;
+      const cy = box.y + box.height / 2;
+      const centers = Array.from(menu.querySelectorAll('.pielet__item-caption')).map((c) => {
+        const b = c.getBoundingClientRect();
+        return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+      });
+      return { cx, cy, centers, vw: window.innerWidth, vh: window.innerHeight };
+    });
+  const inViewport = (p, vw, vh) => p.x >= 0 && p.x <= vw && p.y >= 0 && p.y <= vh;
+
+  await install();
+  await page.evaluate(() => window.__arc.open(640, 360)); // центр viewport (1280x720)
+  await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
+  let m = await itemCenters();
+  // по умолчанию дуга «right» — правая половина круга: все пункты правее центра
+  expect(m.centers).toHaveLength(3);
+  for (const p of m.centers) {
+    expect(p.x).toBeGreaterThan(m.cx);
+    expect(inViewport(p, m.vw, m.vh)).toBe(true);
+  }
+  await page.evaluate(() => window.__arc.close());
+  await page.waitForTimeout(350);
+
+  // у правого края круга места нет — дуга зеркалится в свободную (левую) часть
+  await page.evaluate(() => window.__arc.open(1280 - 40, 360));
+  await page.waitForSelector('.pielet', { state: 'attached', timeout: MENU_OPEN_TIMED_OUT });
+  m = await itemCenters();
+  expect(m.centers).toHaveLength(3);
+  for (const p of m.centers) {
+    expect(p.x).toBeLessThan(m.cx);
+    expect(inViewport(p, m.vw, m.vh)).toBe(true);
+  }
+  await page.evaluate(() => window.__arc.close());
+});
+
 test('menu larger than viewport still opens centered without errors', async ({ page }) => {
   await page.evaluate(async () => {
     window.__menu.close();
@@ -252,20 +303,25 @@ test('click mode: clicking a none sector closes the menu without action', async 
   await expect(page.locator('.pielet')).toHaveCount(0);
 });
 
-test('context menu is suppressed while the menu is open', async ({ page }) => {
+test('context menu is suppressed only for the tracked button while the menu is open', async ({ page }) => {
   await openMenu(page, 400, 400);
-  const event = await page.evaluate(async () => {
-    const obj = await new Promise((resolve) => {
-      const handler = (e) => {
-        window.removeEventListener('contextmenu', handler);
-        resolve(e.defaultPrevented);
-      };
-      window.addEventListener('contextmenu', handler);
-      window.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
-    });
-    return obj;
-  });
-  expect(event).toBe(true);
+  const suppressed = (button) =>
+    page.evaluate(
+      (b) =>
+        new Promise((resolve) => {
+          const handler = (e) => {
+            window.removeEventListener('contextmenu', handler);
+            resolve(e.defaultPrevented);
+          };
+          window.addEventListener('contextmenu', handler);
+          window.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: b }));
+        }),
+      button
+    );
+  // меню демо открыто левой кнопкой (button: 'left'): левый клик подавляется,
+  // правый — нет (страница сохраняет своё контекстное меню)
+  expect(await suppressed(0)).toBe(true);
+  expect(await suppressed(2)).toBe(false);
 });
 
 test.describe('submenus (isSubMenu)', () => {

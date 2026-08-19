@@ -30,6 +30,30 @@ window.addEventListener('contextmenu', (e) => {
 });
 ```
 
+## Использование с CDN (IIFE)
+
+Для страниц без сборщика — готовая IIFE-сборка `dist/pielet.browser.js` (доступна также через [unpkg](https://unpkg.com/pielet) и [jsdelivr](https://www.jsdelivr.com/package/npm/pielet)). Она создаёт глобал `Pielet`; стили подключаются отдельно:
+
+```html
+<link rel="stylesheet" href="https://unpkg.com/pielet/dist/pielet.css" />
+<script src="https://unpkg.com/pielet/dist/pielet.browser.js"></script>
+<script>
+  const menu = new Pielet({
+    items: [
+      { typeContent: 'text', content: 'Открыть' },
+      { typeContent: 'text', content: 'Сохранить' }
+    ]
+  });
+
+  window.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    menu.open(e.clientX, e.clientY);
+  });
+</script>
+```
+
+API идентичен ESM-версии. IIFE-сборка предназначена только для браузера и не экспортируется из пакета как модуль.
+
 ## API
 
 | Член | Описание |
@@ -183,7 +207,7 @@ npm run dev:demo
 npm install       # install
 npm test          # unit + integration (vitest)
 npm run test:e2e  # end-to-end (Playwright, chromium)
-npm run build     # dist/pielet.js + dist/pielet.css + dist/*.d.ts
+npm run build     # dist/pielet.js (ESM) + dist/pielet.browser.js (IIFE) + dist/pielet.css + dist/*.d.ts
 npx vite          # run
 ```
 
