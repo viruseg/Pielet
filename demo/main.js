@@ -108,10 +108,16 @@ const menu = new Pielet(readState());
 window.__menu = menu;
 window.Pielet = Pielet;
 
+function formatAvailableArc(value) {
+  const parts = parseAvailableArc(value);
+  return JSON.stringify(parts ?? []);
+}
+
 function syncValueLabels() {
   document.querySelectorAll('#controls output.value').forEach((out) => {
     const input = document.getElementById(out.dataset.for);
-    if (input) out.textContent = input.value;
+    if (!input) return;
+    out.textContent = input.id === 'availableArc' ? formatAvailableArc(input.value) : input.value;
   });
 }
 Object.values(controls).forEach((el) => el.addEventListener('input', syncValueLabels));
