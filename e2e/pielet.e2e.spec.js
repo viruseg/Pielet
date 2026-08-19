@@ -18,6 +18,28 @@ test('menu DOM lifecycle: open → DOM present, close → DOM removed', async ({
   await openMenu(page, 400, 400);
   await expect(page.locator('.pielet')).toHaveCount(1);
   await expect(page.locator('.pielet__item')).toHaveCount(7);
+  // инертный центр: нода-хук присутствует, не перехватывает события (pointer-events: none)
+  await expect(page.locator('.pielet__center')).toHaveCount(1);
+  await page.evaluate(() => {
+    const center = document.querySelector('.pielet__center');
+    return {
+      tag: center.tagName.toLowerCase(),
+      pointerEvents: getComputedStyle(center).pointerEvents,
+      width: center.style.width,
+      height: center.style.height,
+      left: center.style.left,
+      top: center.style.top
+    };
+  }).then(({ tag, pointerEvents, width, height, left, top }) => {
+    expect(tag).toBe('div');
+    expect(pointerEvents).toBe('none');
+    // центр = centerSize (72) в геометрии демо, отцентрован в корне меню
+    expect(parseFloat(width)).toBe(72);
+    expect(parseFloat(height)).toBe(72);
+    const box = 120; // outerRadius демо = 120
+    expect(parseFloat(left)).toBeCloseTo(box - 36, 6);
+    expect(parseFloat(top)).toBeCloseTo(box - 36, 6);
+  });
   await page.evaluate(() => window.__menu.close());
   await expect(page.locator('.pielet')).toHaveCount(0);
   await openMenu(page, 200, 200);

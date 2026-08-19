@@ -210,6 +210,49 @@ describe('MenuRenderer.mount', () => {
     expect(parseFloat(caption.style.top)).toBeCloseTo(100 - contentRadius, 6);
   });
 
+  it('creates an inert center node (.pielet__center) sized to the centerSize dead zone', () => {
+    // makeGeometry: outer 100 / inner 30 → центр — квадрат 60×60 (centerSize = 60)
+    renderer.mount({ centerX: 200, centerY: 150, geometry: makeGeometry(), items });
+    const center = renderer.element.querySelector('.pielet__center');
+    expect(center).toBeTruthy();
+    expect(center.getAttribute('aria-hidden')).toBe('true');
+    expect(center.style.position).toBe('absolute');
+    expect(center.style.left).toBe('70px');  // outerRadius - innerRadius
+    expect(center.style.top).toBe('70px');
+    expect(center.style.width).toBe('60px');  // innerRadius * 2
+    expect(center.style.height).toBe('60px');
+    // первый ребёнок корня: пункты рисуются поверх, контент центра виден в дыре кольца
+    expect(renderer.element.firstElementChild).toBe(center);
+  });
+
+  it('center node is a plain div with no visual styling inline', () => {
+    renderer.mount({ centerX: 200, centerY: 150, geometry: makeGeometry(), items });
+    const center = renderer.element.querySelector('.pielet__center');
+    expect(center.tagName.toLowerCase()).toBe('div');
+    expect(center.style.background).toBe('');
+    expect(center.childElementCount).toBe(0);
+  });
+
+  it('center node does not affect items, captions or submenu chevrons', () => {
+    const submenuItems = [
+      { typeContent: 'text', content: 'A', isSubMenu: true },
+      { typeContent: 'text', content: 'B' },
+      { typeContent: 'none' }
+    ];
+    renderer.mount({
+      centerX: 200,
+      centerY: 150,
+      geometry: makeGeometry({ itemCount: 3 }),
+      items: submenuItems,
+      submenuIndicator: 'both'
+    });
+    expect(renderer.element.querySelectorAll('.pielet__item')).toHaveLength(3);
+    expect(renderer.element.querySelectorAll('.pielet__item-caption')).toHaveLength(2);
+    expect(renderer.element.querySelectorAll('.pielet__submenu-chevron')).toHaveLength(1);
+    // корень по-прежнему содержит ровно один слой структуры + центр + шеврон
+    expect(renderer.element.querySelectorAll('.pielet__center')).toHaveLength(1);
+  });
+
   it('adds the open class asynchronously', async () => {
     vi.useFakeTimers();
     renderer.mount({ centerX: 200, centerY: 150, geometry: makeGeometry(), items });

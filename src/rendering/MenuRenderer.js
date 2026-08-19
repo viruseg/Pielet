@@ -98,6 +98,19 @@ export class MenuRenderer {
         el.style.width = `${size}px`;
         el.style.height = `${size}px`;
 
+        // Центральная область (dead zone, `centerSize`). Инертный div-хук без
+        // внешнего вида: юзер библиотеки стилизует центр через `.pielet__center`.
+        // Геометрия — инлайн (зависит от innerRadius), pointer-events — в CSS.
+        const center = document.createElement('div');
+        center.className = 'pielet__center';
+        center.setAttribute('aria-hidden', 'true');
+        center.style.position = 'absolute';
+        center.style.left = `${outerRadius - innerRadius}px`;
+        center.style.top = `${outerRadius - innerRadius}px`;
+        center.style.width = `${innerRadius * 2}px`;
+        center.style.height = `${innerRadius * 2}px`;
+        el.appendChild(center);
+
         if (this._el) this._el.remove();
         document.body.appendChild(el);
         this._el = el;
