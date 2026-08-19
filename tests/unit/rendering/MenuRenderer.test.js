@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MenuRenderer } from '../../../src/rendering/MenuRenderer.js';
-import { calculateSectorLayout, SUBMENU_CHEVRON_MAX_SIZE, SUBMENU_CHEVRON_SIZE_RATIO, SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO } from '../../../src/geometry/calculateSector.js';
+import { calculateSectorLayout, buildSectorOutlinePath, SUBMENU_CHEVRON_MAX_SIZE, SUBMENU_CHEVRON_SIZE_RATIO, SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO } from '../../../src/geometry/calculateSector.js';
 
 const TAU = Math.PI * 2;
 
@@ -306,6 +306,46 @@ describe('MenuRenderer.setHover', () => {
     renderer.setHover(1);
     expect(els[1].classList.contains('pielet__item--hover')).toBe(false);
     renderer.setHover(null);
+  });
+});
+
+describe('MenuRenderer outline', () => {
+  function mounted() {
+    renderer.mount({ centerX: 200, centerY: 150, geometry: makeGeometry(), items });
+    return renderer.element;
+  }
+
+  it('creates outline paths only for selectable items in one inert svg', () => {
+    const root = mounted();
+    const svg = root.querySelector('.pielet__outlines');
+    expect(svg).toBeTruthy();
+    expect(svg.getAttribute('aria-hidden')).toBe('true');
+    const paths = root.querySelectorAll('.pielet__outline');
+    expect(paths.length).toBe(3);
+    for (const p of paths) expect(p.getAttribute('d').startsWith('M ')).toBe(true);
+  });
+
+  it('enables the outline matching the hovered item', () => {
+    const geo = makeGeometry();
+    renderer.mount({ centerX: 200, centerY: 150, geometry: geo, items });
+    renderer.setHover(2);
+    const visible = renderer.element.querySelector('.pielet__outline--visible');
+    expect(visible).toBeTruthy();
+    expect(visible.getAttribute('d')).toBe(buildSectorOutlinePath(geo.sectors[2], geo.outerRadius, geo.innerRadius));
+    expect(renderer.element.querySelectorAll('.pielet__outline--visible').length).toBe(1);
+  });
+
+  it('clears all outlines when hover is null', () => {
+    renderer.mount({ centerX: 200, centerY: 150, geometry: makeGeometry(), items });
+    renderer.setHover(2);
+    renderer.setHover(null);
+    expect(renderer.element.querySelectorAll('.pielet__outline--visible').length).toBe(0);
+  });
+
+  it('shows no outline for a none item', () => {
+    renderer.mount({ centerX: 200, centerY: 150, geometry: makeGeometry(), items });
+    renderer.setHover(1);
+    expect(renderer.element.querySelectorAll('.pielet__outline--visible').length).toBe(0);
   });
 });
 

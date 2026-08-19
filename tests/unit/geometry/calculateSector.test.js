@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateMenuGeometry } from '../../../src/geometry/calculateMenuGeometry.js';
-import { calculateSectorLayout, buildSectorClipPath, buildSubmenuArcPath, buildSubmenuChevron, contentHeightLimit, OUTER_CONTENT_INSET, SUBMENU_CHEVRON_PATH, SUBMENU_CHEVRON_VIEWBOX, SUBMENU_CHEVRON_MAX_SIZE, SUBMENU_CHEVRON_SIZE_RATIO, SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO } from '../../../src/geometry/calculateSector.js';
+import { calculateSectorLayout, buildSectorClipPath, buildSectorOutlinePath, buildSubmenuArcPath, buildSubmenuChevron, contentHeightLimit, OUTER_CONTENT_INSET, SUBMENU_CHEVRON_PATH, SUBMENU_CHEVRON_VIEWBOX, SUBMENU_CHEVRON_MAX_SIZE, SUBMENU_CHEVRON_SIZE_RATIO, SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO } from '../../../src/geometry/calculateSector.js';
 
 const TAU = Math.PI * 2;
 const near = (a, b, eps = 1e-9) => expect(Math.abs(a - b)).toBeLessThan(eps);
@@ -449,6 +449,62 @@ describe('buildSectorClipPath', () => {
   it('handles sectors spanning across 2π', () => {
     const path = buildSectorClipPath({ start: 3 * Math.PI / 2, end: 3 * Math.PI / 2 + Math.PI / 4 }, 100, 20);
     expect(path.startsWith('polygon(')).toBe(true);
+  });
+});
+
+describe('buildSectorOutlinePath', () => {
+  function parsePath(d) {
+    const tokens = d.match(/[MLAZ]|-?[\d.]+/g);
+    const cmds = [];
+    let last = null;
+    for (const t of tokens) {
+      if (t === 'M' || t === 'L' || t === 'A' || t === 'Z') {
+        if (t === 'Z') cmds.push({ cmd: 'Z' });
+        else { last = { cmd: t }; cmds.push(last); }
+      } else {
+        const n = parseFloat(t);
+        if (last.cmd === 'M' || last.cmd === 'L') {
+          if (last.x === undefined) { last.x = n; last.y = null; }
+          else if (last.y === null) last.y = n;
+        } else if (last.cmd === 'A') {
+          (last.args ||= []).push(n);
+        }
+      }
+    }
+    for (const c of cmds) {
+      if (c.cmd === 'A') { c.rx = c.args[0]; c.ry = c.args[1]; c.x = c.args[5]; c.y = c.args[6]; delete c.args; }
+    }
+    return cmds;
+  }
+
+  it('traces the closed wedge: outer arc, outer edge, inner arc, inner edge', () => {
+    const sector = { start: 0, end: Math.PI / 2, innerStart: 0, innerEnd: Math.PI / 2 };
+    const cmds = parsePath(buildSectorOutlinePath(sector, 120, 36));
+    expect(cmds[cmds.length - 1].cmd).toBe('Z');
+    expect(cmds[0]).toMatchObject({ cmd: 'M', x: 240, y: 120 });
+    expect(cmds[1]).toMatchObject({ cmd: 'A', rx: 120, x: 120, y: 240 });
+    expect(cmds[2]).toMatchObject({ cmd: 'L', x: 120, y: 156 });
+    expect(cmds[3]).toMatchObject({ cmd: 'A', rx: 36, x: 156, y: 120 });
+    expect(cmds[4]).toMatchObject({ cmd: 'L', x: 240, y: 120 });
+  });
+
+  it('uses innerStart/innerEnd for the inner arc and radial edges (gap-aware)', () => {
+    const sector = { start: 0, end: Math.PI / 2, innerStart: Math.PI / 8, innerEnd: 3 * Math.PI / 8 };
+    const cmds = parsePath(buildSectorOutlinePath(sector, 120, 36));
+    expect(cmds[2].x).toBeCloseTo(120 + 36 * Math.cos(3 * Math.PI / 8), 2);
+    expect(cmds[2].y).toBeCloseTo(120 + 36 * Math.sin(3 * Math.PI / 8), 2);
+    expect(cmds[3].x).toBeCloseTo(120 + 36 * Math.cos(Math.PI / 8), 2);
+    expect(cmds[3].y).toBeCloseTo(120 + 36 * Math.sin(Math.PI / 8), 2);
+  });
+
+  it('full ring (span 2π): two closed circles, no radial edges', () => {
+    const d = buildSectorOutlinePath({ start: 0, end: Math.PI * 2, innerStart: 0, innerEnd: Math.PI * 2 }, 120, 36);
+    expect(d.endsWith('Z')).toBe(true);
+    expect((d.match(/L/g) || []).length).toBe(0);
+    expect((d.match(/A/g) || []).length).toBe(4);
+    for (const c of parsePath(d).filter((c) => c.cmd === 'A')) {
+      expect([120, 36]).toContain(c.rx);
+    }
   });
 });
 

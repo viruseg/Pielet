@@ -5,7 +5,7 @@
  * Визуальные параметры задаются CSS custom properties (src/styles/pielet.css).
  */
 
-import { buildSectorClipPath, buildSubmenuArcPath, buildSubmenuChevron, contentHeightLimit, SUBMENU_CHEVRON_PATH, SUBMENU_CHEVRON_VIEWBOX } from '../geometry/calculateSector.js';
+import { buildSectorClipPath, buildSectorOutlinePath, buildSubmenuArcPath, buildSubmenuChevron, contentHeightLimit, SUBMENU_CHEVRON_PATH, SUBMENU_CHEVRON_VIEWBOX } from '../geometry/calculateSector.js';
 import { createContentContainer, fitText } from './ContentRenderer.js';
 import { CONTENT_TYPES, SUBMENU_INDICATORS } from '../config/constants.js';
 
@@ -56,6 +56,8 @@ export class MenuRenderer {
         this._sectors = [];
         /** @type {boolean[]} */
         this._selectable = [];
+        /** @type {Array<Element | null>} */
+        this._outlinePaths = [];
         /** @type {Array<object>} */
         this._items = [];
         /** @type {boolean} */
@@ -162,6 +164,29 @@ export class MenuRenderer {
             this._itemEls.push(itemEl);
         }
 
+        // Обводка hover-пункта: отдельный SVG-слой поверх секторов. Клапаны
+        // (clip-path) секторов срезали бы border/outline по контуру клина,
+        // поэтому контур рисуется контуром path в корне меню, вне клипа.
+        // Как и hover-фон, показывается только для selectable пунктов.
+        const outlineSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        outlineSvg.setAttribute('class', 'pielet__outlines');
+        outlineSvg.setAttribute('aria-hidden', 'true');
+        outlineSvg.setAttribute('width', `${size}px`);
+        outlineSvg.setAttribute('height', `${size}px`);
+        outlineSvg.style.position = 'absolute';
+        outlineSvg.style.top = '0';
+        outlineSvg.style.left = '0';
+        this._outlinePaths = new Array(items.length).fill(null);
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].typeContent === CONTENT_TYPES.NONE) continue;
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('class', 'pielet__outline');
+            path.setAttribute('d', buildSectorOutlinePath(sectors[i], outerRadius, innerRadius));
+            outlineSvg.appendChild(path);
+            this._outlinePaths[i] = path;
+        }
+        el.appendChild(outlineSvg);
+
         // fitText требует, чтобы элемент был в DOM (scrollWidth/scrollHeight),
         // поэтому выравнивание выполняется после монтирования всех пунктов.
         this._fitTextItems(items);
@@ -252,7 +277,9 @@ export class MenuRenderer {
      */
     setHover(index) {
         for (let i = 0; i < this._itemEls.length; i++) {
-            this._itemEls[i].classList.toggle('pielet__item--hover', i === index && this._selectable[i]);
+            const on = i === index && this._selectable[i];
+            this._itemEls[i].classList.toggle('pielet__item--hover', on);
+            if (this._outlinePaths[i]) this._outlinePaths[i].classList.toggle('pielet__outline--visible', on);
         }
     }
 
@@ -362,6 +389,7 @@ export class MenuRenderer {
             this._captions = [];
             this._sectors = [];
             this._items = [];
+            this._outlinePaths = [];
         }
     }
 }

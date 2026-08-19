@@ -260,6 +260,59 @@ export function buildSectorClipPath({ start, end, innerStart, innerEnd }, outerR
 }
 
 /**
+ * Строит замкнутый SVG-контур сектора (клина кольца): внешняя дуга, боковая
+ * грань к внутреннему радиусу, внутренняя дуга (через innerStart/innerEnd,
+ * чтобы не залезать в gap) и грань обратно к стартовой точке. Используется
+ * как обводка пункта при hover вне clip-path сектора (последний срезал бы
+ * border/outline по контуру). Координаты — в px квадрата 2*outerRadius
+ * (центр квадрата — в центре кольца), как в buildSectorClipPath.
+ *
+ * Полное кольцо (span ≥ 2π) — пара замкнутых окружностей (каждая дуга
+ * разбита на два полукруга, иначе SVG не рисует окружность из одной A).
+ *
+ * @param {{ start: number, end: number, innerStart?: number, innerEnd?: number }} sector
+ * @param {number} outerRadius
+ * @param {number} innerRadius
+ * @returns {string} значение атрибута `d` SVG-элемента path
+ */
+export function buildSectorOutlinePath({ start, end, innerStart, innerEnd }, outerRadius, innerRadius) {
+    const span = end - start;
+    const innerStartAngle = innerStart === undefined ? start : innerStart;
+    const innerEndAngle = innerEnd === undefined ? end : innerEnd;
+    const fmt = (n) => n.toFixed(CLIP_PRECISION);
+    const point = (radius, angle) => ({
+        x: outerRadius + radius * Math.cos(angle),
+        y: outerRadius + radius * Math.sin(angle)
+    });
+
+    if (span >= TAU - EPS) {
+        const outer = point(outerRadius, start);
+        const inner = point(innerRadius, innerStartAngle);
+        return [
+            `M ${fmt(outer.x)} ${fmt(outer.y)}`,
+            `A ${fmt(outerRadius)} ${fmt(outerRadius)} 0 1 1 ${fmt(outer.x)} ${fmt(outer.y)}`,
+            `A ${fmt(outerRadius)} ${fmt(outerRadius)} 0 1 1 ${fmt(outer.x)} ${fmt(outer.y)}`,
+            `A ${fmt(innerRadius)} ${fmt(innerRadius)} 0 1 1 ${fmt(inner.x)} ${fmt(inner.y)}`,
+            `A ${fmt(innerRadius)} ${fmt(innerRadius)} 0 1 1 ${fmt(inner.x)} ${fmt(inner.y)}`,
+            'Z'
+        ].join(' ');
+    }
+
+    const outerStart = point(outerRadius, start);
+    const outerEnd = point(outerRadius, end);
+    const innerEndPoint = point(innerRadius, innerEndAngle);
+    const innerStartPoint = point(innerRadius, innerStartAngle);
+    return [
+        `M ${fmt(outerStart.x)} ${fmt(outerStart.y)}`,
+        `A ${fmt(outerRadius)} ${fmt(outerRadius)} 0 0 1 ${fmt(outerEnd.x)} ${fmt(outerEnd.y)}`,
+        `L ${fmt(innerEndPoint.x)} ${fmt(innerEndPoint.y)}`,
+        `A ${fmt(innerRadius)} ${fmt(innerRadius)} 0 0 0 ${fmt(innerStartPoint.x)} ${fmt(innerStartPoint.y)}`,
+        `L ${fmt(outerStart.x)} ${fmt(outerStart.y)}`,
+        'Z'
+    ].join(' ');
+}
+
+/**
  * Строит SVG path-полилинию дуги для индикатора сабменю у внутреннего
  * радиуса сектора. Координаты — в px квадрата размером 2*outerRadius
  * (центр квадрата — в центре кольца), как в buildSectorClipPath.

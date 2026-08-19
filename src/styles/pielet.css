@@ -11,6 +11,8 @@
     --pielet-opacity: 0.97;
     --pielet-color: #f2f2f4;
     --pielet-submenu-indicator: #c9cdd9;
+    --pielet-item-outline: rgba(255, 255, 255, 0.85);
+    --pielet-item-outline-width: 2px;
     --pielet-transition-duration: 150ms;
     --pielet-transition-easing: cubic-bezier(0.2, 0.6, 0.3, 1);
     --pielet-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
@@ -83,6 +85,26 @@
 
 .pielet__item--none {
     background: transparent;
+}
+
+/* Обводка hover-пункта (SVG-контур сектора поверх клипа). Цвет и толщина
+   настраиваются через --pielet-item-outline / --pielet-item-outline-width. */
+.pielet__outlines {
+    pointer-events: none;
+}
+
+.pielet__outline {
+    fill: none;
+    stroke: var(--pielet-item-outline);
+    stroke-width: var(--pielet-item-outline-width);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0;
+    transition: opacity var(--pielet-transition-duration) var(--pielet-transition-easing);
+}
+
+.pielet__outline--visible {
+    opacity: 1;
 }
 
 /* Индикаторы пунктов-сабменю */
