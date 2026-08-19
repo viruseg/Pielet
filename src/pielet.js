@@ -13,7 +13,7 @@ import { normalizeConfig } from './config/validateConfig.js';
 import { BUTTON_CODES } from './config/buttons.js';
 import { CONTENT_TYPES, INTERACTION_MODES } from './config/constants.js';
 import { calculateMenuGeometry } from './geometry/calculateMenuGeometry.js';
-import { calculateVisibleArc } from './geometry/calculateVisibleArc.js';
+import { resolveViewportFit } from './geometry/fitMenuToViewport.js';
 import { resolveAvailableArc } from './geometry/availableArc.js';
 import { calculateVisibleRect } from './geometry/calculateVisibleRect.js';
 import { calculateSectorLayout } from './geometry/calculateSector.js';
@@ -62,12 +62,14 @@ export default class Pielet extends EventTarget {
 
         this._closeNotified = false;
 
-        const { outerRadius, innerRadius, ringWidth, meanRadius } = calculateMenuGeometry(config);
-
-        const visible = calculateVisibleArc({
+        const base = calculateMenuGeometry(config);
+        const { outerRadius, innerRadius, ringWidth, meanRadius, startAngle: arcStart, arc: arcLength } = resolveViewportFit({
             centerX: x,
             centerY: y,
-            outerRadius,
+            outerRadius: base.outerRadius,
+            innerRadius: base.innerRadius,
+            ringWidth: base.ringWidth,
+            meanRadius: base.meanRadius,
             startAngle: config.startAngle,
             direction: config.direction,
             viewportWidth: window.innerWidth,
@@ -77,8 +79,8 @@ export default class Pielet extends EventTarget {
 
         const layout = calculateSectorLayout({
             itemCount: config.items.length,
-            arcStart: visible.startAngle,
-            arcLength: visible.arc,
+            arcStart,
+            arcLength,
             outerRadius,
             innerRadius,
             meanRadius,
@@ -92,8 +94,8 @@ export default class Pielet extends EventTarget {
             outerRadius,
             innerRadius,
             closeDistance: config.closeDistance,
-            arcStart: visible.startAngle,
-            arcLength: visible.arc,
+            arcStart,
+            arcLength,
             direction: config.direction,
             sectors: layout.sectors,
             selectable: config.items.map((item) => item.typeContent !== CONTENT_TYPES.NONE),
@@ -124,8 +126,8 @@ export default class Pielet extends EventTarget {
             centerY: y,
             outerRadius,
             innerRadius,
-            startAngle: visible.startAngle,
-            arc: visible.arc,
+            startAngle: arcStart,
+            arc: arcLength,
             direction: config.direction
         });
         this.dispatchEvent(new CustomEvent('open', { detail: { rect, menu: this } }));

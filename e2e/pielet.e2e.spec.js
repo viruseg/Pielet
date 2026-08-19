@@ -143,15 +143,15 @@ test('two instances: only one menu DOM exists', async ({ page }) => {
   await expect(page.locator('.pielet')).toHaveCount(1);
 });
 
-test('opening at a corner keeps the requested center (edge reflow)', async ({ page }) => {
+test('opening at a corner keeps the requested center and scales the menu up (edge reflow)', async ({ page }) => {
   await openMenu(page, 60, 60);
   const box = await page.locator('.pielet').boundingBox();
-  // outerRadius = size/2 = 120: корневой элемент должен начинаться в (60-120, 60-120)
-  expect(box.x).toBeCloseTo(60 - 120, 1);
-  expect(box.y).toBeCloseTo(60 - 120, 1);
-  // центр меню не сдвинут: (60, 60) + 120 = (180, 180)
+  // центр меню не сдвинут: сохраняется точка открытия (60, 60)
   expect(box.x + box.width / 2).toBeCloseTo(60, 1);
   expect(box.y + box.height / 2).toBeCloseTo(60, 1);
+  // радиус увеличивается так, чтобы площадь видимой дуги не уменьшалась
+  expect(box.width).toBeGreaterThan(240);
+  expect(box.height).toBeGreaterThan(240);
 });
 
 test('menu opens exactly at the viewport center', async ({ page }) => {
@@ -177,8 +177,9 @@ for (const point of [
     const box = await page.locator('.pielet').boundingBox();
     expect(box.x + box.width / 2).toBeCloseTo(point.x, 1);
     expect(box.y + box.height / 2).toBeCloseTo(point.y, 1);
-    expect(box.x).toBeCloseTo(point.x - 120, 1);
-    expect(box.y).toBeCloseTo(point.y - 120, 1);
+    // у края меню увеличивается, но не уменьшается относительно конфигурации
+    expect(box.width).toBeGreaterThanOrEqual(240);
+    expect(box.height).toBeGreaterThanOrEqual(240);
   });
 }
 

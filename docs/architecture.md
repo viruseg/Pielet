@@ -15,6 +15,7 @@ src/
   geometry/                      — чистые функции, без DOM
     calculateMenuGeometry.js     — size/centerSize → outerRadius, innerRadius, ringWidth, meanRadius
     calculateVisibleArc.js       — видимая дуга в viewport (edge reflow + размещение availableArc)
+    fitMenuToViewport.js         — масштаб радиуса у краёв viewport: площадь bounding-rect видимой дуги = площади прямоугольника полной дуги
     availableArc.js              — resolveAvailableArc(parts) → непрерывная дуга из частей конфига
     calculateSector.js           — раскладка секторов + clip-path (polygon)
     hitTestSector.js             — математический hit-testing указателя
@@ -37,7 +38,12 @@ open(x, y)
   └─ acquireActiveMenu → предыдущее меню закрывается мгновенно
   └─ calculateMenuGeometry(config)
   └─ resolveAvailableArc(config.availableArc) → {startAngle, arc} | null   (если задан)
-  └─ calculateVisibleArc({center, radius, viewport, availableArc})  → {startAngle, arc}
+  └─ resolveViewportFit({center, radii, viewport, availableArc})  → {radii, arcStart, arc}
+     ▸ resolveViewportFit вызывает calculateVisibleArc при исходном радиусе; если видимая дуга
+       усечена краем и площадь её bounding-rect меньше целевой (квадрат 2·outerRadius, для
+       availableArc — bbox паттерна), внешний радиус увеличивается бисекцией, пока площади не
+       сравняются; внутренние радиусы масштабируются пропорционально. У чистого края (дуга ≥ π)
+       рост ограничен 10 px отклонения размера; в углах (дуга < π) — без лимита.
   └─ calculateSectorLayout({arc, outerRadius, innerRadius, meanRadius, ringWidth, gap, direction})
     gap → угол по внешнему и внутреннему радиусу: points ровно на `gap` px друг от друга на обеих дугах;
   └─ MenuRenderer.mount({center, geometry, items})     → DOM в document.body
@@ -71,6 +77,8 @@ close()
 ### Edge reflow (§ видимая дуга)
 
 Если круг выходит за края viewport, угол секторов вычисляется не от полного круга, а от наибольшей непрерывной дуги, видимой на экране; первый сектор переносится в начало дуги. Центр не смещается. При дуге < π/2 используется полная круговая геометрия. Реализация: пересечение угловых интервалов (± cos/sin ограничений от четырёх краёв), wrap-склейка дуги через 2π и выбор кандидата ближайшего к startAngle конфигурации.
+
+Чтобы контент пунктов не уменьшался, `resolveViewportFit` поверх `calculateVisibleArc` масштабирует радиус: если площадь bounding-rect видимой дуги меньше площади прямоугольника полной дуги (квадрат `2·outerRadius`, для `availableArc` — bbox паттерна), внешний радиус увеличивается бисекцией (площадь монотонно растёт с радиусом вплоть до фолбэка в полный круг), а внутренний радиус, ширина кольца и средний радиус масштабируются пропорционально. У «чистого» края (видимая дуга ≥ π — клип одной гранью) рост ограничен: отклонение размера меню от конфигурации ≤ 10 px (`MAX_EDGE_DEVIATION_PX`); в углах (видимая дуга < π) лимита нет.
 
 `availableArc` добавляет «предпочтительную» дугу: при заданном паттерне пункты сначала размещаются им целиком в ближайшем к естественному положению непрерывном видимом окне (сдвиг/отзеркаливание в свободную часть экрана), а если окна не вмещают паттерн — сужением до наибольшего видимого окна (порог π/2 сохраняется). Валидация частей (сплошная дуга, пересечения допустимы) — в `validateConfig`; резолв в дугу — чистый `resolveAvailableArc`.
 

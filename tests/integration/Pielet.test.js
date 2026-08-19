@@ -941,6 +941,36 @@ describe('Pielet — availableArc', () => {
   });
 });
 
+describe('Pielet — edge reflow scales the menu to preserve the arc area', () => {
+  it('near the left edge the rendered menu is larger than config size and keeps the clicked center', () => {
+    menu = new Pielet({ items });
+    menu.open(50, 384);
+    const el = document.body.querySelector('.pielet');
+    const width = Number.parseFloat(el.style.width);
+    // default size 240 → радиус 120; масштабирование у края увеличивает меню
+    expect(width).toBeGreaterThan(240);
+    // центр DOM-квадрата остаётся в координате клика
+    expect(Number.parseFloat(el.style.left) + width / 2).toBeCloseTo(50, 1);
+  });
+
+  it('at the bottom-right corner the menu scales the most and still keeps the center', () => {
+    menu = new Pielet({ items });
+    menu.open(990, 750);
+    const el = document.body.querySelector('.pielet');
+    const width = Number.parseFloat(el.style.width);
+    expect(width).toBeGreaterThan(240 * 1.3);
+    expect(Number.parseFloat(el.style.left) + width / 2).toBeCloseTo(990, 1);
+    expect(Number.parseFloat(el.style.top) + width / 2).toBeCloseTo(750, 1);
+  });
+
+  it('fully visible menu keeps the config size', () => {
+    menu = new Pielet({ items });
+    menu.open(300, 300);
+    const el = document.body.querySelector('.pielet');
+    expect(el.style.width).toBe('240px');
+  });
+});
+
 describe('Pielet — single active menu across instances', () => {
   it('opening a second instance closes the first one (one DOM menu only)', async () => {
     const first = new Pielet({ items });
@@ -962,7 +992,13 @@ describe('Pielet — single active menu across instances', () => {
     await sleep(30);
     expect(document.body.querySelectorAll('.pielet')).toHaveLength(1);
     const el = document.body.querySelector('.pielet');
-    expect(el.style.left).toBe('580px');
+    const left = Number.parseFloat(el.style.left);
+    const width = Number.parseFloat(el.style.width);
+    // Переоткрытие заменило runtime геометрией второго open(700, 100):
+    // центр DOM-квадрата остаётся в (700, 100), а радиус у верхнего края
+    // увеличен масштабированием (outerRadius > 120 → left < 700 − 120).
+    expect(Math.abs(left + width / 2 - 700)).toBeLessThan(0.01);
+    expect(left).toBeLessThan(580);
   });
 
   it('reopening while open replaces silently, final close emits a single close event', async () => {
