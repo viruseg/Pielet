@@ -109,12 +109,114 @@ function intersectIntervals(a, b) {
 }
 
 /**
+ * Круговое расстояние между двумя углами (радианы).
+ * @param {number} a
+ * @param {number} b
+ * @returns {number}
+ */
+function circularDistance(a, b) {
+    const raw = Math.abs(((a - b) % TAU) + TAU) % TAU;
+    return Math.min(raw, TAU - raw);
+}
+
+/**
+ * Ближайшая к `center` точка интервала [lo, hi] (unwrapped-координаты,
+ * hi - lo <= TAU), с учётом периодичности углов по кругу.
+ * @param {number} lo
+ * @param {number} hi
+ * @param {number} center
+ * @returns {number}
+ */
+function clampToWindow(lo, hi, center) {
+    let best = null;
+    let bestDist = Infinity;
+    for (const shift of [-TAU, 0, TAU]) {
+        const p = center + shift;
+        const c = Math.min(hi, Math.max(lo, p));
+        const d = Math.abs(c - p);
+        if (d < bestDist) {
+            bestDist = d;
+            best = c;
+        }
+    }
+    return best;
+}
+
+/**
+ * Размещает запрошенную дугу целиком внутри одного из непрерывных видимых
+ * окон, ближе всего к её «естественному» центру (сдвиг/отзеркаливание
+ * в свободную часть экрана). Возвращает `null`, если ни одно окно
+ * не вмещает дугу целиком.
+ *
+ * @param {{ startAngle: number, arc: number }} pattern - запрошенная дуга (радианы)
+ * @param {Array<[number, number]>} candidates - непрерывные видимые окна
+ * @returns {{ start: number, end: number, arc: number } | null}
+ */
+function bestPatternPlacement(pattern, candidates) {
+    const center = pattern.startAngle + pattern.arc / 2;
+    let best = null;
+    let bestDist = Infinity;
+    for (const [s, e] of candidates) {
+        const wlen = e - s;
+        if (wlen < pattern.arc - EPS) continue;
+        let c;
+        if (wlen >= TAU - EPS) {
+            c = center;
+        } else {
+            c = clampToWindow(s + pattern.arc / 2, e - pattern.arc / 2, center);
+        }
+        const dist = circularDistance(c, center);
+        if (dist < bestDist - EPS) {
+            bestDist = dist;
+            best = { start: c - pattern.arc / 2, end: c + pattern.arc / 2, arc: pattern.arc };
+        }
+    }
+    return best;
+}
+
+/**
+ * Размещает запрошенную дугу в видимых окнах: целиком (сдвиг/отзеркаливание)
+ * либо сужением до наибольшего окна; при отсутствии пригодного окна —
+ * полная круговая геометрия.
+ *
+ * @param {{ startAngle: number, arc: number }} pattern
+ * @param {Array<[number, number]>} candidates
+ * @param {'clockwise' | 'counterclockwise'} direction
+ * @param {{ startAngle: number, arc: number }} full - запасная полная геометрия
+ * @returns {{ startAngle: number, arc: number }}
+ */
+function placePattern(pattern, candidates, direction, full) {
+    const placed = bestPatternPlacement(pattern, candidates);
+    if (placed) {
+        return {
+            startAngle: direction === DIRECTIONS.COUNTERCLOCKWISE ? placed.end : placed.start,
+            arc: placed.arc
+        };
+    }
+    let best = null;
+    let bestLen = -1;
+    for (const [s, e] of candidates) {
+        const len = e - s;
+        if (len < MIN_EDGE_REALLOCATION_ARC - EPS) continue;
+        if (len > bestLen) {
+            bestLen = len;
+            best = { startAngle: direction === DIRECTIONS.COUNTERCLOCKWISE ? e : s, arc: len };
+        }
+    }
+    return best ?? full;
+}
+
+/**
  * Определяет видимую дугу внешней окружности меню в viewport.
  *
  * Возвращает `{ startAngle, arc }` в радианах. При обычном расположении
  * (круг целиком в viewport) возвращается полный круг с сохранением
  * исходного startAngle конфигурации. При edge-reflow первый пункт
  * переносится в начало выбранной непрерывной видимой дуги.
+ *
+ * Если задан `availableArc` (резолвнутая дуга из частей конфига), пункты
+ * размещаются по этой дуге, сдвинутой/отзеркаленной в свободную часть
+ * экрана, а при нехватке места — суженной до наибольшего видимого окна.
  *
  * @param {object} options
  * @param {number} options.centerX - центр меню (clientX при open)
@@ -124,12 +226,16 @@ function intersectIntervals(a, b) {
  * @param {'clockwise' | 'counterclockwise'} [options.direction] - направление развёртки секторов
  * @param {number} options.viewportWidth - ширина viewport в CSS-пикселях
  * @param {number} options.viewportHeight - высота viewport в CSS-пикселях
+ * @param {{ startAngle: number, arc: number } | null} [options.availableArc] - запрошенная
+ *   дуга в радианах (результат resolveAvailableArc) либо null
  * @returns {{ startAngle: number, arc: number }}
  */
-export function calculateVisibleArc({ centerX, centerY, outerRadius, startAngle, direction = DIRECTIONS.CLOCKWISE, viewportWidth, viewportHeight }) {
+export function calculateVisibleArc({ centerX, centerY, outerRadius, startAngle, direction = DIRECTIONS.CLOCKWISE, viewportWidth, viewportHeight, availableArc = null }) {
     const cfgStart = (startAngle * Math.PI) / 180;
     const full = { startAngle: cfgStart, arc: TAU };
     if (!(outerRadius > 0) || !(viewportWidth > 0) || !(viewportHeight > 0)) return full;
+
+    const pattern = availableArc && availableArc.arc < TAU - EPS ? availableArc : null;
 
     let intervals = [[0, TAU]];
     const constraints = [
@@ -142,7 +248,7 @@ export function calculateVisibleArc({ centerX, centerY, outerRadius, startAngle,
         intervals = intersectIntervals(intervals, constraint);
     }
     if (intervals.length === 0) return full;
-    if (intervals.length === 1 && intervals[0][1] - intervals[0][0] >= TAU - EPS) return full;
+    if (!pattern && intervals.length === 1 && intervals[0][1] - intervals[0][0] >= TAU - EPS) return full;
 
     /** @type {Array<[number, number]>} */
     let candidates = intervals;
@@ -151,6 +257,10 @@ export function calculateVisibleArc({ centerX, centerY, outerRadius, startAngle,
     if (intervals.length >= 2 && first[0] <= EPS && last[1] >= TAU - EPS) {
         const merged = [last[0], TAU + first[1]];
         candidates = [...intervals.slice(1, -1), merged];
+    }
+
+    if (pattern) {
+        return placePattern(pattern, candidates, direction, full);
     }
 
     let best = null;

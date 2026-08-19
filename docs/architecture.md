@@ -14,7 +14,8 @@ src/
                                    PieletItem, PieletConfig
   geometry/                      — чистые функции, без DOM
     calculateMenuGeometry.js     — size/centerSize → outerRadius, innerRadius, ringWidth, meanRadius
-    calculateVisibleArc.js       — видимая дуга в viewport (edge reflow)
+    calculateVisibleArc.js       — видимая дуга в viewport (edge reflow + размещение availableArc)
+    availableArc.js              — resolveAvailableArc(parts) → непрерывная дуга из частей конфига
     calculateSector.js           — раскладка секторов + clip-path (polygon)
     hitTestSector.js             — математический hit-testing указателя
   interaction/
@@ -35,7 +36,8 @@ open(x, y)
   └─ normalizeConfig (перевалидация + snapshot в menu.config)
   └─ acquireActiveMenu → предыдущее меню закрывается мгновенно
   └─ calculateMenuGeometry(config)
-  └─ calculateVisibleArc({center, radius, viewport})   → {startAngle, arc}
+  └─ resolveAvailableArc(config.availableArc) → {startAngle, arc} | null   (если задан)
+  └─ calculateVisibleArc({center, radius, viewport, availableArc})  → {startAngle, arc}
   └─ calculateSectorLayout({arc, outerRadius, innerRadius, meanRadius, ringWidth, gap, direction})
     gap → угол по внешнему и внутреннему радиусу: points ровно на `gap` px друг от друга на обеих дугах;
   └─ MenuRenderer.mount({center, geometry, items})     → DOM в document.body
@@ -69,6 +71,8 @@ close()
 ### Edge reflow (§ видимая дуга)
 
 Если круг выходит за края viewport, угол секторов вычисляется не от полного круга, а от наибольшей непрерывной дуги, видимой на экране; первый сектор переносится в начало дуги. Центр не смещается. При дуге < π/2 используется полная круговая геометрия. Реализация: пересечение угловых интервалов (± cos/sin ограничений от четырёх краёв), wrap-склейка дуги через 2π и выбор кандидата ближайшего к startAngle конфигурации.
+
+`availableArc` добавляет «предпочтительную» дугу: при заданном паттерне пункты сначала размещаются им целиком в ближайшем к естественному положению непрерывном видимом окне (сдвиг/отзеркаливание в свободную часть экрана), а если окна не вмещают паттерн — сужением до наибольшего видимого окна (порог π/2 сохраняется). Валидация частей (сплошная дуга, пересечения допустимы) — в `validateConfig`; резолв в дугу — чистый `resolveAvailableArc`.
 
 ### Hit-testing без DOM
 

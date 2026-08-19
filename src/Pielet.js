@@ -14,6 +14,7 @@ import { BUTTON_CODES } from './config/buttons.js';
 import { CONTENT_TYPES, INTERACTION_MODES } from './config/constants.js';
 import { calculateMenuGeometry } from './geometry/calculateMenuGeometry.js';
 import { calculateVisibleArc } from './geometry/calculateVisibleArc.js';
+import { resolveAvailableArc } from './geometry/availableArc.js';
 import { calculateVisibleRect } from './geometry/calculateVisibleRect.js';
 import { calculateSectorLayout } from './geometry/calculateSector.js';
 import { InteractionController } from './interaction/InteractionController.js';
@@ -70,7 +71,8 @@ export default class Pielet extends EventTarget {
             startAngle: config.startAngle,
             direction: config.direction,
             viewportWidth: window.innerWidth,
-            viewportHeight: window.innerHeight
+            viewportHeight: window.innerHeight,
+            availableArc: config.availableArc ? resolveAvailableArc(config.availableArc) : null
         });
 
         const layout = calculateSectorLayout({

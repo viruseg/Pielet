@@ -880,6 +880,54 @@ describe('Pielet — counterclockwise near viewport edges', () => {
   });
 });
 
+describe('Pielet — availableArc', () => {
+  function setViewport(width, height) {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
+  }
+
+  function clipPoints() {
+    const menuEl = document.querySelector('.pielet');
+    const originX = Number.parseInt(menuEl.style.left, 10);
+    const originY = Number.parseInt(menuEl.style.top, 10);
+    return Array.from(document.querySelectorAll('.pielet__item')).flatMap((el) => {
+      const raw = el.style.clipPath;
+      if (!raw || raw.slice(0, 8) !== 'polygon(') return [];
+      const inner = raw.slice(raw.indexOf('(') + 1, raw.lastIndexOf(')'));
+      return inner.split(',').map((t) => {
+        const [x, y] = t.trim().split(' ').map(parseFloat);
+        return [originX + x, originY + y];
+      });
+    });
+  }
+
+  it('restricts sectors to the right half when fully visible', () => {
+    setViewport(1024, 768);
+    menu = new Pielet({ items, availableArc: ['right'] });
+    menu.open(512, 384);
+    const points = clipPoints();
+    expect(points.length).toBeGreaterThan(0);
+    for (const [x, y] of points) {
+      expect(x).toBeGreaterThanOrEqual(512 - 0.5);
+    }
+  });
+
+  it('mirrors the right-half pattern into the free (left) space near the right edge', () => {
+    setViewport(1024, 768);
+    menu = new Pielet({ items, availableArc: ['right'] });
+    menu.open(1016, 384); // outerRadius 120 → круг выходит за правый край
+    const points = clipPoints();
+    expect(points.length).toBeGreaterThan(0);
+    const xs = points.map(([x]) => x);
+    expect(Math.min(...xs)).toBeLessThan(1016 - 100);
+    expect(Math.max(...xs)).toBeLessThanOrEqual(1024);
+  });
+
+  it('rejects a disjoint arc combination at construction time', () => {
+    expect(() => new Pielet({ items, availableArc: ['top-left', 'bottom-right'] })).toThrow(/availableArc/);
+  });
+});
+
 describe('Pielet — single active menu across instances', () => {
   it('opening a second instance closes the first one (one DOM menu only)', async () => {
     const first = new Pielet({ items });

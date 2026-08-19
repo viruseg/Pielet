@@ -14,7 +14,8 @@ const controls = {
   fit: document.getElementById('fit'),
   unifyText: document.getElementById('unifyText'),
   submenuDelay: document.getElementById('submenuDelay'),
-  submenuIndicator: document.getElementById('submenuIndicator')
+  submenuIndicator: document.getElementById('submenuIndicator'),
+  availableArc: document.getElementById('availableArc')
 };
 
 const labels = ['Open', 'Save', 'Copy', 'Cut', 'Rename', 'Delete', 'Share', 'Print', 'Zoom', 'Flip', 'Rotate', 'Pin'];
@@ -116,6 +117,11 @@ function syncValueLabels() {
 Object.values(controls).forEach((el) => el.addEventListener('input', syncValueLabels));
 syncValueLabels();
 
+function parseAvailableArc(value) {
+  if (!value) return undefined;
+  return value.split(',').map((s) => s.trim());
+}
+
 function readState() {
   return {
     size: Number(controls.size.value),
@@ -130,7 +136,8 @@ function readState() {
     fit: controls.fit.value,
     unifyText: controls.unifyText.value === 'true',
     submenuDelay: Number(controls.submenuDelay.value),
-    submenuIndicator: controls.submenuIndicator.value
+    submenuIndicator: controls.submenuIndicator.value,
+    availableArc: parseAvailableArc(controls.availableArc.value)
   };
 }
 
@@ -149,7 +156,8 @@ function openAt(x, y, button = controls.button.value) {
     fit: state.fit,
     unifyText: state.unifyText,
     submenuDelay: state.submenuDelay,
-    submenuIndicator: state.submenuIndicator
+    submenuIndicator: state.submenuIndicator,
+    availableArc: state.availableArc
   });
   // Сабменю должны следовать за всеми настройками демо (как главное меню),
   // чтобы hold-режим подхватывал зажатую кнопку, а fit/unifyText работали
@@ -170,7 +178,8 @@ function openAt(x, y, button = controls.button.value) {
       fit: state.fit,
       unifyText: state.unifyText,
       submenuDelay: state.submenuDelay,
-      submenuIndicator: state.submenuIndicator
+      submenuIndicator: state.submenuIndicator,
+      availableArc: state.availableArc
     });
   }
   menu.open(x, y);

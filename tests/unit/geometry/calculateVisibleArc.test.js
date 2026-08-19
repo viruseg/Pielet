@@ -131,3 +131,64 @@ describe('calculateVisibleArc — counterclockwise edge reflow', () => {
     }
   });
 });
+
+describe('calculateVisibleArc — availableArc pattern placement', () => {
+  it('fully visible: pattern sits at its natural position', () => {
+    const r = calculateVisibleArc({ ...base, centerX: 500, centerY: 400, availableArc: { startAngle: 3 * Math.PI / 2, arc: Math.PI } });
+    near(r.startAngle, 3 * Math.PI / 2);
+    near(r.arc, Math.PI);
+  });
+
+  it('fully visible: top-left quarter', () => {
+    const r = calculateVisibleArc({ ...base, centerX: 500, centerY: 400, availableArc: { startAngle: Math.PI, arc: Math.PI / 2 } });
+    near(r.startAngle, Math.PI);
+    near(r.arc, Math.PI / 2);
+  });
+
+  it('right half near the right edge → mirrored into the left half', () => {
+    // центр на правом крае: видна левая половина [π/2, 3π/2]
+    const r = calculateVisibleArc({ ...base, centerX: 1000, centerY: 400, availableArc: { startAngle: 3 * Math.PI / 2, arc: Math.PI } });
+    near(r.startAngle, Math.PI / 2, 1e-6);
+    near(r.arc, Math.PI, 1e-6);
+  });
+
+  it('bottom half near the bottom edge → mirrored into the top half', () => {
+    // центр на нижнем крае: видна верхняя половина [π, 2π]
+    const r = calculateVisibleArc({ ...base, centerX: 500, centerY: 800, availableArc: { startAngle: 0, arc: Math.PI } });
+    near(r.startAngle, Math.PI, 1e-6);
+    near(r.arc, Math.PI, 1e-6);
+  });
+
+  it('window larger than the pattern → pattern shifts into the free space', () => {
+    const r = calculateVisibleArc({ ...base, centerX: 950, centerY: 400, availableArc: { startAngle: 3 * Math.PI / 2, arc: Math.PI } });
+    // видимое окно [π/3, 5π/3] (240°); дуга π целиком внутри него
+    near(r.arc, Math.PI, 1e-6);
+    expect(r.startAngle).toBeGreaterThanOrEqual(Math.PI / 3 - 1e-6);
+    expect(r.startAngle + r.arc).toBeLessThanOrEqual((5 * Math.PI) / 3 + 1e-6);
+  });
+
+  it('no window fits the whole pattern → shrink to the largest visible window', () => {
+    // угловой клик (50, 50): видимая дуга [11π/6, 8π/3] длиной 5π/6; паттерн 3π/2 не помещается → сужение
+    const r = calculateVisibleArc({ ...base, centerX: 50, centerY: 50, availableArc: { startAngle: Math.PI, arc: 3 * Math.PI / 2 } });
+    near(r.startAngle, 11 * Math.PI / 6, 1e-6);
+    near(r.arc, 5 * Math.PI / 6, 1e-6);
+  });
+
+  it('counterclockwise anchors the pattern at its end', () => {
+    const r = calculateVisibleArc({ ...base, direction: 'counterclockwise', centerX: 1000, centerY: 400, availableArc: { startAngle: 3 * Math.PI / 2, arc: Math.PI } });
+    near(r.startAngle, 3 * Math.PI / 2, 1e-6);
+    near(r.arc, Math.PI, 1e-6);
+  });
+
+  it('center outside the viewport → full geometry fallback', () => {
+    const r = calculateVisibleArc({ ...base, centerX: 500, centerY: 900, availableArc: { startAngle: 3 * Math.PI / 2, arc: Math.PI } });
+    near(r.startAngle, -90 * DEG);
+    near(r.arc, TAU);
+  });
+
+  it('full-circle pattern equals default behavior (config startAngle preserved)', () => {
+    const r = calculateVisibleArc({ ...base, centerX: 500, centerY: 400, availableArc: { startAngle: 0, arc: TAU } });
+    near(r.startAngle, -90 * DEG);
+    near(r.arc, TAU);
+  });
+});

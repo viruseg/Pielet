@@ -6,7 +6,7 @@
 
 import { DEFAULT_CONFIG } from './defaults.js';
 import { BUTTON_NAMES } from './buttons.js';
-import { CONTENT_TYPES, DIRECTIONS, FITS, INTERACTION_MODES, SUBMENU_INDICATORS } from './constants.js';
+import { ARC_PART_NAMES, ARC_PARTS, CONTENT_TYPES, DIRECTIONS, FITS, INTERACTION_MODES, SUBMENU_INDICATORS } from './constants.js';
 
 const DIRECTIONS_SET = new Set(Object.values(DIRECTIONS));
 const INTERACTION_MODES_SET = new Set(Object.values(INTERACTION_MODES));
@@ -113,13 +113,42 @@ function validateItem(item, index) {
 }
 
 /**
+ * Валидирует `availableArc`: непустой массив известных частей дуги,
+ * объединение которых образует одну сплошную дугу на окружности
+ * (разрешены перенос через 0° и полный круг, пересечения не считаются ошибкой).
+ * @param {unknown} value
+ */
+function validateAvailableArc(value) {
+    if (!Array.isArray(value) || value.length === 0) {
+        throw err('availableArc must be a non-empty array of arc part names');
+    }
+    const selected = new Set();
+    for (const part of value) {
+        if (typeof part !== 'string' || !ARC_PARTS[part]) {
+            throw err(`availableArc contains unknown arc part ${JSON.stringify(part)}; allowed: ${ARC_PART_NAMES.join(', ')}`);
+        }
+        for (const tile of ARC_PARTS[part]) selected.add(tile);
+    }
+    const sorted = [...selected].sort((a, b) => a - b);
+    // Четверти образуют цикл из 4 позиций; сплошная дуга = не более одного
+    // «разрыва» (diff !== 1) на циклическом обходе выбранных четвертей.
+    const gaps = sorted.reduce((count, _cur, i) => {
+        const diff = (sorted[(i + 1) % sorted.length] - sorted[i] + 4) % 4;
+        return count + (diff !== 1 ? 1 : 0);
+    }, 0);
+    if (gaps > 1) {
+        throw err(`availableArc parts must form a single continuous arc without gaps; got a disjoint set (${value.join(', ')})`);
+    }
+}
+
+/**
  * Валидирует конфигурацию.
  * Отсутствующие поля пропускаются (к ним применятся defaults в normalizeConfig),
  * обязательные поля (items) проверяются всегда.
  * @param {Record<string, unknown>} config
  */
 export function validateConfig(config) {
-    const { size, centerSize, gap, startAngle, direction, interactionMode, button, closeDistance, items, fit, unifyText, submenuDelay, submenuIndicator } = config;
+    const { size, centerSize, gap, startAngle, direction, interactionMode, button, closeDistance, items, fit, unifyText, submenuDelay, submenuIndicator, availableArc } = config;
 
     if (!Array.isArray(items)) {
         throw err(`items must be a non-empty array, got ${String(items)}`);
@@ -150,6 +179,8 @@ export function validateConfig(config) {
     if (submenuIndicator !== undefined && !SUBMENU_INDICATORS_SET.has(submenuIndicator)) {
         throw err(`submenuIndicator must be one of: ${Array.from(SUBMENU_INDICATORS_SET).join(', ')}; got ${String(submenuIndicator)}`);
     }
+
+    if (availableArc !== undefined) validateAvailableArc(availableArc);
 
     if (direction !== undefined && !DIRECTIONS_SET.has(direction)) {
         throw err(`direction must be one of: ${Array.from(DIRECTIONS_SET).join(', ')}; got ${String(direction)}`);
@@ -182,6 +213,7 @@ export function normalizeConfig(rawConfig = {}) {
         unifyText: config.unifyText,
         submenuDelay: config.submenuDelay,
         submenuIndicator: config.submenuIndicator,
+        availableArc: config.availableArc,
         items: config.items.map((item) => ({ ...item, id: resolveItemId(item) }))
     };
     return normalized;

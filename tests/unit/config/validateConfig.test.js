@@ -343,3 +343,60 @@ describe('item id handling', () => {
     ).toThrow(/id/);
   });
 });
+
+describe('availableArc validation', () => {
+  it('accepts every named half and quarter', () => {
+    for (const part of ['right', 'bottom', 'left', 'top', 'top-right', 'bottom-right', 'bottom-left', 'top-left']) {
+      expect(() => validateConfig({ items: validItems, availableArc: [part] })).not.toThrow();
+    }
+  });
+
+  it('accepts overlapping parts that form a continuous arc', () => {
+    expect(() => validateConfig({ items: validItems, availableArc: ['top', 'right'] })).not.toThrow();
+    expect(() => validateConfig({ items: validItems, availableArc: ['right', 'bottom', 'top'] })).not.toThrow();
+    expect(() => validateConfig({ items: validItems, availableArc: ['bottom-left', 'top-left'] })).not.toThrow();
+  });
+
+  it('accepts parts covering the full circle', () => {
+    expect(() => validateConfig({ items: validItems, availableArc: ['right', 'left'] })).not.toThrow();
+    expect(() => validateConfig({ items: validItems, availableArc: ['top', 'bottom'] })).not.toThrow();
+    expect(() =>
+      validateConfig({ items: validItems, availableArc: ['top-right', 'bottom-right', 'bottom-left', 'top-left'] })
+    ).not.toThrow();
+  });
+
+  it('accepts repeated parts', () => {
+    expect(() => validateConfig({ items: validItems, availableArc: ['right', 'right'] })).not.toThrow();
+  });
+
+  it('throws on disjoint parts', () => {
+    expect(() => validateConfig({ items: validItems, availableArc: ['top-left', 'bottom-right'] })).toThrow(/availableArc/);
+    expect(() => validateConfig({ items: validItems, availableArc: ['bottom-left', 'top-right'] })).toThrow(/availableArc/);
+  });
+
+  it('throws on an empty array', () => {
+    expect(() => validateConfig({ items: validItems, availableArc: [] })).toThrow(/availableArc/);
+  });
+
+  it('throws on a non-array', () => {
+    for (const bad of ['right', 1, true, { top: 1 }, null]) {
+      expect(() => validateConfig({ items: validItems, availableArc: bad })).toThrow(/availableArc/);
+    }
+  });
+
+  it('throws on unknown or non-string parts', () => {
+    for (const bad of [['sideways'], ['Right'], ['top', 1]]) {
+      expect(() => validateConfig({ items: validItems, availableArc: bad })).toThrow(/availableArc/);
+    }
+  });
+
+  it('normalizes availableArc', () => {
+    const config = normalizeConfig({ items: validItems, availableArc: ['top', 'right'] });
+    expect(config.availableArc).toEqual(['top', 'right']);
+  });
+
+  it('leaves availableArc undefined when not provided', () => {
+    const config = normalizeConfig({ items: validItems });
+    expect(config.availableArc).toBeUndefined();
+  });
+});

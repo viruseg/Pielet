@@ -52,3 +52,27 @@ export const SUBMENU_INDICATORS = Object.freeze({
     CHEVRON: 'chevron',
     BOTH: 'both'
 });
+
+/**
+ * Части дуги для конфига `availableArc` — именованные фрагменты окружности.
+ * Значения — индексы четвертей в порядке по часовой стрелке, начиная с
+ * верхне-правой: 0 — top-right [270°, 360°], 1 — bottom-right [0°, 90°],
+ * 2 — bottom-left [90°, 180°], 3 — top-left [180°, 270°] (0° = право, 90° = низ).
+ * @type {Readonly<Record<string, ReadonlyArray<number>>>}
+ */
+export const ARC_PARTS = Object.freeze({
+    right: Object.freeze([0, 1]),
+    bottom: Object.freeze([1, 2]),
+    left: Object.freeze([2, 3]),
+    top: Object.freeze([3, 0]),
+    'top-right': Object.freeze([0]),
+    'bottom-right': Object.freeze([1]),
+    'bottom-left': Object.freeze([2]),
+    'top-left': Object.freeze([3])
+});
+
+/**
+ * Имена частей дуги для `availableArc` (для сообщений об ошибках валидации).
+ * @type {ReadonlyArray<string>}
+ */
+export const ARC_PART_NAMES = Object.freeze(Object.keys(ARC_PARTS));
