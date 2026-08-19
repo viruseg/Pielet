@@ -159,12 +159,36 @@ describe('calculateVisibleArc — availableArc pattern placement', () => {
     near(r.arc, Math.PI, 1e-6);
   });
 
-  it('window larger than the pattern → pattern shifts into the free space', () => {
+  it('right half near the right edge (not flush) → perfect mirror into the left half', () => {
+    // центр на 50px правее границы круга (950 + 100 > 1000): видимое окно [π/3, 5π/3];
+    // натуральное положение (0°) не влезает, но зеркало (180°) влезает идеально
     const r = calculateVisibleArc({ ...base, centerX: 950, centerY: 400, availableArc: { startAngle: 3 * Math.PI / 2, arc: Math.PI } });
-    // видимое окно [π/3, 5π/3] (240°); дуга π целиком внутри него
+    near(r.startAngle, Math.PI / 2, 1e-6);
     near(r.arc, Math.PI, 1e-6);
-    expect(r.startAngle).toBeGreaterThanOrEqual(Math.PI / 3 - 1e-6);
-    expect(r.startAngle + r.arc).toBeLessThanOrEqual((5 * Math.PI) / 3 + 1e-6);
+  });
+
+  it('bottom half near the bottom edge (not flush) → perfect horizontal mirror into the top half', () => {
+    // центр на 50px ниже границы круга: видимое окно [5π/6, 13π/6] в merged-представлении;
+    // горизонтальное зеркало (верх, 270°) влезает идеально
+    const r = calculateVisibleArc({ ...base, centerX: 500, centerY: 750, availableArc: { startAngle: 0, arc: Math.PI } });
+    near(r.startAngle, Math.PI, 1e-6);
+    near(r.arc, Math.PI, 1e-6);
+  });
+
+  it('corner click + corner pattern → both-axis mirror into the opposite corner', () => {
+    // клик в верхне-правом углу, паттерн «верх-право» (центр 315°); единственное
+    // идеальное размещение — зеркало по обеим осям (135°), дуга [π/2, π]
+    const r = calculateVisibleArc({ ...base, centerX: 950, centerY: 50, availableArc: { startAngle: 3 * Math.PI / 2, arc: Math.PI / 2 } });
+    near(r.startAngle, Math.PI / 2, 1e-6);
+    near(r.arc, Math.PI / 2, 1e-6);
+  });
+
+  it('mirror preferred over a closer compromise placement', () => {
+    // видимое окно [π/3, 5π/3] допускает компромиссный центр 5π/6 (ближе к 0°),
+    // но идеальное зеркало (π) должно выиграть
+    const r = calculateVisibleArc({ ...base, centerX: 950, centerY: 400, availableArc: { startAngle: 3 * Math.PI / 2, arc: Math.PI } });
+    const mid = ((r.startAngle + r.arc / 2) % TAU + TAU) % TAU;
+    near(mid, Math.PI, 1e-6);
   });
 
   it('no window fits the whole pattern → shrink to the largest visible window', () => {

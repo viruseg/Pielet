@@ -138,11 +138,14 @@ describe('resolveViewportFit — availableArc patterns', () => {
     near(areaOf(10, 10, r), target, 1);
   });
 
-  it('shrunk quarter-pattern scales to its nominal bounding area (R0²)', () => {
+  it('top-right quarter-pattern near the top-left corner → perfect horizontal mirror into the bottom-right keeps the config radius', () => {
+    // клип верхним и левым краями: видимое окно в основном снизу; горизонтальное
+    // зеркало паттерна (0°..90°) влезает идеально, площадь bbox равна номинальной
+    // (R0²), поэтому масштабирование не требуется
     const r = call({ centerX: 10, centerY: 70, availableArc: topRight });
-    expect(r.outerRadius).toBeGreaterThan(OUTER);
-    const target = bboxArea(50, 50, OUTER, topRight.startAngle, topRight.arc, 'clockwise');
-    near(areaOf(10, 70, r), target, 1);
+    near(r.outerRadius, OUTER);
+    near(r.arc, Math.PI / 2);
+    near(r.startAngle, 0, 1e-6);
   });
 
   it('arc never exceeds 2π and stays finite', () => {

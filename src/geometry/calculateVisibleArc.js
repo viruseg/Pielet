@@ -143,9 +143,49 @@ function clampToWindow(lo, hi, center) {
 }
 
 /**
+ * Отражательные варианты центра запрошенной дуги: натуральный и три зеркальных
+ * (вертикальное — право↔лево, `θ → π − θ`; горизонтальное — верх↔низ, `θ → −θ`;
+ * оба — противоположный угол, `θ → θ + π`). Дубли по углу отбрасываются,
+ * приоритет сохраняется: натуральный < вертикальный < горизонтальный < оба.
+ *
+ * @param {{ startAngle: number, arc: number }} pattern - запрошенная дуга (радианы)
+ * @returns {Array<number>} - центры дуги (нормализованы в [0, TAU))
+ */
+function mirrorCenters(pattern) {
+    const norm = (a) => ((a % TAU) + TAU) % TAU;
+    const center = norm(pattern.startAngle + pattern.arc / 2);
+    const variants = [center, Math.PI - center, -center, center + Math.PI];
+    const out = [];
+    for (const v of variants) {
+        const c = norm(v);
+        if (!out.some((x) => circularDistance(x, c) < EPS)) out.push(c);
+    }
+    return out;
+}
+
+/**
+ * Помещается ли дуга [start, start + arc] целиком внутри окна [s, e]
+ * с учётом периодичности углов (окно может быть в merged-представлении
+ * со сдвигом на TAU, а дуга — уходить в отрицательную область).
+ * @param {number} s
+ * @param {number} e
+ * @param {number} start
+ * @param {number} arc
+ * @returns {boolean}
+ */
+function arcFitsInWindow(s, e, start, arc) {
+    for (const k of [-1, 0, 1]) {
+        if (s <= start + k * TAU + EPS && start + k * TAU + arc <= e + EPS) return true;
+    }
+    return false;
+}
+
+/**
  * Размещает запрошенную дугу целиком внутри одного из непрерывных видимых
- * окон, ближе всего к её «естественному» центру (сдвиг/отзеркаливание
- * в свободную часть экрана). Возвращает `null`, если ни одно окно
+ * окон. Сначала пробует идеальное размещение — натуральное положение либо
+ * его отзеркаливание (клик у края экрана, включая углы); если ни одно
+ * зеркало целиком не вмещается — компромисс: ближайшее к натуральному
+ * центру допустимое положение. Возвращает `null`, если ни одно окно
  * не вмещает дугу целиком.
  *
  * @param {{ startAngle: number, arc: number }} pattern - запрошенная дуга (радианы)
@@ -154,17 +194,41 @@ function clampToWindow(lo, hi, center) {
  */
 function bestPatternPlacement(pattern, candidates) {
     const center = pattern.startAngle + pattern.arc / 2;
+    const mirrors = mirrorCenters(pattern);
+
+    // Фаза 1: идеальное размещение — натуральное либо зеркальное, целиком
+    // лежащее в видимом окне. Лучший вариант — минимальное круговое
+    // расстояние до натурального центра (натуральное всегда побеждает).
+    let exact = null;
+    let exactDist = Infinity;
+    for (const [s, e] of candidates) {
+        const wlen = e - s;
+        if (wlen < pattern.arc - EPS) continue;
+        if (wlen >= TAU - EPS) {
+            return { start: center - pattern.arc / 2, end: center + pattern.arc / 2, arc: pattern.arc };
+        }
+        for (const c of mirrors) {
+            const start = c - pattern.arc / 2;
+            if (!arcFitsInWindow(s, e, start, pattern.arc)) continue;
+            const dist = circularDistance(c, center);
+            if (dist < exactDist - EPS) {
+                exactDist = dist;
+                exact = { start, end: start + pattern.arc, arc: pattern.arc };
+            }
+        }
+    }
+    if (exact) return exact;
+
+    // Фаза 2: компромисс — ближайшее к натуральному центру допустимое положение.
     let best = null;
     let bestDist = Infinity;
     for (const [s, e] of candidates) {
         const wlen = e - s;
         if (wlen < pattern.arc - EPS) continue;
-        let c;
         if (wlen >= TAU - EPS) {
-            c = center;
-        } else {
-            c = clampToWindow(s + pattern.arc / 2, e - pattern.arc / 2, center);
+            return { start: center - pattern.arc / 2, end: center + pattern.arc / 2, arc: pattern.arc };
         }
+        const c = clampToWindow(s + pattern.arc / 2, e - pattern.arc / 2, center);
         const dist = circularDistance(c, center);
         if (dist < bestDist - EPS) {
             bestDist = dist;
