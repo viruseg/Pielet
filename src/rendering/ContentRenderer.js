@@ -16,16 +16,24 @@ const MAX_FONT_SIZE = 1024;
  * растёт до границы бокса, длинный — ужимается. Измерение через
  * scrollWidth/scrollHeight (требует, чтобы элемент был в DOM).
  *
+ * `availHeight` может быть числом (фиксированная высота бокса) либо функцией
+ * `(width) => maxHeight` — зависимостью максимальной высоты от текущей ширины
+ * текста. Функциональная форма нужна для квадратных секторов, где углы бокса
+ * не должны выходить за боковые грани клина: чем шире текст, тем ниже
+ * допустимый потолок высоты.
+ *
  * @param {HTMLElement} el - текстовый элемент с установленным maxWidth/maxHeight
  * @param {number} availWidth
- * @param {number} availHeight
+ * @param {number | ((width: number) => number)} availHeight
  * @param {number} minFontSize - нижняя граница размера шрифта
  * @param {number} maxIterations - предохранитель от бесконечного цикла
  */
 export function fitText(el, availWidth, availHeight, minFontSize = MIN_FONT_SIZE, maxIterations = MAX_FIT_ITERATIONS) {
+    const heightLimit = typeof availHeight === 'function' ? availHeight : () => availHeight;
     const fits = (size) => {
         el.style.fontSize = `${size}px`;
-        return el.scrollWidth <= availWidth && el.scrollHeight <= availHeight;
+        const width = el.scrollWidth;
+        return width <= availWidth && el.scrollHeight <= heightLimit(width);
     };
 
     if (!fits(minFontSize)) {
@@ -35,7 +43,7 @@ export function fitText(el, availWidth, availHeight, minFontSize = MIN_FONT_SIZE
 
     // Экспоненциальный подбор верхней границы, где текст перестаёт помещаться.
     let lo = minFontSize;
-    let hi = Math.max(minFontSize, availWidth, availHeight);
+    let hi = Math.max(minFontSize, availWidth, typeof availHeight === 'function' ? availWidth : availHeight);
     let iter = 0;
     while (fits(hi) && hi < MAX_FONT_SIZE && iter < maxIterations) {
         lo = hi;

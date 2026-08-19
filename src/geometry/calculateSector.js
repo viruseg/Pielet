@@ -15,7 +15,7 @@ const CLIP_PRECISION = 2;
  * Множитель безопасности области контента внутри сектора.
  * @type {number}
  */
-const CONTENT_BOX_FACTOR = 0.85;
+export const CONTENT_BOX_FACTOR = 0.85;
 
 /**
  * Максимальная доля номинальной ширины сектора, которую может занять gap.
@@ -48,6 +48,65 @@ const TAU = Math.PI * 2;
 
 /** Эпсилон для сравнения углов с полным кругом. @type {number} */
 const EPS = 1e-9;
+
+/**
+ * Максимальная высота контент-бокса в квадратном секторе при заданной ширине.
+ *
+ * В square-fit бокс центрируется на `contentRadius` и поворачивается вместе
+ * с сектором: ширина ложится вдоль радиуса, высота — вдоль хорды. Бокс
+ * ограничен не прямоугольником, а клином сектора: его боковые грани (от
+ * внутренней дуги к внешней) схлопываются к центру. Фиксированная высота
+ * (хорда в центре бокса) не гарантирует, что углы бокса останутся внутри
+ * клина — внутренний край бокса оказывается в более узкой части, и углы
+ * вылезают за грань (визуально срезаются clip-path, страдает первая буква).
+ *
+ * Ограничение: верхняя грань клина (прямая между точками внутренней и внешней
+ * дуг) в системе сектора — линия, по которой максимальная высота растёт с
+ * удалением от центра. Самый узкий конец бокса — внутренний угол
+ * (contentRadius − width/2); он и лимитирует высоту. Учитываются и внешний
+ * угол, и внешняя дуга кольца.
+ *
+ * @param {object} sector - сектор (contentRadius, span, spanInner)
+ * @param {number} innerRadius
+ * @param {number} outerRadius
+ * @param {number} contentWidth - фактическая ширина контента (px)
+ * @returns {number} максимальная высота контента в px (0 — не помещается вовсе)
+ */
+export function contentHeightLimit(sector, innerRadius, outerRadius, contentWidth) {
+    const halfWidth = contentWidth / 2;
+    const xInner = sector.contentRadius - halfWidth;
+    const xOuter = sector.contentRadius + halfWidth;
+    if (xInner < innerRadius || xOuter > outerRadius) return 0;
+
+    let maxHalfHeight;
+    if (sector.span >= TAU - EPS) {
+        // Полное кольцо: боковых граней клина нет — бокс ограничен только кольцом.
+        const outerCap = Math.sqrt(Math.max(0, outerRadius * outerRadius - xOuter * xOuter));
+        const innerCap = xInner < innerRadius
+            ? Math.sqrt(Math.max(0, innerRadius * innerRadius - xInner * xInner))
+            : Infinity;
+        maxHalfHeight = Math.min(outerCap, innerCap);
+    } else {
+        // Верхняя грань клина (в системе сектора, mid = 0): прямая между точками
+        // внешней дуги (span/2) и внутренней дуги (spanInner/2).
+        const ax = outerRadius * Math.cos(sector.span / 2);
+        const ay = outerRadius * Math.sin(sector.span / 2);
+        const bx = innerRadius * Math.cos(sector.spanInner / 2);
+        const by = innerRadius * Math.sin(sector.spanInner / 2);
+        const dx = bx - ax;
+        if (Math.abs(dx) < 1e-9) return 0;
+        const slope = (by - ay) / dx;
+        const lineAt = (x) => ay + slope * (x - ax);
+
+        maxHalfHeight = Math.min(lineAt(xInner), lineAt(xOuter));
+        // Внешний угол не должен выходить за внешнюю дугу кольца.
+        const outerArcLimit = Math.sqrt(Math.max(0, outerRadius * outerRadius - xOuter * xOuter));
+        maxHalfHeight = Math.min(maxHalfHeight, outerArcLimit);
+    }
+
+    if (!Number.isFinite(maxHalfHeight) || maxHalfHeight <= 0) return 0;
+    return 2 * maxHalfHeight * CONTENT_BOX_FACTOR;
+}
 
 /**
  * Рассчитывает раскладку секторов по доступной дуге.

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateMenuGeometry } from '../../../src/geometry/calculateMenuGeometry.js';
-import { calculateSectorLayout, buildSectorClipPath, buildSubmenuArcPath, buildSubmenuChevron, SUBMENU_CHEVRON_PATH, SUBMENU_CHEVRON_VIEWBOX, SUBMENU_CHEVRON_MAX_SIZE, SUBMENU_CHEVRON_SIZE_RATIO, SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO } from '../../../src/geometry/calculateSector.js';
+import { calculateSectorLayout, buildSectorClipPath, buildSubmenuArcPath, buildSubmenuChevron, contentHeightLimit, SUBMENU_CHEVRON_PATH, SUBMENU_CHEVRON_VIEWBOX, SUBMENU_CHEVRON_MAX_SIZE, SUBMENU_CHEVRON_SIZE_RATIO, SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO } from '../../../src/geometry/calculateSector.js';
 
 const TAU = Math.PI * 2;
 const near = (a, b, eps = 1e-9) => expect(Math.abs(a - b)).toBeLessThan(eps);
@@ -326,6 +326,94 @@ describe('calculateSectorLayout — single item (itemCount === 1)', () => {
     const safe = Math.min(r1, r2);
     near(sectors[0].safeRadius, safe, 1e-9);
     near(sectors[0].availWidth, safe * Math.SQRT2, 1e-9);
+  });
+});
+
+describe('contentHeightLimit', () => {
+  const base = {
+    arcStart: 0, arcLength: TAU, meanRadius: 78, outerRadius: 120, innerRadius: 36, ringWidth: 84, gap: 4,
+    direction: 'clockwise', fit: 'square'
+  };
+  // сектор в локальной системе: mid = 0, верхняя грань — точки на дугах ±span/2 и ±spanInner/2
+  const cornerToMenu = (sector, cx, cy, hx, hy) => {
+    const c = 120; // центр меню
+    const m = sector.mid;
+    const x = (cx * Math.cos(m) - cy * Math.sin(m)) + (hx * Math.cos(m) - hy * Math.sin(m));
+    const y = (cx * Math.sin(m) + cy * Math.cos(m)) + (hx * Math.sin(m) + hy * Math.cos(m));
+    return [c + x, c + y];
+  };
+
+  const pointInPolygon = (px, py, pts) => {
+    let inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const [xi, yi] = pts[i];
+      const [xj, yj] = pts[j];
+      if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  };
+
+  const polygonPts = (sector) => {
+    const nums = buildSectorClipPath(sector, 120, 36).match(/[\d.]+px/g).map((s) => parseFloat(s));
+    const pts = [];
+    for (let i = 0; i < nums.length; i += 2) pts.push([nums[i], nums[i + 1]]);
+    return pts;
+  };
+
+  it('4 items: height limit shrinks as content widens (box corners must stay inside the wedge)', () => {
+    const { sectors } = calculateSectorLayout({ ...base, itemCount: 4 });
+    const sector = sectors[0];
+    const widths = [10, 30, 50, 70];
+    const heights = widths.map((w) => contentHeightLimit(sector, 36, 120, w));
+    for (let i = 1; i < heights.length; i++) expect(heights[i]).toBeLessThanOrEqual(heights[i - 1]);
+    expect(heights[0]).toBeGreaterThan(0);
+  });
+
+  it('4 items: all four box corners lie inside the sector clip polygon at the returned height', () => {
+    const { sectors } = calculateSectorLayout({ ...base, itemCount: 4 });
+    const sector = sectors[0];
+    const pts = polygonPts(sector);
+    const cx = sector.contentRadius, cy = 0;
+    for (const w of [10, 30, 50, 70]) {
+      const h = contentHeightLimit(sector, 36, 120, w);
+      const hw = w / 2, hh = h / 2;
+      const corners = [
+        cornerToMenu(sector, cx, cy, -hw, -hh),
+        cornerToMenu(sector, cx, cy, hw, -hh),
+        cornerToMenu(sector, cx, cy, hw, hh),
+        cornerToMenu(sector, cx, cy, -hw, hh),
+      ];
+      for (const [x, y] of corners) expect(pointInPolygon(x, y, pts)).toBe(true);
+    }
+  });
+
+  it('returns 0 when the box cannot fit within the ring (width too wide)', () => {
+    const { sectors } = calculateSectorLayout({ ...base, itemCount: 4 });
+    const sector = sectors[0];
+    expect(contentHeightLimit(sector, 36, 120, 2 * 84)).toBe(0);
+  });
+
+  it('full ring single item: no wedge sides, positive limit bounded by the outer circle', () => {
+    const { sectors } = calculateSectorLayout({ ...base, itemCount: 1 });
+    const sector = sectors[0];
+    const h = contentHeightLimit(sector, 36, 120, 10);
+    expect(h).toBeGreaterThan(0);
+    // внешний угол коробки не выходит за внешний радиус
+    const xOuter = sector.contentRadius + 5;
+    const r = Math.hypot(xOuter, h / 2);
+    expect(r).toBeLessThanOrEqual(120);
+    // и внутренний край не уходит в дыру
+    expect(sector.contentRadius - 5).toBeGreaterThanOrEqual(36);
+  });
+
+  it('mirrors square fit: limit is tighter than the chord at contentRadius for wide boxes', () => {
+    const { sectors } = calculateSectorLayout({ ...base, itemCount: 4 });
+    const sector = sectors[0];
+    const w = sector.availWidth;
+    const h = contentHeightLimit(sector, 36, 120, w);
+    // старый формульный лимит (хорда) был шире геометрически допустимого
+    expect(h).toBeLessThan(sector.availHeight);
+    expect(h).toBeGreaterThan(0);
   });
 });
 

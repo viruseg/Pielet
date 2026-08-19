@@ -5,7 +5,7 @@
  * Визуальные параметры задаются CSS custom properties (src/styles/pielet.css).
  */
 
-import { buildSectorClipPath, buildSubmenuArcPath, buildSubmenuChevron, SUBMENU_CHEVRON_PATH, SUBMENU_CHEVRON_VIEWBOX } from '../geometry/calculateSector.js';
+import { buildSectorClipPath, buildSubmenuArcPath, buildSubmenuChevron, contentHeightLimit, SUBMENU_CHEVRON_PATH, SUBMENU_CHEVRON_VIEWBOX } from '../geometry/calculateSector.js';
 import { createContentContainer, fitText } from './ContentRenderer.js';
 import { CONTENT_TYPES, SUBMENU_INDICATORS } from '../config/constants.js';
 
@@ -60,6 +60,10 @@ export class MenuRenderer {
         this._items = [];
         /** @type {boolean} */
         this._unifyText = false;
+        /** @type {number} */
+        this._outerRadius = 0;
+        /** @type {number} */
+        this._innerRadius = 0;
         /** @type {number} */
         this._closeDuration = DEFAULT_CLOSE_DURATION_MS;
     }
@@ -121,6 +125,8 @@ export class MenuRenderer {
         this._sectors = sectors;
         this._items = items;
         this._unifyText = unifyText;
+        this._outerRadius = outerRadius;
+        this._innerRadius = innerRadius;
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
             const sector = sectors[i];
@@ -266,7 +272,14 @@ export class MenuRenderer {
             const sector = this._sectors[i];
             const contentEl = this._captions[i] && this._captions[i].querySelector('.pielet__content--text');
             if (item.typeContent === CONTENT_TYPES.TEXT && sector && contentEl) {
-                fitText(contentEl, sector.availWidth, sector.availHeight);
+                if (sector.rotate) {
+                    // Square-fit: высота бокса зависит от ширины текста — углы бокса
+                    // не должны вылезать за боковые грани клина (у внутреннего края
+                    // клин уже, и фиксированная высота-хорда обрезала первую букву).
+                    fitText(contentEl, sector.availWidth, (width) => contentHeightLimit(sector, this._innerRadius, this._outerRadius, width));
+                } else {
+                    fitText(contentEl, sector.availWidth, sector.availHeight);
+                }
                 textItems.push({ el: contentEl });
             }
         }
