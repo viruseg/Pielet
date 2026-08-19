@@ -661,4 +661,9 @@ describe('SUBMENU_CHEVRON_PATH â€” SVG glyph geometry (replaces text chevron "â€
     const xs = n.filter((_, i) => i % 2 === 0);
     expect(Math.max(...xs)).toBe(xs[1]);
   });
+
+  it('is a closed shape (triangle): the path ends with Z, so fill produces a full triangle', () => {
+    expect(SUBMENU_CHEVRON_PATH.endsWith('Z')).toBe(true);
+    expect(SUBMENU_CHEVRON_PATH).toMatch(/^M\s*-?\d+(?:\.\d+)?\s+-?\d+\s+.*Z$/);
+  });
 });

@@ -563,6 +563,14 @@ describe('MenuRenderer submenu indicators', () => {
     expect(chevrons[0].querySelector('path')).toBeTruthy();
   });
 
+  it('renders the chevron as a filled triangle (fill matches the line color, shape is closed)', () => {
+    mountWith('both');
+    const path = renderer.element.querySelector('.pielet__submenu-chevron path');
+    expect(path.getAttribute('fill')).toBe('currentColor');
+    expect(path.getAttribute('stroke')).toBe('currentColor');
+    expect(path.getAttribute('d').endsWith('Z')).toBe(true);
+  });
+
   it('arc element is an SVG with a non-empty path', () => {
     const itemEls = mountWith('both');
     const svg = itemEls[0].querySelector('.pielet__submenu-arc');

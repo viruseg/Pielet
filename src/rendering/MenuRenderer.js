@@ -250,7 +250,7 @@ export class MenuRenderer {
             svg.style.transform = `translate(-50%, -50%) rotate(${g.deg}deg)`;
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('d', SUBMENU_CHEVRON_PATH);
-            path.setAttribute('fill', 'none');
+            path.setAttribute('fill', 'currentColor');
             path.setAttribute('stroke', 'currentColor');
             path.setAttribute('stroke-width', String(SUBMENU_CHEVRON_STROKE));
             path.setAttribute('stroke-linecap', 'round');
