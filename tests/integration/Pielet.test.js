@@ -340,7 +340,10 @@ describe('Pielet selection pipeline', () => {
     menu = new Pielet({ items: [item] });
     menu.open(300, 300);
     const errorPromise = new Promise((resolve) => {
-      window.addEventListener('error', (e) => resolve(e.error), { once: true });
+      window.addEventListener('error', (e) => {
+        e.preventDefault();
+        resolve(e.error);
+      }, { once: true });
     });
     window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 301, clientY: 380 }));
     window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
