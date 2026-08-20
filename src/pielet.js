@@ -22,6 +22,15 @@ import { MenuRenderer } from './rendering/MenuRenderer.js';
 import { acquireActiveMenu, releaseActiveMenu, getActiveMenu } from './lifecycle/ActiveMenuRegistry.js';
 
 export default class Pielet extends EventTarget {
+    /** @type {MenuRenderer} */
+    #renderer = new MenuRenderer();
+    /** @type {null | { renderer: MenuRenderer, interaction: InteractionController }} */
+    #runtime = null;
+    /** @type {boolean} */
+    #closeNotified = false;
+    /** @type {() => void} */
+    #viewportClose = () => this.#close(true);
+
     /**
      * Создаёт экземпляр кругового меню.
      * DOM не создаётся до первого `open()`.
@@ -30,10 +39,6 @@ export default class Pielet extends EventTarget {
     constructor(config = {}) {
         super();
         this.config = normalizeConfig(config);
-        this._renderer = new MenuRenderer();
-        this._runtime = null;
-        this._closeNotified = false;
-        this._viewportClose = () => this._close(true);
     }
 
     /**
@@ -53,14 +58,14 @@ export default class Pielet extends EventTarget {
         const config = normalizeConfig(this.config);
         this.config = config;
 
-        if (this._runtime) {
-            this._closeNotified = true;
-            this._close(true);
+        if (this.#runtime) {
+            this.#closeNotified = true;
+            this.#close(true);
         }
         const previous = acquireActiveMenu(this);
-        if (previous) previous._close(true);
+        if (previous) previous.#close(true);
 
-        this._closeNotified = false;
+        this.#closeNotified = false;
 
         const base = calculateMenuGeometry(config);
         const { outerRadius, innerRadius, ringWidth, meanRadius, startAngle: arcStart, arc: arcLength } = resolveViewportFit({
@@ -102,7 +107,7 @@ export default class Pielet extends EventTarget {
             submenu: config.items.map((item) => item.isSubMenu === true)
         };
 
-        this._renderer.mount({ centerX: x, centerY: y, geometry, items: config.items, unifyText: config.unifyText, submenuIndicator: config.submenuIndicator });
+        this.#renderer.mount({ centerX: x, centerY: y, geometry, items: config.items, unifyText: config.unifyText, submenuIndicator: config.submenuIndicator });
 
         const interaction = new InteractionController({
             interactionMode: config.interactionMode,
@@ -110,17 +115,17 @@ export default class Pielet extends EventTarget {
             centerX: x,
             centerY: y,
             geometry,
-            onHover: (index) => this._renderer.setHover(index),
+            onHover: (index) => this.#renderer.setHover(index),
             onClose: () => this.close(),
-            onSelect: (index, point) => this._select(config.items[index], index, point),
+            onSelect: (index, point) => this.#select(config.items[index], index, point),
             submenuDelay: config.submenuDelay,
-            onSubmenuOpen: (index, point) => this._openSubmenu(config.items[index], point)
+            onSubmenuOpen: (index, point) => this.#openSubmenu(config.items[index], point)
         });
         interaction.attach();
 
-        this._addViewportListeners();
+        this.#addViewportListeners();
 
-        this._runtime = { renderer: this._renderer, interaction };
+        this.#runtime = { renderer: this.#renderer, interaction };
         const rect = calculateVisibleRect({
             centerX: x,
             centerY: y,
@@ -139,7 +144,7 @@ export default class Pielet extends EventTarget {
      * DOM-элементов меню и глобальных слушателей.
      */
     close() {
-        this._close(false);
+        this.#close(false);
     }
 
     /**
@@ -164,7 +169,7 @@ export default class Pielet extends EventTarget {
      * @param {string | Node} content - новое содержимое (строка для text/image, Node для node)
      */
     setItemContent(id, content) {
-        if (!this._runtime) {
+        if (!this.#runtime) {
             throw new Error('Pielet: setItemContent(id, content) requires an open menu');
         }
         const index = this.config.items.findIndex((item) => item.id === id);
@@ -183,7 +188,7 @@ export default class Pielet extends EventTarget {
             throw new Error('Pielet: setItemContent(id, content): content must be a DOM Node for typeContent "node"');
         }
         item.content = content;
-        this._renderer.setItemContent(index, item);
+        this.#renderer.setItemContent(index, item);
     }
 
     /**
@@ -191,19 +196,19 @@ export default class Pielet extends EventTarget {
      * @param {boolean} immediate - true: мгновенное удаление DOM (выбор пункта,
      * viewport-изменения, открытие другого экземпляра); false: fade-out.
      */
-    _close(immediate) {
-        if (!this._runtime) return;
-        const runtime = this._runtime;
-        this._runtime = null;
-        this._removeViewportListeners();
+    #close(immediate) {
+        if (!this.#runtime) return;
+        const runtime = this.#runtime;
+        this.#runtime = null;
+        this.#removeViewportListeners();
         runtime.interaction.detach();
         const finish = () => {
             // Если за время fade меню уже переоткрыто этим же экземпляром,
             // реестр по-прежнему держит его, а события close быть не должно.
-            if (!this._runtime) {
+            if (!this.#runtime) {
                 releaseActiveMenu(this);
-                if (!this._closeNotified) {
-                    this._closeNotified = true;
+                if (!this.#closeNotified) {
+                    this.#closeNotified = true;
                     this.dispatchEvent(new CustomEvent('close', { detail: { menu: this } }));
                 }
             }
@@ -231,17 +236,17 @@ export default class Pielet extends EventTarget {
      * @param {number} index
      * @param {{ x: number, y: number }} [point] - координаты клика (clientX/clientY)
      */
-    _select(item, index, point) {
+    #select(item, index, point) {
         void index;
         const id = item && typeof item.id === 'string' ? item.id : '';
-        const runtimeAtSelect = this._runtime;
+        const runtimeAtSelect = this.#runtime;
         this.dispatchEvent(new CustomEvent('select', { detail: { id, menu: this, coords: point } }));
         const keepOpen = this.config.interactionMode === INTERACTION_MODES.CLICK && item && item.keepOpen === true;
-        if (!keepOpen && this._runtime === runtimeAtSelect) {
-            this._close(true);
+        if (!keepOpen && this.#runtime === runtimeAtSelect) {
+            this.#close(true);
         }
         if (item && item.isSubMenu === true) {
-            this._openSubmenu(item, point);
+            this.#openSubmenu(item, point);
             return;
         }
         if (item && typeof item.action === 'function') {
@@ -258,7 +263,7 @@ export default class Pielet extends EventTarget {
      * @param {import('./types.js').PieletItem} item
      * @param {{ x: number, y: number }} [point]
      */
-    _openSubmenu(item, point) {
+    #openSubmenu(item, point) {
         if (!item || item.isSubMenu !== true) return;
         if (!point || typeof point.x !== 'number' || typeof point.y !== 'number') return;
         const menu = item.menu;
@@ -267,19 +272,19 @@ export default class Pielet extends EventTarget {
         }
     }
 
-    _addViewportListeners() {
-        window.addEventListener('resize', this._viewportClose);
-        document.addEventListener('scroll', this._viewportClose, { capture: true, passive: true });
+    #addViewportListeners() {
+        window.addEventListener('resize', this.#viewportClose);
+        document.addEventListener('scroll', this.#viewportClose, { capture: true, passive: true });
         if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', this._viewportClose);
+            window.visualViewport.addEventListener('resize', this.#viewportClose);
         }
     }
 
-    _removeViewportListeners() {
-        window.removeEventListener('resize', this._viewportClose);
-        document.removeEventListener('scroll', this._viewportClose, { capture: true });
+    #removeViewportListeners() {
+        window.removeEventListener('resize', this.#viewportClose);
+        document.removeEventListener('scroll', this.#viewportClose, { capture: true });
         if (window.visualViewport) {
-            window.visualViewport.removeEventListener('resize', this._viewportClose);
+            window.visualViewport.removeEventListener('resize', this.#viewportClose);
         }
     }
 }

@@ -332,14 +332,21 @@ describe('Pielet selection pipeline', () => {
     await sleep(400);
   });
 
-  it('does not swallow exceptions from user action; menu closes and stays closed', () => {
+  it('does not swallow exceptions from user action; menu closes and stays closed', async () => {
     const boom = vi.fn(() => {
       throw new Error('user error');
     });
     const item = { typeContent: 'text', content: 'A', action: boom };
     menu = new Pielet({ items: [item] });
     menu.open(300, 300);
-    expect(() => menu._select(item, 0)).toThrow('user error');
+    const errorPromise = new Promise((resolve) => {
+      window.addEventListener('error', (e) => resolve(e.error), { once: true });
+    });
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 301, clientY: 380 }));
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
+    const error = await errorPromise;
+    expect(error).toBeInstanceOf(Error);
+    expect(error.message).toBe('user error');
     expect(boom).toHaveBeenCalledTimes(1);
     expect(document.body.querySelector('.pielet')).toBeNull();
   });

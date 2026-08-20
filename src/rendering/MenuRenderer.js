@@ -45,37 +45,36 @@ function parseDuration(value) {
 }
 
 export class MenuRenderer {
-    constructor() {
-        /** @type {HTMLElement | null} */
-        this._el = null;
-        /** @type {HTMLElement[]} */
-        this._itemEls = [];
-        /** @type {HTMLElement[]} */
-        this._captions = [];
-        /** @type {Array<object>} */
-        this._sectors = [];
-        /** @type {boolean[]} */
-        this._selectable = [];
-        /** @type {Array<Element | null>} */
-        this._outlinePaths = [];
-        /** @type {Array<object>} */
-        this._items = [];
-        /** @type {boolean} */
-        this._unifyText = false;
-        /** @type {number} */
-        this._outerRadius = 0;
-        /** @type {number} */
-        this._innerRadius = 0;
-        /** @type {number} */
-        this._closeDuration = DEFAULT_CLOSE_DURATION_MS;
-    }
+    /** @type {HTMLElement | null} */
+    #el = null;
+    /** @type {HTMLElement[]} */
+    #itemEls = [];
+    /** @type {HTMLElement[]} */
+    #captions = [];
+    /** @type {Array<object>} */
+    #sectors = [];
+    /** @type {boolean[]} */
+    #selectable = [];
+    /** @type {Array<Element | null>} */
+    #outlinePaths = [];
+    /** @type {Array<object>} */
+    #items = [];
+    /** @type {boolean} */
+    #unifyText = false;
+    /** @type {number} */
+    #outerRadius = 0;
+    /** @type {number} */
+    #innerRadius = 0;
+    /** @type {number} */
+    #closeDuration = DEFAULT_CLOSE_DURATION_MS;
 
     /**
      * Корневой элемент меню (null после закрытия).
      * @returns {HTMLElement | null}
+     * @internal
      */
     get element() {
-        return this._el;
+        return this.#el;
     }
 
     /**
@@ -91,6 +90,7 @@ export class MenuRenderer {
      *   по наименьшему влезающему размеру (только при fit 'square')
      * @param {'arc' | 'chevron' | 'both'} [options.submenuIndicator] - индикация
      *   пунктов-сабменю (arc — дуга у внутреннего радиуса, chevron — стрелка на внешнем крае кольца)
+     * @internal
      */
     mount({ centerX, centerY, geometry, items, unifyText = false, submenuIndicator = SUBMENU_INDICATORS.BOTH }) {
         const { outerRadius, innerRadius, sectors } = geometry;
@@ -117,18 +117,18 @@ export class MenuRenderer {
         center.style.height = `${innerRadius * 2}px`;
         el.appendChild(center);
 
-        if (this._el) this._el.remove();
+        if (this.#el) this.#el.remove();
         document.body.appendChild(el);
-        this._el = el;
-        this._closeDuration = parseDuration(this.getComputedDuration());
+        this.#el = el;
+        this.#closeDuration = parseDuration(this.#getComputedDuration());
 
-        this._itemEls = [];
-        this._captions = [];
-        this._sectors = sectors;
-        this._items = items;
-        this._unifyText = unifyText;
-        this._outerRadius = outerRadius;
-        this._innerRadius = innerRadius;
+        this.#itemEls = [];
+        this.#captions = [];
+        this.#sectors = sectors;
+        this.#items = items;
+        this.#unifyText = unifyText;
+        this.#outerRadius = outerRadius;
+        this.#innerRadius = innerRadius;
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
             const sector = sectors[i];
@@ -140,7 +140,7 @@ export class MenuRenderer {
             itemEl.style.clipPath = buildSectorClipPath(sector, outerRadius, innerRadius);
 
             if (item.isSubMenu === true) {
-                this._appendSubmenuIndicators(el, itemEl, sector, outerRadius, innerRadius, size, submenuIndicator);
+                this.#appendSubmenuIndicators(el, itemEl, sector, outerRadius, innerRadius, size, submenuIndicator);
             }
 
             let caption = null;
@@ -158,10 +158,10 @@ export class MenuRenderer {
                 if (contentEl) caption.appendChild(contentEl);
                 itemEl.appendChild(caption);
             }
-            this._captions.push(caption);
+            this.#captions.push(caption);
 
             el.appendChild(itemEl);
-            this._itemEls.push(itemEl);
+            this.#itemEls.push(itemEl);
         }
 
         // Обводка hover-пункта: отдельный SVG-слой поверх секторов. Клапаны
@@ -176,25 +176,25 @@ export class MenuRenderer {
         outlineSvg.style.position = 'absolute';
         outlineSvg.style.top = '0';
         outlineSvg.style.left = '0';
-        this._outlinePaths = new Array(items.length).fill(null);
+        this.#outlinePaths = new Array(items.length).fill(null);
         for (let i = 0; i < items.length; i++) {
             if (items[i].typeContent === CONTENT_TYPES.NONE) continue;
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('class', 'pielet__outline');
             path.setAttribute('d', buildSectorOutlinePath(sectors[i], outerRadius, innerRadius));
             outlineSvg.appendChild(path);
-            this._outlinePaths[i] = path;
+            this.#outlinePaths[i] = path;
         }
         el.appendChild(outlineSvg);
 
         // fitText требует, чтобы элемент был в DOM (scrollWidth/scrollHeight),
         // поэтому выравнивание выполняется после монтирования всех пунктов.
-        this._fitTextItems(items);
+        this.#fitTextItems(items);
 
-        this._selectable = items.map((item) => item.typeContent !== CONTENT_TYPES.NONE);
+        this.#selectable = items.map((item) => item.typeContent !== CONTENT_TYPES.NONE);
 
         setTimeout(() => {
-            if (this._el === el) el.classList.add('pielet--open');
+            if (this.#el === el) el.classList.add('pielet--open');
         }, 0);
     }
 
@@ -213,7 +213,7 @@ export class MenuRenderer {
      * @param {number} size - размер квадрата меню (2*outerRadius)
      * @param {'arc' | 'chevron' | 'both'} submenuIndicator
      */
-    _appendSubmenuIndicators(el, itemEl, sector, outerRadius, innerRadius, size, submenuIndicator) {
+    #appendSubmenuIndicators(el, itemEl, sector, outerRadius, innerRadius, size, submenuIndicator) {
         if (submenuIndicator === SUBMENU_INDICATORS.ARC || submenuIndicator === SUBMENU_INDICATORS.BOTH) {
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svg.setAttribute('class', 'pielet__submenu-arc');
@@ -263,9 +263,9 @@ export class MenuRenderer {
     /**
      * @returns {string} computed transition-duration корневого элемента
      */
-    getComputedDuration() {
+    #getComputedDuration() {
         try {
-            return (this._el && window.getComputedStyle(this._el).transitionDuration) || '';
+            return (this.#el && window.getComputedStyle(this.#el).transitionDuration) || '';
         } catch {
             return '';
         }
@@ -274,12 +274,13 @@ export class MenuRenderer {
     /**
      * Применяет hover-состояние к пункту (или сбрасывает всё).
      * @param {number | null} index - индекс selectable пункта или null
+     * @internal
      */
     setHover(index) {
-        for (let i = 0; i < this._itemEls.length; i++) {
-            const on = i === index && this._selectable[i];
-            this._itemEls[i].classList.toggle('pielet__item--hover', on);
-            if (this._outlinePaths[i]) this._outlinePaths[i].classList.toggle('pielet__outline--visible', on);
+        for (let i = 0; i < this.#itemEls.length; i++) {
+            const on = i === index && this.#selectable[i];
+            this.#itemEls[i].classList.toggle('pielet__item--hover', on);
+            if (this.#outlinePaths[i]) this.#outlinePaths[i].classList.toggle('pielet__outline--visible', on);
         }
     }
 
@@ -290,20 +291,20 @@ export class MenuRenderer {
      * Требует, чтобы все пункты были в DOM.
      * @param {Array<object>} items
      */
-    _fitTextItems(items) {
+    #fitTextItems(items) {
         const textItems = [];
         // unifyText действует только при fit 'square' (секторы с rotate).
-        const squareFit = items.length > 0 && this._sectors[0] && this._sectors[0].rotate;
+        const squareFit = items.length > 0 && this.#sectors[0] && this.#sectors[0].rotate;
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
-            const sector = this._sectors[i];
-            const contentEl = this._captions[i] && this._captions[i].querySelector('.pielet__content--text');
+            const sector = this.#sectors[i];
+            const contentEl = this.#captions[i] && this.#captions[i].querySelector('.pielet__content--text');
             if (item.typeContent === CONTENT_TYPES.TEXT && sector && contentEl) {
                 if (sector.rotate) {
                     // Square-fit: высота бокса зависит от ширины текста — углы бокса
                     // не должны вылезать за боковые грани клина (у внутреннего края
                     // клин уже, и фиксированная высота-хорда обрезала первую букву).
-                    fitText(contentEl, sector.availWidth, (width) => contentHeightLimit(sector, this._innerRadius, this._outerRadius, width));
+                    fitText(contentEl, sector.availWidth, (width) => contentHeightLimit(sector, this.#innerRadius, this.#outerRadius, width));
                 } else {
                     fitText(contentEl, sector.availWidth, sector.availHeight);
                 }
@@ -311,7 +312,7 @@ export class MenuRenderer {
             }
         }
 
-        if (this._unifyText && squareFit && textItems.length > 1) {
+        if (this.#unifyText && squareFit && textItems.length > 1) {
             let min = Infinity;
             for (const { el } of textItems) {
                 const size = parseFloat(el.style.fontSize);
@@ -331,29 +332,31 @@ export class MenuRenderer {
      * No-op для none-пунктов и при отсутствии caption.
      * @param {number} index - индекс пункта
      * @param {import('../types.js').PieletItem} item - пункт с новым content
+     * @internal
      */
     setItemContent(index, item) {
-        const caption = this._captions[index];
-        const sector = this._sectors[index];
+        const caption = this.#captions[index];
+        const sector = this.#sectors[index];
         if (!caption || !sector) return;
         const contentEl = createContentContainer(item, sector);
         caption.replaceChildren(contentEl || '');
         // caption уже в DOM (перерисовка «на месте»), можно измерять сразу.
-        this._items[index] = item;
-        this._fitTextItems(this._items);
+        this.#items[index] = item;
+        this.#fitTextItems(this.#items);
     }
 
     /**
      * Запускает анимацию закрытия (opacity → 0) и после завершения
      * удаляет DOM и вызывает onDone. Если меню не смонтировано — onDone сразу.
      * @param {() => void} onDone
+     * @internal
      */
     animateClose(onDone) {
-        if (!this._el) {
+        if (!this.#el) {
             onDone();
             return;
         }
-        const el = this._el;
+        const el = this.#el;
         el.classList.remove('pielet--open');
 
         let finished = false;
@@ -361,12 +364,12 @@ export class MenuRenderer {
             if (finished) return;
             finished = true;
             el.removeEventListener('transitionend', onTransitionEnd);
-            if (this._el === el) {
-                this._el = null;
-                this._itemEls = [];
-                this._captions = [];
-                this._sectors = [];
-                this._items = [];
+            if (this.#el === el) {
+                this.#el = null;
+                this.#itemEls = [];
+                this.#captions = [];
+                this.#sectors = [];
+                this.#items = [];
             }
             el.remove();
             onDone();
@@ -375,21 +378,22 @@ export class MenuRenderer {
             if (event.target === el && event.propertyName === 'opacity') finish();
         };
         el.addEventListener('transitionend', onTransitionEnd);
-        setTimeout(finish, this._closeDuration + CLOSE_FALLBACK_BUFFER_MS);
+        setTimeout(finish, this.#closeDuration + CLOSE_FALLBACK_BUFFER_MS);
     }
 
     /**
      * Удаляет DOM меню немедленно (без анимации).
+     * @internal
      */
     unmount() {
-        if (this._el) {
-            this._el.remove();
-            this._el = null;
-            this._itemEls = [];
-            this._captions = [];
-            this._sectors = [];
-            this._items = [];
-            this._outlinePaths = [];
+        if (this.#el) {
+            this.#el.remove();
+            this.#el = null;
+            this.#itemEls = [];
+            this.#captions = [];
+            this.#sectors = [];
+            this.#items = [];
+            this.#outlinePaths = [];
         }
     }
 }

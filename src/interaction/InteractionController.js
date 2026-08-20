@@ -17,6 +17,50 @@ import { INTERACTION_MODES } from '../config/constants.js';
 const CLICK_OPEN_GRACE_MS = 300;
 
 export class InteractionController {
+    /** @type {'hold' | 'click'} */
+    #mode;
+    /** @type {number} */
+    #button;
+    /** @type {number} */
+    #buttonBits;
+    /** @type {number} */
+    #centerX;
+    /** @type {number} */
+    #centerY;
+    /** @type {object} */
+    #geometry;
+    /** @type {(index: number | null) => void} */
+    #onHover;
+    /** @type {() => void} */
+    #onClose;
+    /** @type {(index: number, point: { x: number, y: number }) => void} */
+    #onSelect;
+    /** @type {number} */
+    #submenuDelay;
+    /** @type {((index: number, point: { x: number, y: number }) => void) | undefined} */
+    #onSubmenuOpen;
+    /** @type {number | null} */
+    #hover = null;
+    /** @type {boolean} */
+    #attached = false;
+    /** @type {number} */
+    #openedAt = Date.now();
+    /** @type {{ x: number, y: number } | null} */
+    #lastPoint = null;
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    #submenuTimer = null;
+    /** @type {number | null} */
+    #submenuIndex = null;
+
+    /** @type {(event: PointerEvent) => void} */
+    #boundMove;
+    /** @type {(event: PointerEvent) => void} */
+    #boundUp;
+    /** @type {(event: PointerEvent) => void} */
+    #boundCancel;
+    /** @type {(event: PointerEvent) => void} */
+    #boundContextMenu;
+
     /**
      * @param {object} options
      * @param {'hold' | 'click'} options.interactionMode
@@ -31,127 +75,123 @@ export class InteractionController {
      * @param {(index: number, point: { x: number, y: number }) => void} options.onSubmenuOpen - открытие сабменю по hover-задержке
      */
     constructor({ interactionMode, button, centerX, centerY, geometry, onHover, onClose, onSelect, submenuDelay = 0, onSubmenuOpen }) {
-        this._mode = interactionMode;
-        this._button = BUTTON_CODES[button];
-        this._buttonBits = BUTTON_BITS[button];
-        this._centerX = centerX;
-        this._centerY = centerY;
-        this._geometry = geometry;
-        this._onHover = onHover;
-        this._onClose = onClose;
-        this._onSelect = onSelect;
-        this._submenuDelay = submenuDelay;
-        this._onSubmenuOpen = onSubmenuOpen;
-        this._hover = null;
-        this._attached = false;
-        this._openedAt = Date.now();
-        this._lastPoint = null;
-        this._submenuTimer = null;
-        this._submenuIndex = null;
+        this.#mode = interactionMode;
+        this.#button = BUTTON_CODES[button];
+        this.#buttonBits = BUTTON_BITS[button];
+        this.#centerX = centerX;
+        this.#centerY = centerY;
+        this.#geometry = geometry;
+        this.#onHover = onHover;
+        this.#onClose = onClose;
+        this.#onSelect = onSelect;
+        this.#submenuDelay = submenuDelay;
+        this.#onSubmenuOpen = onSubmenuOpen;
 
-        this._onMove = this._onMove.bind(this);
-        this._onUp = this._onUp.bind(this);
-        this._onCancel = this._onCancel.bind(this);
-        this._onContextMenu = this._onContextMenu.bind(this);
+        this.#boundMove = this.#onMove.bind(this);
+        this.#boundUp = this.#onUp.bind(this);
+        this.#boundCancel = this.#onCancel.bind(this);
+        this.#boundContextMenu = this.#onContextMenu.bind(this);
     }
 
     /**
      * Подключает глобальные слушатели (window).
+     * @internal
      */
     attach() {
-        if (this._attached) return;
-        this._attached = true;
-        window.addEventListener('pointermove', this._onMove);
-        window.addEventListener('pointerup', this._onUp);
-        window.addEventListener('pointercancel', this._onCancel);
-        window.addEventListener('contextmenu', this._onContextMenu);
+        if (this.#attached) return;
+        this.#attached = true;
+        window.addEventListener('pointermove', this.#boundMove);
+        window.addEventListener('pointerup', this.#boundUp);
+        window.addEventListener('pointercancel', this.#boundCancel);
+        window.addEventListener('contextmenu', this.#boundContextMenu);
     }
 
     /**
      * Снимает все слушатели. После close() активный runtime не оставляет
      * глобальных слушателей.
+     * @internal
      */
     detach() {
-        if (!this._attached) return;
-        this._attached = false;
-        this._clearSubmenuTimer();
-        window.removeEventListener('pointermove', this._onMove);
-        window.removeEventListener('pointerup', this._onUp);
-        window.removeEventListener('pointercancel', this._onCancel);
-        window.removeEventListener('contextmenu', this._onContextMenu);
+        if (!this.#attached) return;
+        this.#attached = false;
+        this.#clearSubmenuTimer();
+        window.removeEventListener('pointermove', this.#boundMove);
+        window.removeEventListener('pointerup', this.#boundUp);
+        window.removeEventListener('pointercancel', this.#boundCancel);
+        window.removeEventListener('contextmenu', this.#boundContextMenu);
     }
 
-    _hit(position) {
+    #hit(position) {
         return getSelectedSector({
             x: position.clientX,
             y: position.clientY,
-            centerX: this._centerX,
-            centerY: this._centerY,
-            geometry: this._geometry
+            centerX: this.#centerX,
+            centerY: this.#centerY,
+            geometry: this.#geometry
         });
     }
 
-    _onMove(event) {
-        const held = (event.buttons & this._buttonBits) !== 0;
-        this._lastPoint = { x: event.clientX, y: event.clientY };
-        const hit = this._hit(event);
+    #onMove(event) {
+        const held = (event.buttons & this.#buttonBits) !== 0;
+        this.#lastPoint = { x: event.clientX, y: event.clientY };
+        const hit = this.#hit(event);
         if (hit.region === 'outside') {
-            this._clearSubmenuTimer();
-            this._setHover(null);
-            this._onClose();
+            this.#clearSubmenuTimer();
+            this.#setHover(null);
+            this.#onClose();
             return;
         }
         // hold-режим: меню живёт, пока отслеживаемая кнопка удержана. Если кнопка
         // не зажата (например, сабменю открыто кнопкой, не совпадающей с его
         // config.button) — меню закрывается на первом же движении.
-        if (this._mode === INTERACTION_MODES.HOLD && !held) {
-            this._clearSubmenuTimer();
-            this._onClose();
+        if (this.#mode === INTERACTION_MODES.HOLD && !held) {
+            this.#clearSubmenuTimer();
+            this.#onClose();
             return;
         }
         const hoverIndex = hit.region === 'sector' ? hit.itemIndex : null;
-        const submenuItem = hoverIndex !== null && this._geometry.submenu != null && this._geometry.submenu[hoverIndex] === true;
+        const submenuItem = hoverIndex !== null && this.#geometry.submenu != null && this.#geometry.submenu[hoverIndex] === true;
         // Hover-задержка сабменю действует в hold-режиме, а также в click-режиме,
         // пока отслеживаемая кнопка удержана (меню работает как hold).
-        if (submenuItem && this._submenuDelay > 0 && (this._mode === INTERACTION_MODES.HOLD || held)) {
-            this._armSubmenuTimer(hoverIndex);
+        if (submenuItem && this.#submenuDelay > 0 && (this.#mode === INTERACTION_MODES.HOLD || held)) {
+            this.#armSubmenuTimer(hoverIndex);
         } else {
-            this._clearSubmenuTimer();
+            this.#clearSubmenuTimer();
         }
-        this._setHover(hoverIndex);
+        this.#setHover(hoverIndex);
     }
 
-    _onUp(event) {
-        this._clearSubmenuTimer();
+    #onUp(event) {
+        this.#clearSubmenuTimer();
         // Меню реагирует только на отпускание отслеживаемой кнопки (config.button).
-        if (event.button !== this._button) return;
-        const hit = this._hit(event);
+        if (event.button !== this.#button) return;
+        const hit = this.#hit(event);
         if (hit.region === 'sector') {
-            this._onSelect(hit.itemIndex, { x: event.clientX, y: event.clientY });
+            this.#onSelect(hit.itemIndex, { x: event.clientX, y: event.clientY });
             return;
         }
-        if (this._mode === INTERACTION_MODES.HOLD) {
-            this._onClose();
+        if (this.#mode === INTERACTION_MODES.HOLD) {
+            this.#onClose();
             return;
         }
         // click-режим: отпускание того же клика, которым открыли меню,
         // не является «кликом мимо» — меню не закрывается.
-        if (Date.now() - this._openedAt > CLICK_OPEN_GRACE_MS) {
-            this._onClose();
+        if (Date.now() - this.#openedAt > CLICK_OPEN_GRACE_MS) {
+            this.#onClose();
         }
     }
 
-    _onCancel() {
-        this._clearSubmenuTimer();
-        this._setHover(null);
-        this._onClose();
+    #onCancel() {
+        this.#clearSubmenuTimer();
+        this.#setHover(null);
+        this.#onClose();
     }
 
-    _onContextMenu(event) {
+    #onContextMenu(event) {
         // Подавляем браузерное контекстное меню только для отслеживаемой
         // кнопки: меню, открытое левой кнопкой, не лишает страницу её
         // собственного правого клика.
-        if (event.button === this._button) {
+        if (event.button === this.#button) {
             event.preventDefault();
         }
     }
@@ -162,30 +202,30 @@ export class InteractionController {
      * наведения на текущий пункт).
      * @param {number} index
      */
-    _armSubmenuTimer(index) {
-        if (this._submenuTimer !== null && this._submenuIndex === index) return;
-        this._clearSubmenuTimer();
-        this._submenuIndex = index;
-        this._submenuTimer = setTimeout(() => {
-            this._submenuTimer = null;
-            this._submenuIndex = null;
-            if (this._lastPoint && this._onSubmenuOpen) {
-                this._onSubmenuOpen(index, { ...this._lastPoint });
+    #armSubmenuTimer(index) {
+        if (this.#submenuTimer !== null && this.#submenuIndex === index) return;
+        this.#clearSubmenuTimer();
+        this.#submenuIndex = index;
+        this.#submenuTimer = setTimeout(() => {
+            this.#submenuTimer = null;
+            this.#submenuIndex = null;
+            if (this.#lastPoint && this.#onSubmenuOpen) {
+                this.#onSubmenuOpen(index, { ...this.#lastPoint });
             }
-        }, this._submenuDelay);
+        }, this.#submenuDelay);
     }
 
-    _clearSubmenuTimer() {
-        if (this._submenuTimer !== null) {
-            clearTimeout(this._submenuTimer);
-            this._submenuTimer = null;
+    #clearSubmenuTimer() {
+        if (this.#submenuTimer !== null) {
+            clearTimeout(this.#submenuTimer);
+            this.#submenuTimer = null;
         }
-        this._submenuIndex = null;
+        this.#submenuIndex = null;
     }
 
-    _setHover(index) {
-        if (index === this._hover) return;
-        this._hover = index;
-        this._onHover(index);
+    #setHover(index) {
+        if (index === this.#hover) return;
+        this.#hover = index;
+        this.#onHover(index);
     }
 }

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Pielet from '../../src/pielet.js';
 
 function makeMenu(overrides = {}) {
@@ -9,47 +9,49 @@ function makeMenu(overrides = {}) {
   });
 }
 
-describe('Pielet._openSubmenu', () => {
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+describe('Pielet — submenu opening (click pipeline)', () => {
   let menu;
 
   beforeEach(() => {
-    menu = makeMenu();
+    menu = null;
   });
 
-  it('opens the submenu when the item is a submenu and the point is valid', () => {
+  afterEach(async () => {
+    if (menu) {
+      menu.close();
+      await sleep(400);
+    }
+    document.body.innerHTML = '';
+  });
+
+  it('opens the submenu at the click coords when a submenu item is selected', () => {
     const sub = makeMenu();
     const openSpy = vi.spyOn(sub, 'open');
-    const item = { typeContent: 'text', content: 'Sub', isSubMenu: true, menu: sub };
-    menu._openSubmenu(item, { x: 10, y: 20 });
+    menu = new Pielet({
+      items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: sub }]
+    });
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 301, clientY: 380 }));
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
     expect(openSpy).toHaveBeenCalledTimes(1);
-    expect(openSpy).toHaveBeenCalledWith(10, 20);
+    expect(openSpy).toHaveBeenCalledWith(301, 380);
   });
 
-  it('does nothing for a non-submenu item even with a valid point', () => {
+  it('does not open a submenu when a plain item is selected', () => {
     const sub = makeMenu();
     const openSpy = vi.spyOn(sub, 'open');
-    const item = { typeContent: 'text', content: 'Leaf', menu: sub };
-    menu._openSubmenu(item, { x: 10, y: 20 });
+    const action = vi.fn();
+    menu = new Pielet({
+      items: [{ typeContent: 'text', content: 'Leaf', action }]
+    });
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 301, clientY: 380 }));
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
     expect(openSpy).not.toHaveBeenCalled();
-  });
-
-  it('does nothing for an undefined item', () => {
-    expect(() => menu._openSubmenu(undefined, { x: 10, y: 20 })).not.toThrow();
-  });
-
-  it('does nothing when the point is missing or non-numeric', () => {
-    const sub = makeMenu();
-    const openSpy = vi.spyOn(sub, 'open');
-    const item = { typeContent: 'text', content: 'Sub', isSubMenu: true, menu: sub };
-    menu._openSubmenu(item, undefined);
-    menu._openSubmenu(item, null);
-    menu._openSubmenu(item, { x: '10', y: 20 });
-    menu._openSubmenu(item, { x: 10 });
-    expect(openSpy).not.toHaveBeenCalled();
-  });
-
-  it('does nothing when the submenu has no open method', () => {
-    const item = { typeContent: 'text', content: 'Sub', isSubMenu: true, menu: {} };
-    expect(() => menu._openSubmenu(item, { x: 10, y: 20 })).not.toThrow();
+    expect(action).toHaveBeenCalledTimes(1);
   });
 });
