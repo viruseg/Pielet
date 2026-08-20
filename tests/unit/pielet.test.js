@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import Pielet from '../../src/pielet.js';
+import {Pielet} from '../../src/pielet.js';
 
 function makeMenu(overrides = {}) {
   return new Pielet({

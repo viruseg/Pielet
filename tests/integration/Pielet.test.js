@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import Pielet from '../../src/pielet.js';
+import {Pielet} from '../../src/pielet.js';
 import { SUBMENU_CHEVRON_SIZE_RATIO, SUBMENU_CHEVRON_EXTERNAL_OFFSET_RATIO } from '../../src/geometry/calculateSector.js';
 
 const items = [

@@ -21,7 +21,7 @@ import { InteractionController } from './interaction/InteractionController.js';
 import { MenuRenderer } from './rendering/MenuRenderer.js';
 import { acquireActiveMenu, releaseActiveMenu, getActiveMenu } from './lifecycle/ActiveMenuRegistry.js';
 
-export default class Pielet extends EventTarget {
+export class Pielet extends EventTarget {
     /** @type {MenuRenderer} */
     #renderer = new MenuRenderer();
     /** @type {null | { renderer: MenuRenderer, interaction: InteractionController }} */
