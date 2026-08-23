@@ -202,22 +202,29 @@ export class Pielet extends EventTarget {
         this.#runtime = null;
         this.#removeViewportListeners();
         runtime.interaction.detach();
-        const finish = () => {
+        // Событие close диспатчится ДО любого разрушения DOM — пока меню ещё
+        // видимо и находится в document (при плавном закрытии fade ещё не стартовал).
+        if (!this.#closeNotified) {
+            this.#closeNotified = true;
+            this.dispatchEvent(new CustomEvent('close', { detail: { menu: this } }));
+        }
+        const teardown = () => {
             // Если за время fade меню уже переоткрыто этим же экземпляром,
-            // реестр по-прежнему держит его, а события close быть не должно.
-            if (!this.#runtime) {
-                releaseActiveMenu(this);
-                if (!this.#closeNotified) {
-                    this.#closeNotified = true;
-                    this.dispatchEvent(new CustomEvent('close', { detail: { menu: this } }));
-                }
+            // реестр по-прежнему держит его — живое меню трогать не нужно.
+            if (this.#runtime) return;
+            if (immediate) {
+                runtime.renderer.unmount();
+            } else {
+                runtime.renderer.animateClose(() => {});
             }
+            releaseActiveMenu(this);
         };
         if (immediate) {
-            runtime.renderer.unmount();
-            finish();
+            teardown();
         } else {
-            runtime.renderer.animateClose(finish);
+            // Удаление DOM — отдельным promise, не блокирует вызывающий код
+            // и стартует fade-анимацию только после события close.
+            Promise.resolve().then(teardown);
         }
     }
 

@@ -1024,22 +1024,24 @@ describe('Pielet — single active menu across instances', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('reopening the same instance during a fade close does not emit a false close or corrupt the registry', async () => {
+  it('reopening the same instance during a fade close: close already fired, registry stays valid', async () => {
     menu = makeMenu();
     const onClose = vi.fn();
     menu.addEventListener('close', onClose);
     menu.open(200, 200);
     await sleep(30);
     menu.close();
-    // reopen в пределах fade-окна (~310ms): старый finish ещё не сработал
+    // событие close диспатчится сразу при вызове close(), до старта fade
+    expect(onClose).toHaveBeenCalledTimes(1);
+    // reopen в пределах fade-окна (~310ms): живое меню не должно быть тронуто
     menu.open(600, 100);
     await sleep(400); // старый fade завершился
-    expect(onClose).not.toHaveBeenCalled();
+    // реестр цел: ровно одно меню в document
     expect(document.body.querySelectorAll('.pielet')).toHaveLength(1);
-    // реестр цел: открытие второго экземпляра закрывает переоткрытое меню
+    // открытие второго экземпляра закрывает переоткрытое меню — ещё один close
     const second = new Pielet({ items: [{ typeContent: 'text', content: 'B' }] });
     second.open(700, 300);
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(2);
     expect(document.body.querySelectorAll('.pielet')).toHaveLength(1);
     menu = second;
   });

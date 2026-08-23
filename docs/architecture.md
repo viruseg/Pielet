@@ -60,8 +60,9 @@ pointer moves/up
     — пункт с isSubMenu: вместо action → item.menu.open(coords)
 close()
   └─ detach InteractionController, снять viewport-слушатели
+  └─ dispatch 'close' (до удаления DOM, меню ещё в document)
   └─ fade-out opacity (transitionend + fallback по computed duration)
-  └─ удаление DOM, releaseActiveMenu, dispatch 'close'
+  └─ удаление DOM, releaseActiveMenu
 ```
 
 ## Ключевые решения

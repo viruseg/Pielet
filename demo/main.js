@@ -216,5 +216,5 @@ menu.addEventListener('select', (e) => {
   statusEl.textContent = `event: select — id: ${e.detail.id} — point: ${e.detail.coords.x}, ${e.detail.coords.y} — ${new Date().toLocaleTimeString()}`;
 });
 menu.addEventListener('close', () => {
-  statusEl.textContent = `event: close — menu removed from DOM — ${new Date().toLocaleTimeString()}`;
+  statusEl.textContent = `event: close — menu is closing, still in DOM — ${new Date().toLocaleTimeString()}`;
 });
