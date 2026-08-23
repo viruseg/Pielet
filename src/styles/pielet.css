@@ -1,14 +1,6 @@
-/*
- * Pielet — тёмная тема по умолчанию.
- * Все селекторы ограничены namespace .pielet, глобальных стилей нет.
- * Цвета и размеры настраиваются через CSS custom properties
- * (объявлены на :root для удобства переопределения).
- */
-
 :root {
-    --pielet-background: #2d2f36;
-    --pielet-background-hover: #43475a;
-    --pielet-opacity: 0.97;
+    --pielet-background: rgba(45, 47, 54, 0.55);
+    --pielet-background-hover: rgba(67, 71, 90, 0.70);
     --pielet-color: #f2f2f4;
     --pielet-submenu-indicator: #c9cdd9;
     --pielet-item-outline: rgba(255, 255, 255, 0.85);
@@ -22,15 +14,9 @@
     position: fixed;
     pointer-events: none;
     touch-action: none;
-    /* Поверх любого пользовательского контента: близко к INT32_MAX (2147483647). */
     z-index: 2147483000;
-    opacity: 0;
-    will-change: opacity;
+    opacity: 1;
     transition: opacity var(--pielet-transition-duration) var(--pielet-transition-easing);
-}
-
-.pielet--open {
-    opacity: var(--pielet-opacity);
 }
 
 .pielet__item {
@@ -40,9 +26,25 @@
     width: 100%;
     height: 100%;
     pointer-events: none;
-    background: var(--pielet-background);
+    background: transparent;
     color: var(--pielet-color);
-    transition: background var(--pielet-transition-duration) var(--pielet-transition-easing);
+    -webkit-backdrop-filter: blur(0px);
+    backdrop-filter: blur(0px);
+    transition: background var(--pielet-transition-duration) var(--pielet-transition-easing),
+                backdrop-filter var(--pielet-transition-duration) var(--pielet-transition-easing),
+                -webkit-backdrop-filter var(--pielet-transition-duration) var(--pielet-transition-easing);
+}
+
+.pielet--open .pielet__item {
+    background: var(--pielet-background);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+}
+
+.pielet--open .pielet__item--none {
+    background: transparent;
+    -webkit-backdrop-filter: blur(0px);
+    backdrop-filter: blur(0px);
 }
 
 .pielet__item-caption {
@@ -50,18 +52,19 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    opacity: 0;
+    transition: opacity var(--pielet-transition-duration) var(--pielet-transition-easing);
 }
 
-/* Центральная область меню (dead zone, `centerSize`). Инертный div-хук без
-   внешнего вида по умолчанию: это класс-мишень для стилизации центра юзером
-   библиотеки. Геометрия (позиция/размер) задаётся инлайн в MenuRenderer. */
+.pielet--open .pielet__item-caption {
+    opacity: 1;
+}
+
 .pielet__center {
     pointer-events: none;
 }
 
 .pielet__content--text {
-    /* Текст всегда в одну строку: перенос запрещён (длина текста — ответственность
-       пользователя библиотеки; шрифт ужимается вписыванием, не обрезается). */
     white-space: nowrap;
     text-align: center;
     line-height: 1.35;
@@ -73,12 +76,10 @@
 }
 
 .pielet__content--image {
-    /* Изображение вписывается в явный бокс (width/height из геометрии сектора)
-       с сохранением пропорций; без object-fit содержимое растягивается. */
     object-fit: contain;
 }
 
-.pielet__item--hover {
+.pielet--open .pielet__item--hover {
     background: var(--pielet-background-hover);
     box-shadow: var(--pielet-shadow);
 }
@@ -87,8 +88,6 @@
     background: transparent;
 }
 
-/* Обводка hover-пункта (SVG-контур сектора поверх клипа). Цвет и толщина
-   настраиваются через --pielet-item-outline / --pielet-item-outline-width. */
 .pielet__outlines {
     pointer-events: none;
 }
@@ -107,19 +106,26 @@
     opacity: 1;
 }
 
-/* Индикаторы пунктов-сабменю */
 .pielet__submenu-arc {
     pointer-events: none;
-    opacity: 0.65;
+    opacity: 0;
+    transition: opacity var(--pielet-transition-duration) var(--pielet-transition-easing);
 }
 
 .pielet__submenu-chevron {
     position: absolute;
     pointer-events: none;
     color: var(--pielet-submenu-indicator);
-    opacity: 0.8;
-    /* SVG-глиф: display блоковый (иначе baseline-зазор), overflow видимый,
-       чтобы повёрнутый шеврон не срезался квадратным боксом. */
+    opacity: 0;
     display: block;
     overflow: visible;
+    transition: opacity var(--pielet-transition-duration) var(--pielet-transition-easing);
+}
+
+.pielet--open .pielet__submenu-arc {
+    opacity: 0.65;
+}
+
+.pielet--open .pielet__submenu-chevron {
+    opacity: 0.8;
 }

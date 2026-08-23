@@ -168,9 +168,8 @@ menu.addEventListener('select', (e) => {
 
 ```css
 :root {
-  --pielet-background: #2d2f36;        /* фон сектора */
-  --pielet-background-hover: #43475a;  /* hover-подсветка */
-  --pielet-opacity: 0.97;              /* непрозрачность меню */
+  --pielet-background: rgba(45, 47, 54, 0.55);  /* фон сектора (полупрозрачный — основа матового стекла) */
+  --pielet-background-hover: rgba(67, 71, 90, 0.70); /* hover-подсветка */
   --pielet-color: #f2f2f4;             /* цвет текста/иконок */
   --pielet-submenu-indicator: #c9cdd9; /* цвет индикатора сабменю (дуга/стрелка) */
   --pielet-transition-duration: 150ms; /* длительность появления/закрытия */

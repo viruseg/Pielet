@@ -18,8 +18,8 @@ import { CONTENT_TYPES, SUBMENU_INDICATORS } from '../config/constants.js';
 const DEFAULT_CLOSE_DURATION_MS = 250;
 
 /**
- * Запас (мс) сверх длительности перехода: если transitionend по opacity
- * не сработает, DOM удаляется принудительно по этому таймеру.
+ * Запас (мс) сверх длительности перехода: если transitionend по backdrop-filter
+ * секторов не сработает, DOM удаляется принудительно по этому таймеру.
  * @type {number}
  */
 const CLOSE_FALLBACK_BUFFER_MS = 60;
@@ -346,8 +346,8 @@ export class MenuRenderer {
     }
 
     /**
-     * Запускает анимацию закрытия (opacity → 0) и после завершения
-     * удаляет DOM и вызывает onDone. Если меню не смонтировано — onDone сразу.
+     * Запускает анимацию закрытия (blur стекла → 0, фон → прозрачный) и после
+     * завершения удаляет DOM и вызывает onDone. Если меню не смонтировано — onDone сразу.
      * @param {() => void} onDone
      * @internal
      */
