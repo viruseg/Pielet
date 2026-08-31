@@ -134,13 +134,22 @@ export class InteractionController {
     #onMove(event) {
         const held = (event.buttons & this.#buttonBits) !== 0;
         this.#lastPoint = { x: event.clientX, y: event.clientY };
-        const hit = this.#hit(event);
-        if (hit.region === 'outside') {
+
+        // Выход за внешний радиус снимает hover, но меню пока живёт до
+        // порога closeDistance — в grace-зоне пункт не подсвечивается.
+        const dx = event.clientX - this.#centerX;
+        const dy = event.clientY - this.#centerY;
+        const dist = Math.hypot(dx, dy);
+        if (dist > this.#geometry.outerRadius) {
             this.#clearSubmenuTimer();
             this.#setHover(null);
-            this.#onClose();
+            if (dist > this.#geometry.outerRadius + this.#geometry.closeDistance) {
+                this.#onClose();
+            }
             return;
         }
+
+        const hit = this.#hit(event);
         // hold-режим: меню живёт, пока отслеживаемая кнопка удержана. Если кнопка
         // не зажата (например, сабменю открыто кнопкой, не совпадающей с его
         // config.button) — меню закрывается на первом же движении.
@@ -165,6 +174,18 @@ export class InteractionController {
         this.#clearSubmenuTimer();
         // Меню реагирует только на отпускание отслеживаемой кнопки (config.button).
         if (event.button !== this.#button) return;
+        const dx = event.clientX - this.#centerX;
+        const dy = event.clientY - this.#centerY;
+        // Клик в точке за внешним радиусом (grace-зона или дальше) — клик в пустое
+        // место: закрывает меню без выбора. В click-режиме, как и для центра/зазора,
+        // действует grace-окно открытия: отпускание кнопки, которой открыли меню,
+        // меню не закрывает.
+        if (Math.hypot(dx, dy) > this.#geometry.outerRadius) {
+            if (this.#mode === INTERACTION_MODES.HOLD || Date.now() - this.#openedAt > CLICK_OPEN_GRACE_MS) {
+                this.#onClose();
+            }
+            return;
+        }
         const hit = this.#hit(event);
         if (hit.region === 'sector') {
             this.#onSelect(hit.itemIndex, { x: event.clientX, y: event.clientY });

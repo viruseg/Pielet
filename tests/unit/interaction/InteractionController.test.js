@@ -117,6 +117,14 @@ describe('InteractionController — hover (pointermove)', () => {
     expect(onHover).toHaveBeenLastCalledWith(null);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('clears selection in the grace zone outside the outer radius without closing', () => {
+    fire(window, 'pointermove', pointAt(0.3));
+    // grace-зона: outerRadius(100) < dist <= outerRadius + closeDistance(140)
+    fire(window, 'pointermove', pointAt(0.3, 120));
+    expect(onHover).toHaveBeenLastCalledWith(null);
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });
 
 describe('InteractionController — pointerup (click mode)', () => {
@@ -205,6 +213,20 @@ describe('InteractionController — pointerup (click mode)', () => {
     make();
     fire(window, 'pointerup', pointAt(0.3, 300));
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('closes on pointerup in the grace zone outside the outer radius (click mode)', async () => {
+    vi.useFakeTimers();
+    try {
+      make();
+      await vi.advanceTimersByTimeAsync(400);
+      // grace-зона: 100 < dist <= 140 — клик вне пункта, должен закрыть меню
+      fire(window, 'pointerup', pointAt(0.3, 120));
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(onSelect).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('closes on pointerup in the center after the open grace (click mode)', async () => {
@@ -296,6 +318,13 @@ describe('InteractionController — pointerup (hold mode)', () => {
   it('closes on pointerup with the configured button in the center/gap', () => {
     make('left');
     fire(window, 'pointerup', pointAt(0, 10));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('closes on pointerup in the grace zone outside the outer radius (hold mode)', () => {
+    make('left');
+    fire(window, 'pointerup', pointAt(0.3, 120));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onSelect).not.toHaveBeenCalled();
   });
