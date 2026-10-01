@@ -202,6 +202,31 @@ describe('validateConfig errors', () => {
     ).toThrow(/menu/);
   });
 
+  it('accepts every per-item indicator value and preserves it', () => {
+    for (const value of ['arc', 'chevron', 'both', 'none']) {
+      const item = { typeContent: 'text', content: 'A', indicator: value };
+      expect(() => validateConfig({ items: [item] })).not.toThrow();
+      expect(normalizeConfig({ items: [item] }).items[0].indicator).toBe(value);
+    }
+  });
+
+  it('accepts indicator on a non-submenu item and on a submenu item', () => {
+    expect(() =>
+      validateConfig({ items: [{ typeContent: 'text', content: 'A', indicator: 'chevron', action: () => {} }] })
+    ).not.toThrow();
+    expect(() =>
+      validateConfig({ items: [{ typeContent: 'text', content: 'A', isSubMenu: true, menu: submenuStub, indicator: 'none' }] })
+    ).not.toThrow();
+  });
+
+  it('throws when indicator is an unknown value', () => {
+    expect(() => validateConfig({ items: [{ typeContent: 'text', content: 'A', indicator: 'arrow' }] })).toThrow(/indicator/);
+  });
+
+  it('throws when indicator is set for typeContent none', () => {
+    expect(() => validateConfig({ items: [{ typeContent: 'none', indicator: 'chevron' }] })).toThrow(/indicator/);
+  });
+
   it('throws when isSubMenu item menu lacks an open function', () => {
     expect(() =>
       validateConfig({ items: [{ typeContent: 'text', content: 'A', isSubMenu: true, menu: { close: () => {} } }] })

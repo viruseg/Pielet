@@ -7,7 +7,22 @@
 
 import { buildSectorClipPath, buildSectorOutlinePath, buildSubmenuArcPath, buildSubmenuChevron, contentHeightLimit, SUBMENU_CHEVRON_PATH, SUBMENU_CHEVRON_VIEWBOX } from '../geometry/calculateSector.js';
 import { createContentContainer, fitText } from './ContentRenderer.js';
-import { CONTENT_TYPES, SUBMENU_INDICATORS } from '../config/constants.js';
+import { CONTENT_TYPES, INDICATOR_NONE, SUBMENU_INDICATORS } from '../config/constants.js';
+
+/**
+ * Определяет, какую индикацию рисовать для пункта. Per-item поле `indicator`
+ * приоритетнее menu-level `submenuIndicator`; обычные пункты без `indicator`
+ * не индицируются. Независимо от результата поведение пункта (isSubMenu/action)
+ * не меняется — это только визуальная подсказка.
+ *
+ * @param {import('../types.js').PieletItem} item
+ * @param {'arc' | 'chevron' | 'both'} submenuIndicator - значение menu-level конфига
+ * @returns {'arc' | 'chevron' | 'both' | 'none'}
+ */
+function resolveItemIndicator(item, submenuIndicator) {
+    if (item.indicator !== undefined) return item.indicator;
+    return item.isSubMenu === true ? submenuIndicator : INDICATOR_NONE;
+}
 
 /**
  * Длительность закрытия (мс), используемая как фолбэк, когда длительность
@@ -91,7 +106,8 @@ export class MenuRenderer {
      * @param {boolean} [options.unifyText] - выровнять шрифт text-пунктов
      *   по наименьшему влезающему размеру (только при fit 'square')
      * @param {'arc' | 'chevron' | 'both'} [options.submenuIndicator] - индикация
-     *   пунктов-сабменю (arc — дуга у внутреннего радиуса, chevron — стрелка на внешнем крае кольца)
+     *   пунктов-сабменю (arc — дуга у внутреннего радиуса, chevron — стрелка на внешнем крае кольца).
+     *   Перекрывается per-item полем `indicator`; обычные пункты без `indicator` не индицируются
      * @internal
      */
     mount({ centerX, centerY, geometry, items, unifyText = false, submenuIndicator = SUBMENU_INDICATORS.BOTH }) {
@@ -142,8 +158,9 @@ export class MenuRenderer {
             if (item.isSubMenu === true) itemEl.classList.add('pielet__item--submenu');
             itemEl.style.clipPath = buildSectorClipPath(sector, outerRadius, innerRadius);
 
-            if (item.isSubMenu === true) {
-                this.#appendSubmenuIndicators(el, itemEl, sector, outerRadius, innerRadius, size, submenuIndicator);
+            const indicator = resolveItemIndicator(item, submenuIndicator);
+            if (indicator !== INDICATOR_NONE) {
+                this.#appendSubmenuIndicators(el, itemEl, sector, outerRadius, innerRadius, size, indicator);
             }
 
             let caption = null;
@@ -214,10 +231,11 @@ export class MenuRenderer {
      * @param {number} outerRadius
      * @param {number} innerRadius
      * @param {number} size - размер квадрата меню (2*outerRadius)
-     * @param {'arc' | 'chevron' | 'both'} submenuIndicator
+     * @param {'arc' | 'chevron' | 'both'} indicator - что рисовать (уже разрешено
+     *   через resolveItemIndicator; 'none' сюда не доходит)
      */
-    #appendSubmenuIndicators(el, itemEl, sector, outerRadius, innerRadius, size, submenuIndicator) {
-        if (submenuIndicator === SUBMENU_INDICATORS.ARC || submenuIndicator === SUBMENU_INDICATORS.BOTH) {
+    #appendSubmenuIndicators(el, itemEl, sector, outerRadius, innerRadius, size, indicator) {
+        if (indicator === SUBMENU_INDICATORS.ARC || indicator === SUBMENU_INDICATORS.BOTH) {
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svg.setAttribute('class', 'pielet__submenu-arc');
             svg.setAttribute('width', `${size}px`);
@@ -234,7 +252,7 @@ export class MenuRenderer {
             svg.appendChild(path);
             itemEl.appendChild(svg);
         }
-        if (submenuIndicator === SUBMENU_INDICATORS.CHEVRON || submenuIndicator === SUBMENU_INDICATORS.BOTH) {
+        if (indicator === SUBMENU_INDICATORS.CHEVRON || indicator === SUBMENU_INDICATORS.BOTH) {
             // Шеврон — SVG-глиф (не текст '›'): у текстового глифа метрики
             // шрифта смещают визуальный центр относительно бокса, и парные
             // шевроны (mid=0 и mid=π, после поворота на 180°) визуально уходят

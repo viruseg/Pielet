@@ -6,13 +6,14 @@
 
 import { DEFAULT_CONFIG } from './defaults.js';
 import { BUTTON_NAMES } from './buttons.js';
-import { ARC_PART_NAMES, ARC_PARTS, CONTENT_TYPES, DIRECTIONS, FITS, INTERACTION_MODES, SUBMENU_INDICATORS } from './constants.js';
+import { ARC_PART_NAMES, ARC_PARTS, CONTENT_TYPES, DIRECTIONS, FITS, INDICATOR_NONE, INTERACTION_MODES, SUBMENU_INDICATORS } from './constants.js';
 
 const DIRECTIONS_SET = new Set(Object.values(DIRECTIONS));
 const INTERACTION_MODES_SET = new Set(Object.values(INTERACTION_MODES));
 const CONTENT_TYPES_SET = new Set(Object.values(CONTENT_TYPES));
 const FITS_SET = new Set(Object.values(FITS));
 const SUBMENU_INDICATORS_SET = new Set(Object.values(SUBMENU_INDICATORS));
+const ITEM_INDICATORS_SET = new Set([...SUBMENU_INDICATORS_SET, INDICATOR_NONE]);
 
 /**
  * Префикс автоматически генерируемых id пунктов.
@@ -77,7 +78,7 @@ function validateItem(item, index) {
     if (typeof item !== 'object' || item === null) {
         throw err(`items[${index}] must be an object, got ${String(item)}`);
     }
-    const { typeContent, content, action, id, keepOpen, isSubMenu, menu } = item;
+    const { typeContent, content, action, id, keepOpen, isSubMenu, menu, indicator } = item;
     if (id !== undefined && (typeof id !== 'string' || id.length === 0)) {
         throw err(`items[${index}].id must be a non-empty string, got ${String(id)}`);
     }
@@ -105,6 +106,15 @@ function validateItem(item, index) {
         }
         if (typeof menu !== 'object' || menu === null || typeof menu.open !== 'function') {
             throw err(`items[${index}].menu must be a Pielet instance (object with open) when isSubMenu is true`);
+        }
+    }
+
+    if (indicator !== undefined) {
+        if (!ITEM_INDICATORS_SET.has(indicator)) {
+            throw err(`items[${index}].indicator must be one of: ${Array.from(ITEM_INDICATORS_SET).join(', ')}; got ${String(indicator)}`);
+        }
+        if (typeContent === CONTENT_TYPES.NONE) {
+            throw err(`items[${index}].indicator cannot be set for typeContent "none"`);
         }
     }
     if (action !== undefined && typeof action !== 'function') {

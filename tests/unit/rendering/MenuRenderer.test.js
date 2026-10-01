@@ -563,6 +563,69 @@ describe('MenuRenderer submenu indicators', () => {
     expect(chevrons[0].querySelector('path')).toBeTruthy();
   });
 
+  describe('per-item indicator', () => {
+    function mountMixed(menuIndicator) {
+      renderer.mount({
+        centerX: 200,
+        centerY: 150,
+        geometry: makeGeometry({ itemCount: 4 }),
+        items: [
+          { typeContent: 'text', content: 'A', isSubMenu: true },
+          { typeContent: 'text', content: 'B', indicator: 'chevron' },
+          { typeContent: 'text', content: 'C', isSubMenu: true, indicator: 'none' },
+          { typeContent: 'text', content: 'D' }
+        ],
+        submenuIndicator: menuIndicator
+      });
+      return Array.from(renderer.element.querySelectorAll('.pielet__item'));
+    }
+
+    for (const menuIndicator of ['arc', 'chevron', 'both']) {
+      it(`item indicator overrides menu-level "${menuIndicator}"`, () => {
+        const itemEls = mountMixed(menuIndicator);
+        // A — сабменю без indicator → menu-level
+        const expectArc = menuIndicator === 'arc' || menuIndicator === 'both';
+        expect(Boolean(itemEls[0].querySelector('.pielet__submenu-arc'))).toBe(expectArc);
+        // B — обычный пункт с indicator: 'chevron' → шеврон, дуги нет
+        expect(itemEls[1].querySelector('.pielet__submenu-arc')).toBeNull();
+        // C — сабменю с indicator: 'none' → ничего
+        expect(itemEls[2].querySelector('.pielet__submenu-arc')).toBeNull();
+        expect(itemEls[2].querySelector('.pielet__submenu-chevron')).toBeNull();
+        // D — обычный пункт без indicator → ничего
+        expect(itemEls[3].querySelector('.pielet__submenu-arc')).toBeNull();
+        // шевроны: только у A (если menu-level его рисует) и у B
+        const expectedChevrons = menuIndicator === 'chevron' || menuIndicator === 'both' ? 2 : 1;
+        expect(renderer.element.querySelectorAll('.pielet__submenu-chevron')).toHaveLength(expectedChevrons);
+      });
+    }
+
+    it("renders arc for a non-submenu item with indicator: 'both'", () => {
+      renderer.mount({
+        centerX: 200,
+        centerY: 150,
+        geometry: makeGeometry({ itemCount: 2 }),
+        items: [
+          { typeContent: 'text', content: 'A', indicator: 'both' },
+          { typeContent: 'text', content: 'B' }
+        ],
+        submenuIndicator: 'both'
+      });
+      const itemEls = Array.from(renderer.element.querySelectorAll('.pielet__item'));
+      expect(itemEls[0].querySelector('.pielet__submenu-arc')).toBeTruthy();
+      expect(itemEls[1].querySelector('.pielet__submenu-arc')).toBeNull();
+      expect(renderer.element.querySelectorAll('.pielet__submenu-chevron')).toHaveLength(1);
+    });
+
+    it('per-item indicator is purely visual: does not add the --submenu class or affect captions', () => {
+      const itemEls = mountMixed('both');
+      expect(itemEls[1].classList.contains('pielet__item--submenu')).toBe(false);
+      expect(itemEls[1].querySelector('.pielet__content--text').textContent).toBe('B');
+      // класс остаётся только у настоящих сабменю
+      expect(itemEls[0].classList.contains('pielet__item--submenu')).toBe(true);
+      expect(itemEls[2].classList.contains('pielet__item--submenu')).toBe(true);
+    });
+  });
+
   it('renders the chevron as a filled triangle (fill matches the line color, shape is closed)', () => {
     mountWith('both');
     const path = renderer.element.querySelector('.pielet__submenu-chevron path');
