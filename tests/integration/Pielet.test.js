@@ -1225,3 +1225,91 @@ describe('Pielet — viewport changes close the menu', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
+describe('Pielet.openSubmenu — приём контракта', () => {
+  // Контракт openSubmenu(x, y, handoff) описывает один способ открытия для всех
+  // объектов, а не только для экземпляров Pielet. Третий аргумент — описание живого
+  // жеста: `held` решает, вооружать ли показ, `button` сужает, чьё отпускание его
+// закончит. Меню, у которого своя кнопка, принимает чужую на один показ.
+  //
+  // Проверка формы идёт первыми и на `makeMenu`: ей всё равно, что показано, и она
+  // не должна зависеть от геометрии колец.
+  it('held: false — ведёт себя как open(x, y)', () => {
+    menu = makeMenu();
+    menu.openSubmenu(300, 300, { button: 'right', held: false });
+    expect(document.body.querySelectorAll('.pielet')).toHaveLength(1);
+  });
+
+  it('без handoff — ведёт себя как open(x, y)', () => {
+    menu = makeMenu();
+    menu.openSubmenu(300, 300);
+    expect(document.body.querySelectorAll('.pielet')).toHaveLength(1);
+  });
+
+  it('handoff: null — ошибка формы', () => {
+    // undefined — это «не задан», а null — «не объект». Различие обязано быть явным:
+    // иначе один из вызовов стал бы ошибкой формы, другой — тихим показом без жеста.
+    menu = makeMenu();
+    expect(() => menu.openSubmenu(300, 300, null)).toThrow(/handoff/);
+  });
+
+  it('handoff без held — ошибка формы', () => {
+    menu = makeMenu();
+    expect(() => menu.openSubmenu(300, 300, { button: 'left' })).toThrow(/held/);
+  });
+
+  it('handoff.held не логическое — ошибка формы', () => {
+    menu = makeMenu();
+    expect(() => menu.openSubmenu(300, 300, { button: 'left', held: 'yes' })).toThrow(/held/);
+  });
+
+  it('неизвестное имя кнопки — ошибка формы', () => {
+    menu = makeMenu();
+    expect(() => menu.openSubmenu(300, 300, { button: 'extra', held: true })).toThrow(/button/);
+  });
+
+  // Кольцо из одного пункта занимает всю дугу, и любая точка кольца попадает в
+  // доступный сектор. Предмет этих кейсов — кнопка показа, а не раскладка
+  // секторов: кольцо из четырёх пунктов при `startAngle: -90` оставляет прямо над
+  // центром зазор, и проверка закрытия на такой точке проверяла бы попадание в
+  // сектор вместо контракта.
+  const OPEN_RING = { items: [{ typeContent: 'text', content: 'Open', action: () => {} }] };
+  const IN_RING = { clientX: 301, clientY: 380 };
+
+  it('held: true с именем — перекрывает кнопку показа, config не трогает', () => {
+    // Перекрытие обязано жить ровно один показ: иначе меню навсегда осталось бы с
+    // чужой кнопкой, а config — единственное место, где автор её объявляет.
+    //
+    // В `buttons` движений стоит именно та кнопка, которую отслеживает показ:
+    // hold-режим держится на «отслеживаемая зажата», и движение с зажатой чужой
+    // кнопкой закрывает меню — так и должен вести себя показ, которому передали
+    // правую кнопку, когда держат левую.
+    menu = new Pielet({ ...OPEN_RING, button: 'left', interactionMode: 'hold' });
+    menu.openSubmenu(300, 300, { button: 'right', held: true });
+    expect(menu.config.button, 'config не изменён').toBe('left');
+
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, buttons: 2, ...IN_RING }));
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, ...IN_RING }));
+    expect(document.body.querySelectorAll('.pielet'), 'отпускание чужой кнопки не закрыло').toHaveLength(1);
+
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 2, ...IN_RING }));
+    expect(document.body.querySelectorAll('.pielet'), 'отпускание переданной кнопки закрыло').toHaveLength(0);
+  });
+
+  it('held: true с button: null — отслеживается любая кнопка', () => {
+    // Пресета «любая кнопка» у Pielet нет, но контракт таким значением пользуется:
+    // им шлёт меню с pressAndHold: 'any'.
+    menu = new Pielet({ ...OPEN_RING, button: 'left', interactionMode: 'hold' });
+    menu.openSubmenu(300, 300, { button: null, held: true });
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 2, ...IN_RING }));
+    expect(document.body.querySelectorAll('.pielet')).toHaveLength(0);
+  });
+
+  it('повторный openSubmenu без handoff возвращает кнопку конфигурации', () => {
+    // Регрессия: перекрытие не должно пережить следующий показ.
+    menu = new Pielet({ ...OPEN_RING, button: 'left', interactionMode: 'hold' });
+    menu.openSubmenu(300, 300, { button: 'right', held: true });
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, ...IN_RING }));
+    expect(document.body.querySelectorAll('.pielet')).toHaveLength(0);
+  });
+});

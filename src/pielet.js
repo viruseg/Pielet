@@ -2,16 +2,20 @@
  * Pielet — библиотека круговых меню.
  *
  * Публичный API: `new Pielet(config)`, `menu.open(x, y)`,
- * `menu.openSubmenu(x, y)`, `menu.close()`, `menu.setItemContent(id, content)`.
+ * `menu.openSubmenu(x, y, handoff)`, `menu.close()`, `menu.setItemContent(id, content)`.
  * Pielet не отвечает за то, когда и где вызывающий код решил открыть меню:
  * библиотека получает только координаты и управляет только поведением
  * уже открытого runtime. Одновременно может быть открыто только одно меню.
+ *
+ * `menu.open(x, y)` и `menu.openSubmenu(x, y, handoff)` — одна точка входа с
+ * необязательным перекрытием кнопки показа; `Pielet` открывается как чужое сабменю
+ * ровно так же, как открывает чужое сам.
  *
  * @typedef {import('./types.js').PieletConfig} PieletConfig
  */
 
 import { normalizeConfig } from './config/validateConfig.js';
-import { BUTTON_CODES } from './config/buttons.js';
+import { BUTTON_CODES, BUTTON_NAMES } from './config/buttons.js';
 import { CONTENT_TYPES, INTERACTION_MODES } from './config/constants.js';
 import { calculateMenuGeometry } from './geometry/calculateMenuGeometry.js';
 import { resolveViewportFit } from './geometry/fitMenuToViewport.js';
@@ -22,6 +26,46 @@ import { InteractionController } from './interaction/InteractionController.js';
 import { MenuRenderer } from './rendering/MenuRenderer.js';
 import { acquireActiveMenu, releaseActiveMenu, getActiveMenu } from './lifecycle/ActiveMenuRegistry.js';
 
+/**
+ * Кнопка показа из переданного описания жеста.
+ *
+ * Проверяется по форме, а не по смыслу: негодное значение молча превратилось бы в
+ * показ без жеста, и меню открылось бы, но его отпускание закрывать не стало бы —
+ * то есть автор передал handoff, а меню вело себя как при его отсутствии.
+ *
+ * **Отсутствие перекрытия — это `undefined`, а не `null`.** Показы различаются
+ * тремя состояниями, и `null` среди них уже занят: «жест держит не названная
+ * кнопка», который наблюдаем иначе, чем показ по кнопке конфигурации. Свести
+ * эти два случая к одному `null` значило бы подменить чужую кнопку своей.
+ *
+ * @param {unknown} handoff третий аргумент `openSubmenu`, как его передал вызывающий.
+ * @returns {import('./types.js').MouseButtonName | null | undefined} кнопка показа,
+ *   `null` при не названной кнопке, `undefined` когда показа без жеста.
+ * @throws {Error} на негодном значении.
+ */
+function buttonOfHandoff(handoff) {
+    if (handoff === undefined) {
+        return undefined;
+    }
+    if (typeof handoff !== 'object' || handoff === null || Array.isArray(handoff)) {
+        throw new Error('Pielet: openSubmenu(x, y, handoff) requires handoff to be undefined or an object');
+    }
+    const { button, held } = /** @type {Record<string, unknown>} */ (handoff);
+    if (typeof held !== 'boolean') {
+        throw new Error('Pielet: openSubmenu(x, y, handoff) requires handoff.held to be a boolean');
+    }
+    if (held === false) {
+        return undefined;
+    }
+    if (button === null) {
+        return null;
+    }
+    if (typeof button !== 'string' || !BUTTON_NAMES.has(button)) {
+        throw new Error('Pielet: openSubmenu(x, y, handoff) requires handoff.button to be null or one of left, middle, right, back, forward');
+    }
+    return /** @type {import('./types.js').MouseButtonName} */ (button);
+}
+
 export class Pielet extends EventTarget {
     /** @type {MenuRenderer} */
     #renderer = new MenuRenderer();
@@ -29,6 +73,14 @@ export class Pielet extends EventTarget {
     #runtime = null;
     /** @type {boolean} */
     #closeNotified = false;
+    /**
+     * Кнопка, которую отслеживает текущий показ. Обычно это `config.button`,
+     * но `openSubmenu(x, y, handoff)` перекрывает её на время показа, и поле
+     * хранит именно то, чем показ живёт: перекрытая кнопка передаётся дальше
+     * сабменю, иначе цепочка владения жестом рвалась бы на первом звене.
+     * @type {import('./types.js').MouseButtonName | null}
+     */
+    #runtimeButton = null;
     /** @type {() => void} */
     #viewportClose = () => this.#close(true);
 
@@ -52,6 +104,26 @@ export class Pielet extends EventTarget {
      * @param {number} y - координата центра меню по Y
      */
     open(x, y) {
+        this.#openMenu(x, y, undefined);
+    }
+
+    /**
+     * Показ с необязательным перекрытием кнопки: тело `open`, а `buttonOverride`
+     * задаёт, какую кнопку отслеживает именно этот показ.
+     *
+     * Перекрытие живёт один показ: конфигурация читается заново на каждом `open`,
+     * и перекрытый показ следующим же показом сменяется. Поэтому `menu.config`
+     * остаётся единственным местом, где автор объявляет свою кнопку, и запись
+     * туда из handoff была бы второй правдой о том же самом.
+     *
+     * @param {number} x - координата центра меню по X
+     * @param {number} y - координата центра меню по Y
+     * @param {import('./types.js').MouseButtonName | null | undefined} buttonOverride кнопка
+     *   показа из handoff; `undefined` — перекрытия нет, `null` — отслеживается любая
+     *   кнопка. Различие обязательно: свести оба к `null` значило бы подменить
+     *   переданную кнопку кнопкой конфигурации.
+     */
+    #openMenu(x, y, buttonOverride) {
         if (typeof x !== 'number' || typeof y !== 'number' || !Number.isFinite(x) || !Number.isFinite(y)) {
             throw new Error('Pielet: open(x, y) requires finite client coordinates');
         }
@@ -110,9 +182,10 @@ export class Pielet extends EventTarget {
 
         this.#renderer.mount({ centerX: x, centerY: y, geometry, items: config.items, unifyText: config.unifyText, submenuIndicator: config.submenuIndicator });
 
+        const button = buttonOverride === undefined ? config.button : buttonOverride;
         const interaction = new InteractionController({
             interactionMode: config.interactionMode,
-            button: config.button,
+            button,
             centerX: x,
             centerY: y,
             geometry,
@@ -127,6 +200,7 @@ export class Pielet extends EventTarget {
         this.#addViewportListeners();
 
         this.#runtime = { renderer: this.#renderer, interaction };
+        this.#runtimeButton = button;
         const rect = calculateVisibleRect({
             centerX: x,
             centerY: y,
@@ -140,17 +214,34 @@ export class Pielet extends EventTarget {
     }
 
     /**
-     * Открывает меню как сабменю в точке viewport. Полный алиас `open(x, y)`
-     * с тем же поведением и теми же исключениями; существует ради симметрии
-     * контракта `PieletItem.menu`, который описывает один способ открытия
-     * (`openSubmenu(x, y)`) для всех объектов, а не только для экземпляров Pielet.
+     * Открывает меню как сабменю в точке viewport.
+     *
+     * Контракт `PieletItem.menu` описывает один способ открытия для всех объектов,
+     * а не только для экземпляров Pielet, и этим способом является он. Третий
+     * аргумент — описание живого жеста, которым нас открыли: при `held: true` показ
+     * вооружает жест удержания на `button` и отпускание этой кнопки его закрывает,
+     * поэтому кнопка конфигурации ребёнка не обязана совпадать с той, которой его
+     * открыли. `interactionMode` при этом не меняется: handoff передаёт жест, а не
+     * политику показа.
+     *
+     * Без handoff и при `held: false` поведение прежнее, то есть тождественно `open`.
      *
      * @param {number} x - координата центра меню по X
      * @param {number} y - координата центра меню по Y
-     * @throws {Error} если координаты не являются конечными числами
+     * @param {import('./types.js').SubmenuHandoff} [handoff] - описание живого жеста
+     * @throws {Error} если координаты не являются конечными числами, а также если
+     *   `handoff` задан, но не отвечает форме `SubmenuHandoff`
      */
-    openSubmenu(x, y) {
-        this.open(x, y);
+    openSubmenu(x, y, handoff) {
+        const button = buttonOfHandoff(handoff);
+        if (button === undefined) {
+            // Показа без перекрытия `open` остаётся единственным путём, а не второй
+            // копией того же тела: без handoff перекрывать нечего, и вызывающий код,
+            // подменявший `open`, должен видеть и этот показ.
+            this.open(x, y);
+            return;
+        }
+        this.#openMenu(x, y, button);
     }
 
     /**
