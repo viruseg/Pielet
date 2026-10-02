@@ -1381,7 +1381,7 @@ describe('Pielet — viewport changes close the menu', () => {
   
     it('held: true с button: null — отслеживается любая кнопка', () => {
       // Пресета «любая кнопка» у Pielet нет, но контракт таким значением пользуется:
-      // им шлёт меню с pressAndHold: 'any'.
+      // им шлёт меню, открытое кнопкой, которую вызывающий код назвать не может.
       menu = new Pielet({ ...OPEN_RING, button: 'left', interactionMode: 'hold' });
       menu.openSubmenu(300, 300, { button: null, held: true });
       window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 2, ...IN_RING }));

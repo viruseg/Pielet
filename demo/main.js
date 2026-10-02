@@ -76,7 +76,7 @@ const palette = new Pielet({ items: buildPaletteItems('circle') });
 // Приёмник контракта `openSubmenu(x, y, handoff)`. Не Pielet: контракт описывает
 // один способ открытия для всех объектов, поэтому ребёнком может быть что угодно с
 // таким методом. Здесь он просто запоминает переданный жест и показывает его в
-// статусе — ровно то, что делает настоящий проект вроде MyContext.
+// статусе — ровно то, что делает внешняя библиотека меню, берущая этот контракт.
 const foreign = {
   openSubmenu(x, y, handoff) {
     window.__foreign = { x, y, button: handoff.button, held: handoff.held };
