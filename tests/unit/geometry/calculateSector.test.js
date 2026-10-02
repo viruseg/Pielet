@@ -288,6 +288,33 @@ describe('calculateSectorLayout — single item (itemCount === 1)', () => {
     near(sectors[0].end, Math.PI / 2, 1e-9);
   });
 
+  it('counterclockwise single item sweeps down from arcStart, not up', () => {
+    // calculateVisibleArc якорит CCW-дугу на её КОНЦЕ, поэтому сектор обязан
+    // расти вниз по углу. Растущий вверх сектор уезжал на противоположную
+    // половину круга — в углу viewport целиком за экран.
+    const arcStart = Math.PI; // 180°
+    const arcLength = Math.PI / 2;
+    const { sectors } = calculateSectorLayout({ ...base, arcStart, arcLength, direction: 'counterclockwise', itemCount: 1 });
+    const s = sectors[0];
+    near(s.span, arcLength, 1e-9);
+    near(s.start, arcStart - arcLength, 1e-9);
+    near(s.end, arcStart, 1e-9);
+    near(s.innerStart, arcStart - arcLength, 1e-9);
+    near(s.innerEnd, arcStart, 1e-9);
+  });
+
+  it('single-item span stays positive in both directions (span > 0 — контракт всех потребителей)', () => {
+    for (const direction of ['clockwise', 'counterclockwise']) {
+      for (const arcLength of [Math.PI / 4, Math.PI / 2, Math.PI, 4 * Math.PI / 3, TAU - 1e-6, TAU]) {
+        const { sectors } = calculateSectorLayout({ ...base, arcStart: 1.234, arcLength, direction, itemCount: 1 });
+        expect(sectors[0].span, `${direction} arc=${arcLength}`).toBeGreaterThan(0);
+        near(sectors[0].span, arcLength, 1e-9);
+        near(sectors[0].end - sectors[0].start, arcLength, 1e-9);
+        near(sectors[0].innerEnd - sectors[0].innerStart, arcLength, 1e-9);
+      }
+    }
+  });
+
   it('content mid sits on the arcStart ray: at startAngle -90 the label is on top', () => {
     const arcStart = -Math.PI / 2;
     const { sectors } = calculateSectorLayout({ ...base, arcStart, itemCount: 1 });

@@ -158,10 +158,14 @@ export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRad
             // Единственный сектор занимает всю дугу целиком, контент
             // центрируется на луче arcStart (для startAngle=-90 — сверху).
             mid = arcStart;
-            start = arcStart;
-            end = arcStart + arcLength;
-            innerStart = arcStart;
-            innerEnd = arcStart + arcLength;
+            // Развёртка идёт в сторону `direction`, поэтому сектор растёт от
+            // arcStart на dir·arcLength. Углы хранятся по возрастанию (span > 0
+            // нужен всем потребителям), а у counterclockwise дуга, посчитанная
+            // от конца, растёт вниз — значит, начало сектора у неё в конце.
+            start = arcStart + Math.min(0, dir * arcLength);
+            end = start + arcLength;
+            innerStart = start;
+            innerEnd = end;
         } else {
             // mid — ось слота (центр номинальной доли дуги): сектор симметричен
             // относительно границы соседних слотов, поэтому gap-линии и центры
