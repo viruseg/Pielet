@@ -682,7 +682,7 @@ test.describe('handoff contract in a real browser', () => {
     await page.evaluate(() => window.__menu.close());
     await expect(page.locator('.pielet')).toHaveCount(0);
 
-// Указатель уходит в сектор. Точка считается от прямоугольника кольца: у
+    // Указатель уходит в сектор. Точка считается от прямоугольника кольца: у
     // элемента пункта прямоугольник равен всему кольцу, поэтому `boundingBox`
     // дал бы центр, а отпускание в центре не выбирает ничего и в click-режиме
     // ещё попадает в grace-окно открытия. Смещение 0.29 от радиуса при
@@ -734,7 +734,10 @@ test.describe('foreign submenu target', () => {
     const count = Number(await page.locator('#items').inputValue());
     const rad = ((-90 + (count - 0.5) * (360 / count)) * Math.PI) / 180;
     await page.mouse.move(400 + 80 * Math.cos(rad), 400 + 80 * Math.sin(rad));
-    await page.waitForTimeout(600);
+    // Задержка не захардкожена: demo-контрол меняет её одним selectOption, и тест
+    // обязан следовать за настройкой, а не за её сегодняшним значением.
+    const delay = Number(await page.locator('#submenuDelay').inputValue());
+    await page.waitForTimeout(delay + 200);
     await page.mouse.up({ button: 'left' });
 
     const received = await page.evaluate(() => window.__foreign);

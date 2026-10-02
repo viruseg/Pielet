@@ -381,6 +381,25 @@ describe('InteractionController — cancellation and context menu', () => {
     controller.detach();
   });
 
+  it('suppresses the context menu for any button in the wildcard mode', () => {
+    // Показ с `button: null` следит за любой кнопкой, и системное меню при ней
+    // так же неуместно, как при названной. Без этой ветки правый клик поверх кольца
+    // показывал бы меню браузера поверх нашего.
+    const controller = new InteractionController({
+      interactionMode: 'hold',
+      button: null,
+      geometry: makeGeometry(),
+      ...CENTER,
+      onHover: vi.fn(),
+      onClose: vi.fn(),
+      onSelect: vi.fn()
+    });
+    controller.attach();
+    const event = fire(window, 'contextmenu', { button: 2 });
+    expect(event.defaultPrevented).toBe(true);
+    controller.detach();
+  });
+
   it('suppresses the context menu when the event button matches the tracked button', () => {
     const controller = new InteractionController({
       interactionMode: 'click',
