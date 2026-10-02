@@ -670,3 +670,47 @@ test.describe('touch devices', () => {
     await expect(page.locator('.pielet')).toHaveCount(0);
   });
 });
+test.describe('handoff contract in a real browser', () => {
+  // Приёмная сторона контракта в настоящем браузере: jsdom-тесты задачи 2 проверяют
+  // разбор handoff, а здесь важно другое — что перекрытая кнопка действительно
+  // доходит до обработчиков указателя, а остаётся строчкой в JSDoc.
+  test('openSubmenu tracks the handed button for this show only', async ({ page }) => {
+    await openMenu(page, 400, 400);
+    // Демо-меню по умолчанию кликовое и на левой кнопке; закрываем его и открываем
+    // заново уже по контракту, с правой.
+    await page.evaluate(() => window.__menu.close());
+    await expect(page.locator('.pielet')).toHaveCount(0);
+
+// Указатель уходит в сектор. Точка считается от прямоугольника кольца: у
+    // элемента пункта прямоугольник равен всему кольцу, поэтому `boundingBox`
+    // дал бы центр, а отпускание в центре не выбирает ничего и в click-режиме
+    // ещё попадает в grace-окно открытия. Смещение 0.29 от радиуса при
+    // `startAngle: -90` лежит в первом секторе, а самопроверка наведения падает
+    // громко, если геометрия демо когда-нибудь переедет.
+    const rect = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        window.__menu.addEventListener('open', (event) => resolve(event.detail.rect), { once: true });
+        window.__menu.openSubmenu(400, 400, { button: 'right', held: true });
+      });
+    });
+    expect(rect, 'кольцо показано').not.toBeNull();
+    await expect(page.locator('.pielet')).toHaveCount(1);
+    expect(await page.evaluate(() => window.__menu.config.button), 'config не изменён').toBe('left');
+
+    await page.mouse.move(
+      rect.left + rect.width / 2 + rect.width * 0.29,
+      rect.top + rect.height / 2 - rect.height * 0.29
+    );
+    await expect(page.locator('.pielet__item--hover')).toHaveCount(1);
+
+    // Отпускание чужой кнопки меню не трогает: жест принадлежит правой.
+    await page.mouse.down({ button: 'left' });
+    await page.mouse.up({ button: 'left' });
+    await expect(page.locator('.pielet')).toHaveCount(1);
+
+    // Отпускание переданной — закрывает, как и вела бы кнопка конфигурации.
+    await page.mouse.down({ button: 'right' });
+    await page.mouse.up({ button: 'right' });
+    await expect(page.locator('.pielet')).toHaveCount(0);
+  });
+});
