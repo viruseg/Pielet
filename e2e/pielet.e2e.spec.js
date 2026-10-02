@@ -618,9 +618,10 @@ test('4 submenu items at startAngle -135: chevron glyphs — two on a horizontal
 
 test('demo: the «Цвет» item opens a double-nested submenu chain (Цвет → Основные → Красный)', async ({ page }) => {
   await openMenu(page, 500, 400);
-  // 6 items демо: последний сектор (индекс 5) — пункт «Цвет» (isSubMenu)
+  // 6 items демо: предпоследний сектор (индекс 4) — пункт «Цвет» (isSubMenu).
+  // Последним слотом занят приёмник контракта, добавленный после «Цвета».
   const colorItem = (() => {
-    const angle = -90 + (5 + 0.5) * (360 / 6);
+    const angle = -90 + (4 + 0.5) * (360 / 6);
     const rad = (angle * Math.PI) / 180;
     return { x: 500 + 80 * Math.cos(rad), y: 400 + 80 * Math.sin(rad) };
   })();
@@ -712,5 +713,33 @@ test.describe('handoff contract in a real browser', () => {
     await page.mouse.down({ button: 'right' });
     await page.mouse.up({ button: 'right' });
     await expect(page.locator('.pielet')).toHaveCount(0);
+  });
+});
+
+test.describe('foreign submenu target', () => {
+  // Приёмник контракта — обычный объект с одним методом openSubmenu(x, y, handoff).
+  // Он не Pielet, и в этом смысл: контракт описывает один способ открытия для всех
+  // объектов, поэтому его может реализовать что угодно.
+  test('a non-Pielet object with openSubmenu receives the live gesture', async ({ page }) => {
+    await page.selectOption('#mode', 'hold');
+    await openMenu(page, 400, 400);
+
+    // Кнопка зажимается ДО первого движения: в hold-режиме первое движение с
+    // незажатой кнопкой закрывает кольцо, и наводиться было бы уже не на что.
+    await page.mouse.down({ button: 'left' });
+
+    // Приёмник — последний пункт кольца (индекс 5 из 6). Точка сектора считается
+    // той же формулой, что и в остальных тестах файла: у элемента сектора
+    // прямоугольник равен всему кольцу, поэтому `boundingBox` дал бы центр.
+    const count = Number(await page.locator('#items').inputValue());
+    const rad = ((-90 + (count - 0.5) * (360 / count)) * Math.PI) / 180;
+    await page.mouse.move(400 + 80 * Math.cos(rad), 400 + 80 * Math.sin(rad));
+    await page.waitForTimeout(600);
+    await page.mouse.up({ button: 'left' });
+
+    const received = await page.evaluate(() => window.__foreign);
+    expect(received, 'приёмник позван').toBeTruthy();
+    expect(received.button, 'кнопка жеста').toBe('left');
+    expect(received.held, 'жест жив на момент передачи').toBe(true);
   });
 });

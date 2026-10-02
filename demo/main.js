@@ -73,9 +73,23 @@ const basic = new Pielet({ items: buildColorItems(BASIC_COLORS, 'circle') });
 const pastel = new Pielet({ items: buildColorItems(PASTEL_COLORS, 'circle') });
 const palette = new Pielet({ items: buildPaletteItems('circle') });
 
-// count — общее число пунктов меню, включая пункт-сабменю.
+// Приёмник контракта `openSubmenu(x, y, handoff)`. Не Pielet: контракт описывает
+// один способ открытия для всех объектов, поэтому ребёнком может быть что угодно с
+// таким методом. Здесь он просто запоминает переданный жест и показывает его в
+// статусе — ровно то, что делает настоящий проект вроде MyContext.
+const foreign = {
+  openSubmenu(x, y, handoff) {
+    window.__foreign = { x, y, button: handoff.button, held: handoff.held };
+    statusEl.textContent =
+      `contract: openSubmenu(${Math.round(x)}, ${Math.round(y)}) — button: ${handoff.button} — held: ${handoff.held}`;
+  }
+};
+
+// count — общее число пунктов меню, включая два пункта-сабменю в конце: вложенный
+// Pielet и приёмник контракта. Обычных пунктов на два меньше, иначе добавленный
+// приёмник сдвинул бы общее число и сломал бы всё, что на него считает.
 function assembleItems(count, fit) {
-  const items = Array.from({ length: count - 1 }, (_, i) => {
+  const items = Array.from({ length: Math.max(count - 2, 0) }, (_, i) => {
     const label = labels[i % labels.length];
     // В circle-режиме контент не поворачивается, поэтому вместо надписей
     // удобнее смотреть на эмодзи; в square-режиме читаемые тексты наглядно
@@ -100,6 +114,15 @@ function assembleItems(count, fit) {
     id: 'demo-color',
     isSubMenu: true,
     menu: palette
+  });
+  // Последним — приёмник контракта: он открывается как сабменю по тем же правилам,
+  // что и вложенный Pielet, и выглядит так же, а реализует другой проект.
+  items.push({
+    typeContent: 'text',
+    content: fit === 'circle' ? '🔌' : 'Foreign',
+    id: 'demo-foreign',
+    isSubMenu: true,
+    menu: foreign
   });
   return items;
 }
