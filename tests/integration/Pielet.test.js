@@ -544,6 +544,33 @@ describe('Pielet.setItemContent', () => {
     expect(caption.contains(oldNode)).toBe(false);
   });
 
+  it('targets the mounted sector after menu.config.items is swapped', async () => {
+    // config публичен: пока меню открыто, items можно подменить на другой
+    // массив. Искать пункт надо в snapshot'е, из которого собрано меню, —
+    // поиск по новому массиву бьёт по индексу и переписывает чужой сектор.
+    menu = new Pielet({
+      items: [
+        { typeContent: 'text', content: 'first', id: 'a' },
+        { typeContent: 'text', content: 'second', id: 'b' }
+      ]
+    });
+    menu.open(300, 300);
+    menu.config.items = [
+      { typeContent: 'text', content: 'Y', id: 'b' },
+      { typeContent: 'text', content: 'X', id: 'zzz' }
+    ];
+    menu.setItemContent('b', 'UPDATED');
+    const captions = [...document.querySelectorAll('.pielet__content--text')].map((e) => e.textContent);
+    expect(captions).toEqual(['first', 'UPDATED']);
+
+    // и следующий open() тоже покажет новое содержимое
+    menu.close();
+    await sleep(400);
+    menu.open(300, 300);
+    const reopened = [...document.querySelectorAll('.pielet__content--text')].map((e) => e.textContent);
+    expect(reopened).toEqual(['UPDATED', 'X']);
+  });
+
   it('throws when the menu is not open', () => {
     menu = new Pielet({ items: [{ typeContent: 'text', content: 'A', id: 'a' }] });
     expect(() => menu.setItemContent('a', 'B')).toThrow(/open menu/);

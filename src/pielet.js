@@ -78,7 +78,13 @@ const MAX_OPEN_RECLAIMS = 8;
 export class Pielet extends EventTarget {
     /** @type {MenuRenderer} */
     #renderer = new MenuRenderer();
-    /** @type {null | { renderer: MenuRenderer, interaction: InteractionController }} */
+    /**
+     * Показ целиком: renderer, interaction и snapshot пунктов, из которого
+     * собрано открытое меню. `menu.config` публичен и может быть подменён, пока
+     * меню открыто, поэтому источником правды о том, что на экране, остаётся
+     * именно snapshot.
+     * @type {null | { renderer: MenuRenderer, interaction: InteractionController, items: import('./types.js').PieletItem[] }}
+     */
     #runtime = null;
     /** @type {boolean} */
     #closeNotified = false;
@@ -227,7 +233,7 @@ export class Pielet extends EventTarget {
 
         this.#addViewportListeners();
 
-        this.#runtime = { renderer: this.#renderer, interaction };
+        this.#runtime = { renderer: this.#renderer, interaction, items: config.items };
         this.#runtimeButton = button;
         const rect = calculateVisibleRect({
             centerX: x,
@@ -296,21 +302,27 @@ export class Pielet extends EventTarget {
      * Меняет содержимое пункта меню по его `id` в живом открытом меню.
      * Тип нового содержимого должен совпадать с `typeContent`, заданным
      * при инициализации (сменить тип нельзя). Обновляет и DOM, и
-     * `config.items[i].content` — следующее `open()` покажет новый контент.
+     * `config.items[i].content` — следующее `open()` покажет новое содержимое.
      * Работает только пока меню открыто (типичный кейс — вызов из action
      * пункта с `keepOpen: true`).
+     *
+     * Пункт ищется по snapshot'у, из которого собрано открытое меню, а не по
+     * живому `menu.config`: конфигурация публична, и её `items` можно подменить
+     * на другой массив, пока меню открыто. Поиск по новому массиву нашёл бы
+     * индекс чужого пункта и молча переписал бы не тот сектор.
      * @param {string} id - id пункта
      * @param {string | Node} content - новое содержимое (строка для text/image, Node для node)
      */
     setItemContent(id, content) {
-        if (!this.#runtime) {
+        const runtime = this.#runtime;
+        if (!runtime) {
             throw new Error('Pielet: setItemContent(id, content) requires an open menu');
         }
-        const index = this.config.items.findIndex((item) => item.id === id);
+        const index = runtime.items.findIndex((item) => item.id === id);
         if (index === -1) {
             throw new Error(`Pielet: setItemContent(id, content): no item with id "${id}"`);
         }
-        const item = this.config.items[index];
+        const item = runtime.items[index];
         if (item.typeContent === CONTENT_TYPES.NONE) {
             throw new Error(`Pielet: setItemContent(id, content): item "${id}" has typeContent "none" and cannot be updated`);
         }
@@ -322,6 +334,13 @@ export class Pielet extends EventTarget {
             throw new Error('Pielet: setItemContent(id, content): content must be a DOM Node for typeContent "node"');
         }
         item.content = content;
+        // Если автор подменил menu.config.items на другой массив, следующий open()
+        // возьмёт конфигурацию оттуда — синхронизируем и её, иначе обещание
+        // «следующий open() покажет новое содержимое» не сойдётся.
+        if (this.config.items !== runtime.items) {
+            const live = this.config.items.find((candidate) => candidate.id === id);
+            if (live) live.content = content;
+        }
         this.#renderer.setItemContent(index, item);
     }
 
