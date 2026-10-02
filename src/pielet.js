@@ -1,7 +1,8 @@
 /**
  * Pielet — библиотека круговых меню.
  *
- * Публичный API: `new Pielet(config)`, `menu.open(x, y)`, `menu.close()`.
+ * Публичный API: `new Pielet(config)`, `menu.open(x, y)`,
+ * `menu.openSubmenu(x, y)`, `menu.close()`, `menu.setItemContent(id, content)`.
  * Pielet не отвечает за то, когда и где вызывающий код решил открыть меню:
  * библиотека получает только координаты и управляет только поведением
  * уже открытого runtime. Одновременно может быть открыто только одно меню.
@@ -119,7 +120,7 @@ export class Pielet extends EventTarget {
             onClose: () => this.close(),
             onSelect: (index, point) => this.#select(config.items[index], index, point),
             submenuDelay: config.submenuDelay,
-            onSubmenuOpen: (index, point) => this.#openSubmenu(config.items[index], point)
+            onSubmenuOpen: (index, point) => this.#showSubmenu(config.items[index], point)
         });
         interaction.attach();
 
@@ -136,6 +137,20 @@ export class Pielet extends EventTarget {
             direction: config.direction
         });
         this.dispatchEvent(new CustomEvent('open', { detail: { rect, menu: this } }));
+    }
+
+    /**
+     * Открывает меню как сабменю в точке viewport. Полный алиас `open(x, y)`
+     * с тем же поведением и теми же исключениями; существует ради симметрии
+     * контракта `PieletItem.menu`, который описывает один способ открытия
+     * (`openSubmenu(x, y)`) для всех объектов, а не только для экземпляров Pielet.
+     *
+     * @param {number} x - координата центра меню по X
+     * @param {number} y - координата центра меню по Y
+     * @throws {Error} если координаты не являются конечными числами
+     */
+    openSubmenu(x, y) {
+        this.open(x, y);
     }
 
     /**
@@ -238,7 +253,9 @@ export class Pielet extends EventTarget {
      * Пункт с `keepOpen: true` не закрывает меню, но только в click-режиме:
      * в hold-режиме флаг игнорируется и меню закрывается как обычно.
      * Пункт с `isSubMenu: true` вместо action открывает сабменю (`item.menu`)
-     * в точке клика; action игнорируется.
+     * в точке клика; action игнорируется. Открытие по клику работает только
+     * в click-режиме: в hold-режиме сабменю открывается наведением, а к моменту
+     * разбора отпускания кнопка уже не зажата, и закрывать открытое нечем.
      * @param {import('./types.js').PieletItem} item
      * @param {number} index
      * @param {{ x: number, y: number }} [point] - координаты клика (clientX/clientY)
@@ -253,7 +270,9 @@ export class Pielet extends EventTarget {
             this.#close(true);
         }
         if (item && item.isSubMenu === true) {
-            this.#openSubmenu(item, point);
+            if (this.config.interactionMode !== INTERACTION_MODES.HOLD) {
+                this.#showSubmenu(item, point);
+            }
             return;
         }
         if (item && typeof item.action === 'function') {
@@ -263,20 +282,37 @@ export class Pielet extends EventTarget {
     }
 
     /**
-     * Открывает сабменю пункта в заданной точке (clientX/clientY).
+     * Открывает сабменю пункта в точке указателя.
      * Используется обоими пайплайнами: click (выбор пункта) и hold
      * (hover-задержка из InteractionController). Для hold-пайплайна
      * select-событие и action не эмитятся — только открытие.
+     *
+     * Кольцо закрывается здесь, а не внутри `open` сабменю: у Pielet-сабменю это
+     * делает реестр активных меню, но чужое меню в реестр не встаёт, и кольцо
+     * осталось бы висеть под ним. Закрытие выполняется и для пункта с
+     * `keepOpen: true` — тот же пункт не может одновременно держать меню
+     * открытым и заменить его сабменю. Повторный вызов в click-пайплайне
+     * безвреден: `#close` у уже закрытого меню ничего не делает.
      * @param {import('./types.js').PieletItem} item
      * @param {{ x: number, y: number }} [point]
      */
-    #openSubmenu(item, point) {
+    #showSubmenu(item, point) {
         if (!item || item.isSubMenu !== true) return;
         if (!point || typeof point.x !== 'number' || typeof point.y !== 'number') return;
         const menu = item.menu;
-        if (menu && typeof menu.open === 'function') {
-            menu.open(point.x, point.y);
+        if (menu === null || typeof menu !== 'object') return;
+        // `openSubmenu` проверяется первым: у меню с собственным контрактом открытия
+        // `open(x, y)` может значить не то же, что у Pielet. У экземпляра Pielet
+        // оба метода тождественны, так что порядок проверки на нём безразличен.
+        let open = null;
+        if (typeof menu.openSubmenu === 'function') {
+            open = menu.openSubmenu;
+        } else if (typeof menu.open === 'function') {
+            open = menu.open;
         }
+        if (!open) return;
+        this.#close(true);
+        open.call(menu, point.x, point.y);
     }
 
     #addViewportListeners() {

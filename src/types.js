@@ -70,7 +70,24 @@
 
 /**
  * Экземпляр кругового меню (см. `src/pielet.js`).
- * @typedef {import('./pielet.js').default} Pielet
+ * @typedef {import('./pielet.js').Pielet} Pielet
+ */
+
+/**
+ * Что можно поставить в `PieletItem.menu`.
+ *
+ * Единственный способ открытия — `openSubmenu(x, y)`. Метод `open(x, y)`
+ * принимается как запасной: он есть у экземпляров Pielet и у меню, написанных
+ * до появления контракта, но у чужого меню он может значить не то же, что у
+ * Pielet, поэтому проверяется вторым. Закрывать такие меню Pielet не умеет:
+ * `Pielet.closeAll()` действует только на экземпляры.
+ * @typedef {object} SubmenuTarget
+ * @property {(x: number, y: number) => void} [openSubmenu] - открыть меню как
+ *   сабменю в точке viewport (CSS-пиксели). Вызывается после того, как кольцо
+ *   родителя уже закрыто, так что при необходимости показать что-то поверх своего
+ *   меню это делать придётся самостоятельно.
+ * @property {(x: number, y: number) => void} [open] - запасной способ открытия;
+ *   используется, только если `openSubmenu` отсутствует.
  */
 
 /**
@@ -89,8 +106,11 @@
  *   (select event и action по-прежнему вызываются). В hold-режиме флаг игнорируется.
  * @property {boolean} [isSubMenu] - если true, выбор пункта открывает сабменю `menu`
  *   вместо вызова `action`. Требует `typeContent` не `none` и наличие `menu`.
- *   В hold-режиме сабменю дополнительно открывается по hover-задержке `submenuDelay`.
- * @property {Pielet} [menu] - экземпляр меню, открываемый как сабменю этого пункта.
+ *   Открытие по клику работает только в click-режиме; в hold-режиме сабменю
+ *   открывается по hover-задержке `submenuDelay`. Перекрывает `keepOpen`:
+ *   кольцо родителя закрывается до показа сабменю.
+ * @property {Pielet | SubmenuTarget} [menu] - меню, открываемое как сабменю этого
+ *   пункта: экземпляр Pielet либо объект с `openSubmenu(x, y)` (см. `SubmenuTarget`).
  *   Обязателен при `isSubMenu: true`.
  * @property {ItemIndicator} [indicator] - индикация этого пункта; приоритетнее
  *   menu-level `submenuIndicator`. Позволяет пометить индикацией обычный пункт

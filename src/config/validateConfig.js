@@ -104,8 +104,10 @@ function validateItem(item, index) {
         if (typeContent === CONTENT_TYPES.NONE) {
             throw err(`items[${index}].isSubMenu cannot be true for typeContent "none"`);
         }
-        if (typeof menu !== 'object' || menu === null || typeof menu.open !== 'function') {
-            throw err(`items[${index}].menu must be a Pielet instance (object with open) when isSubMenu is true`);
+        const canOpen = menu !== null && typeof menu === 'object' && !Array.isArray(menu)
+            && (typeof menu.openSubmenu === 'function' || typeof menu.open === 'function');
+        if (!canOpen) {
+            throw err(`items[${index}].menu must be a Pielet instance or an object with openSubmenu(x, y) or open(x, y) when isSubMenu is true`);
         }
     }
 

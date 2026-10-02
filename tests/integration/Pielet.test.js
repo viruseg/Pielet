@@ -851,6 +851,156 @@ describe('Pielet — submenu (isSubMenu)', () => {
       vi.useRealTimers();
     }
   });
+
+  it('hold: releasing on a submenu owner closes silently and opens no submenu', () => {
+    // Кнопку отпустили, а открывать сабменю после этого нечем: закрывать его будет уже
+    // некому. В click-режиме тот же клик сабменю открывает — разница в том, держит ли
+    // кто-нибудь кнопку после клика.
+    const submenu = makeSubmenu();
+    const action = vi.fn();
+    menu = new Pielet({
+      interactionMode: 'hold',
+      button: 'left',
+      items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: submenu, action }]
+    });
+    const onSelect = vi.fn();
+    menu.addEventListener('select', onSelect);
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, buttons: 1, clientX: 301, clientY: 380 }));
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
+    // ни одного меню: родитель ушёл, сабменю не открылось
+    expect(document.body.querySelectorAll('.pielet')).toHaveLength(0);
+    // select по контракту эмитится, action владельца не зовётся
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(action).not.toHaveBeenCalled();
+  });
+
+  it('hold: opening a submenu closes the parent ring first', async () => {
+    // Реестр активных меню закрывает кольцо только для сабменю-Pielet: чужое меню в
+    // него не встаёт. Без закрытия здесь кольцо осталось бы висеть под меню, которое
+    // только что открылось как его сабменю.
+    vi.useFakeTimers();
+    try {
+      const opened = [];
+      const foreign = { openSubmenu: (x, y) => { opened.push({ x, y }); } };
+      menu = new Pielet({
+        interactionMode: 'hold',
+        button: 'left',
+        items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: foreign }]
+      });
+      menu.open(300, 300);
+      expect(document.body.querySelectorAll('.pielet')).toHaveLength(1);
+
+      window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, buttons: 1, clientX: 301, clientY: 380 }));
+      // В момент вызова таймера кольцо ещё должно быть на экране: иначе кейс прошёл бы
+      // на меню, которого и не было.
+      await vi.advanceTimersByTimeAsync(399);
+      expect(document.body.querySelectorAll('.pielet')).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(opened, 'чужое меню открыто в точке указателя').toHaveLength(1);
+      expect(opened[0], 'координаты указателя').toEqual({ x: 301, y: 380 });
+      expect(document.body.querySelectorAll('.pielet'), 'кольцо ушло').toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('click: openSubmenu предпочтительнее open у меню с обоими методами', () => {
+    // У чужого меню `open(x, y)` может значить не то же, что у Pielet, — так
+    // объявляется `openSubmenu`, и приоритет у него именно поэтому.
+    const calls = [];
+    const foreign = {
+      open: () => { calls.push('open'); },
+      openSubmenu: () => { calls.push('openSubmenu'); }
+    };
+    menu = new Pielet({ items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: foreign }] });
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
+    expect(calls, 'позван openSubmenu, а не open').toEqual(['openSubmenu']);
+  });
+
+  it('сабменю с одним open проходит проверку конфигурации и открывается', () => {
+    // `open(x, y)` — запасной способ открытия: так выглядит меню, написанное
+    // до появления контракта.
+    const opened = [];
+    menu = new Pielet({ items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: { open: (x, y) => opened.push({ x, y }) } }] });
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
+    expect(opened).toEqual([{ x: 301, y: 380 }]);
+  });
+
+  it('открытие сабменю перекрывает keepOpen', () => {
+    // keepOpen и isSubMenu на одном пункте — противоречие: keepOpen требует оставить
+    // кольцо, isSubMenu — заменить его сабменю. Побеждает isSubMenu, иначе на экране
+    // оказалось бы два меню от одного пункта.
+    const opened = [];
+    menu = new Pielet({
+      items: [{ typeContent: 'text', content: 'More', isSubMenu: true, keepOpen: true, menu: { openSubmenu: (x, y) => opened.push({ x, y }) } }]
+    });
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
+    expect(opened, 'сабменю открылось').toHaveLength(1);
+    expect(document.body.querySelectorAll('.pielet'), 'кольцо не осталось').toHaveLength(0);
+  });
+
+  it('кольцо не закрывается, если сабменю открыть нечем', () => {
+    // Валидация конфигурации отсекает такое меню, но `menu.config` публичен, и
+    // пункты читаются из него уже при открытом меню. Закрывать кольцо, не показав
+    // сабменю, нельзя: пользователь потерял бы меню целиком. keepOpen нужен, чтобы
+    // кольцо не снял сам пайплайн выбора — закрыть его могла бы только попытка
+    // открытия сабменю.
+    menu = new Pielet({
+      items: [{ typeContent: 'text', content: 'More', isSubMenu: true, keepOpen: true, menu: makeSubmenu() }]
+    });
+    menu.open(300, 300);
+    menu.config.items[0].menu = { openSubmenu: 'не функция' };
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
+    expect(document.body.querySelectorAll('.pielet'), 'кольцо осталось').toHaveLength(1);
+  });
+
+  it('сабменю с одним openSubmenu проходит проверку конфигурации', () => {
+    // Проверка требовала `open` и отвергала меню, у которого только `openSubmenu`:
+    // такой объект — ровно то, чем является меню с собственным контрактом открытия.
+    const foreign = { openSubmenu: () => {} };
+    expect(() => new Pielet({ items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: foreign }] })).not.toThrow();
+    expect(() => new Pielet({ items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: {} }] })).toThrow();
+    // Массив с приклеенным open — не меню
+    const arr = Object.assign([], { open() {} });
+    expect(() => new Pielet({ items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: arr }] })).toThrow();
+  });
+
+  it('openSubmenu чужого меню зовётся с его собственным this', () => {
+    // Метод достаётся из объекта и зовётся отвязанно, поэтому receiver должен быть
+    // восстановлен явно — иначе меню, читающее своё состояние из `this`, упадёт.
+    let seen = null;
+    const foreign = {
+      state: 'ready',
+      openSubmenu() { seen = this.state; }
+    };
+    menu = new Pielet({ items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: foreign }] });
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
+    expect(seen).toBe('ready');
+  });
+
+  it('Pielet.openSubmenu открывает меню в точке', () => {
+    // Публичный алиас open(x, y): контракт PieletItem.menu описывает один способ
+    // открытия, и Pielet обязан его предоставлять наравне с прочими меню.
+    menu = makeSubmenu();
+    menu.openSubmenu(300, 300);
+    expect(document.body.querySelectorAll('.pielet')).toHaveLength(1);
+  });
+
+  it('сабменю-Pielet открывается и сам по себе, и из чужого пункта', () => {
+    // Публичный openSubmenu тождественен open, поэтому предпочтение openSubmenu над
+    // open на экземпляре Pielet не меняет ничего, кроме порядка вызова.
+    const submenu = makeSubmenu();
+    menu = submenu;
+    const parent = new Pielet({ items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: submenu }] });
+    parent.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
+    expect(document.body.querySelectorAll('.pielet'), 'открыто одно меню — сабменю').toHaveLength(1);
+  });
 });
 
 describe('Pielet — counterclockwise near viewport edges', () => {

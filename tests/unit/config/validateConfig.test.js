@@ -227,7 +227,7 @@ describe('validateConfig errors', () => {
     expect(() => validateConfig({ items: [{ typeContent: 'none', indicator: 'chevron' }] })).toThrow(/indicator/);
   });
 
-  it('throws when isSubMenu item menu lacks an open function', () => {
+  it('throws when isSubMenu item menu has neither openSubmenu nor open', () => {
     expect(() =>
       validateConfig({ items: [{ typeContent: 'text', content: 'A', isSubMenu: true, menu: { close: () => {} } }] })
     ).toThrow(/menu/);
