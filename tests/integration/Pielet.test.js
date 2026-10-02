@@ -1397,3 +1397,87 @@ describe('Pielet — viewport changes close the menu', () => {
       expect(document.body.querySelectorAll('.pielet')).toHaveLength(0);
     });
   });
+describe('Pielet — реентрантность open из close', () => {
+  // close — это вызов кода пользователя, и он может открыть меню снова. Показ,
+  // который к этому моменту ещё не смонтирован, обязан разобраться, кто теперь
+  // активен: иначе на странице окажется два меню, а closeAll() закроет не то.
+  const RING = { items: [{ typeContent: 'text', content: 'A' }] };
+  const SECOND = { items: [{ typeContent: 'text', content: 'B' }] };
+
+  afterEach(async () => {
+    Pielet.closeAll();
+    await sleep(400);
+    document.body.innerHTML = '';
+  });
+
+  it('переоткрытие из close чужого экземпляра не оставляет второе меню', async () => {
+    const a = new Pielet(RING);
+    const b = new Pielet(SECOND);
+    let reopen = true;
+    a.addEventListener('close', () => {
+      if (reopen) a.open(120, 120);
+    });
+
+    a.open(300, 300);
+    b.open(500, 500);
+    await sleep(50);
+    expect(document.body.querySelectorAll('.pielet'), 'в DOM ровно одно меню').toHaveLength(1);
+
+    // реестр обязан указывать на то, что лежит поверх, — иначе closeAll()
+    // закроет чужое меню, а второе останется висеть интерактивным сиротой
+    reopen = false;
+    Pielet.closeAll();
+    await sleep(400);
+    expect(document.body.querySelectorAll('.pielet'), 'closeAll() не оставил сироту').toHaveLength(0);
+  });
+
+  it('переоткрытие из close того же экземпляра не ломает реестр', async () => {
+    const a = new Pielet(RING);
+    let reopen = true;
+    a.addEventListener('close', () => {
+      if (reopen) a.open(120, 120);
+    });
+
+    a.open(300, 300);
+    a.open(310, 310);
+    await sleep(400);
+    expect(document.body.querySelectorAll('.pielet')).toHaveLength(1);
+
+    reopen = false;
+    Pielet.closeAll();
+    await sleep(400);
+    expect(document.body.querySelectorAll('.pielet')).toHaveLength(0);
+  });
+
+  it('безусловный close -> open не оставляет второе меню и не теряет реестр', async () => {
+    // Схема зацикливает сама себя: активным остаётся чужое меню. Ставить второе
+    // поверх нельзя, поэтому показ отменяется — как close() на закрытом меню.
+    const a = new Pielet(RING);
+    const reopen = () => { a.open(120, 120); };
+    a.addEventListener('close', reopen);
+    a.open(300, 300);
+
+    const b = new Pielet(SECOND);
+    b.open(500, 500);
+    await sleep(50);
+    expect(document.body.querySelectorAll('.pielet'), 'второе меню не смонтировано').toHaveLength(1);
+
+    // обработчик снимаем, иначе closeAll() будет вечно открывать меню заново
+    a.removeEventListener('close', reopen);
+    Pielet.closeAll();
+    await sleep(400);
+    expect(document.body.querySelectorAll('.pielet'), 'closeAll() достаёт до оставшегося').toHaveLength(0);
+  });
+
+  it('чередование открытий разных экземпляров всегда оставляет одно меню', async () => {
+    const menus = [new Pielet(RING), new Pielet(SECOND), new Pielet(RING)];
+    for (let i = 0; i < 9; i++) {
+      menus[i % 3].open(100 + i, 100 + i);
+      expect(document.body.querySelector('.pielet'), `после open #${i}`).not.toBe(null);
+      expect(document.body.querySelectorAll('.pielet').length, `после open #${i}`).toBeLessThanOrEqual(1);
+    }
+    Pielet.closeAll();
+    await sleep(400);
+    expect(document.body.querySelectorAll('.pielet')).toHaveLength(0);
+  });
+});

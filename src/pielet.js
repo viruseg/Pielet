@@ -66,6 +66,15 @@ function buttonOfHandoff(handoff) {
     return /** @type {import('./types.js').MouseButtonName} */ (button);
 }
 
+/**
+ * Сколько раз открытие вправе вернуть себе владение активным меню, если
+ * чужой `close`-обработчик открывает меню в ответ. Схема сходится, как только
+ * обработчик перестаёт открывать; тупик возможен только при безусловном
+ * `close → open`, который зацикливает и реестр сам по себе.
+ * @type {number}
+ */
+const MAX_OPEN_RECLAIMS = 8;
+
 export class Pielet extends EventTarget {
     /** @type {MenuRenderer} */
     #renderer = new MenuRenderer();
@@ -137,6 +146,25 @@ export class Pielet extends EventTarget {
         }
         const previous = acquireActiveMenu(this);
         if (previous) previous.#close(true);
+        // `close` — это вызов кода пользователя, и внутри него он мог открыть
+        // меню снова. Тогда активным к моменту возврата окажется не мы, и мы
+        // встанем вторым: на странице будет два меню, а closeAll() закроет не то.
+        // Поэтому владение реестром забираем обратно, а вклинившееся меню закрываем.
+        for (let round = 0; round < MAX_OPEN_RECLAIMS; round++) {
+            const owner = getActiveMenu();
+            if (owner === this) break;
+            if (!owner) {
+                acquireActiveMenu(this);
+                break;
+            }
+            acquireActiveMenu(this);
+            owner.#close(true);
+        }
+        // Схема не сошлась — то есть close-обработчик открывает меню безусловно,
+        // и зацикливает она и реестр сама по себе. Активным осталось не наше меню:
+        // ставить второе поверх значит нарушить «одно открытое меню», поэтому
+        // показ отменяется — так же, как close() на закрытом меню.
+        if (getActiveMenu() !== this) return;
 
         this.#closeNotified = false;
 
