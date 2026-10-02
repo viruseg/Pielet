@@ -499,7 +499,7 @@ describe('buildSectorOutlinePath', () => {
       }
     }
     for (const c of cmds) {
-      if (c.cmd === 'A') { c.rx = c.args[0]; c.ry = c.args[1]; c.x = c.args[5]; c.y = c.args[6]; delete c.args; }
+      if (c.cmd === 'A') { c.rx = c.args[0]; c.ry = c.args[1]; c.laf = c.args[3]; c.sf = c.args[4]; c.x = c.args[5]; c.y = c.args[6]; delete c.args; }
     }
     return cmds;
   }
@@ -570,6 +570,28 @@ describe('buildSectorOutlinePath', () => {
     expect(innerStart).toMatchObject({ cmd: 'M', x: 156, y: 120 });
     expect(innerMid.x).toBeCloseTo(84, 2);
     expect(innerMid.y).toBeCloseTo(120, 2);
+  });
+
+  it('sets large-arc-flag per span, so an arc over 180° traces the sector', () => {
+    const flags = (d) => parsePath(d).filter((c) => c.cmd === 'A').map((c) => c.laf);
+    for (const span of [0.1, Math.PI / 2, Math.PI, Math.PI + 1e-6, 1.7 * Math.PI, 2 * Math.PI - 1e-3]) {
+      const sector = { start: 0, end: span, innerStart: 0, innerEnd: span };
+      const [outerFlag, innerFlag] = flags(buildSectorOutlinePath(sector, 120, 36));
+      const expected = span > Math.PI ? 1 : 0;
+      expect(outerFlag, `outer span=${span}`).toBe(expected);
+      expect(innerFlag, `inner span=${span}`).toBe(expected);
+    }
+  });
+
+  it('keeps the large-arc-flag per arc when outer and inner spans differ', () => {
+    // gap разводит внешнюю и внутреннюю дуги по разные стороны π
+    const wide = Math.PI - 0.05;
+    const narrow = 0.9;
+    const [outerFlag, innerFlag] = parsePath(
+      buildSectorOutlinePath({ start: 0, end: wide, innerStart: 0, innerEnd: narrow }, 120, 36)
+    ).filter((c) => c.cmd === 'A').map((c) => c.laf);
+    expect(outerFlag).toBe(0);
+    expect(innerFlag).toBe(0);
   });
 });
 

@@ -314,11 +314,16 @@ export function buildSectorOutlinePath({ start, end, innerStart, innerEnd }, out
     const outerEnd = point(outerRadius, end);
     const innerEndPoint = point(innerRadius, innerEndAngle);
     const innerStartPoint = point(innerRadius, innerStartAngle);
+    // large-arc-flag обязан совпадать с полукругом: при span > π дуга с флагом 0
+    // это дополнительная под-180° дуга, и браузер масштабирует радиусы, рисуя
+    // чужой контур. Флаг 1 при span ≤ π, наоборот, выбрал бы дополняющую дугу.
+    const outerLarge = span > Math.PI ? 1 : 0;
+    const innerLarge = innerEndAngle - innerStartAngle > Math.PI ? 1 : 0;
     return [
         `M ${fmt(outerStart.x)} ${fmt(outerStart.y)}`,
-        `A ${fmt(outerRadius)} ${fmt(outerRadius)} 0 0 1 ${fmt(outerEnd.x)} ${fmt(outerEnd.y)}`,
+        `A ${fmt(outerRadius)} ${fmt(outerRadius)} 0 ${outerLarge} 1 ${fmt(outerEnd.x)} ${fmt(outerEnd.y)}`,
         `L ${fmt(innerEndPoint.x)} ${fmt(innerEndPoint.y)}`,
-        `A ${fmt(innerRadius)} ${fmt(innerRadius)} 0 0 0 ${fmt(innerStartPoint.x)} ${fmt(innerStartPoint.y)}`,
+        `A ${fmt(innerRadius)} ${fmt(innerRadius)} 0 ${innerLarge} 0 ${fmt(innerStartPoint.x)} ${fmt(innerStartPoint.y)}`,
         `L ${fmt(outerStart.x)} ${fmt(outerStart.y)}`,
         'Z'
     ].join(' ');
