@@ -271,8 +271,9 @@ export function buildSectorClipPath({ start, end, innerStart, innerEnd }, outerR
  * border/outline по контуру). Координаты — в px квадрата 2*outerRadius
  * (центр квадрата — в центре кольца), как в buildSectorClipPath.
  *
- * Полное кольцо (span ≥ 2π) — пара замкнутых окружностей (каждая дуга
- * разбита на два полукруга, иначе SVG не рисует окружность из одной A).
+ * Полное кольцо (span ≥ 2π) — внешняя и внутренняя окружности отдельными
+ * подконтурами, каждая разбита на два полукруга: дуга с совпадающими концами
+ * SVG опускает целиком, а полный оборот — это ровно такой случай.
  *
  * @param {{ start: number, end: number, innerStart?: number, innerEnd?: number }} sector
  * @param {number} outerRadius
@@ -290,15 +291,22 @@ export function buildSectorOutlinePath({ start, end, innerStart, innerEnd }, out
     });
 
     if (span >= TAU - EPS) {
+        // Окружность нельзя описать одной `A`: у дуги с совпадающими концами SVG
+        // (F.6.2) молча опускает сегмент, а полный оборот — это ровно такой
+        // случай. Поэтому каждая окружность разбита на два полукруга через
+        // диаметрально противоположную точку, а внешняя и внутренняя идут
+        // отдельными подконтурами: соединять их нечем, иначе между кольцами
+        // появилась бы хорда.
         const outer = point(outerRadius, start);
+        const outerFar = point(outerRadius, start + Math.PI);
         const inner = point(innerRadius, innerStartAngle);
+        const innerFar = point(innerRadius, innerStartAngle + Math.PI);
+        const half = (radius, from, via) =>
+            `A ${fmt(radius)} ${fmt(radius)} 0 0 1 ${fmt(via.x)} ${fmt(via.y)} ` +
+            `A ${fmt(radius)} ${fmt(radius)} 0 0 1 ${fmt(from.x)} ${fmt(from.y)}`;
         return [
-            `M ${fmt(outer.x)} ${fmt(outer.y)}`,
-            `A ${fmt(outerRadius)} ${fmt(outerRadius)} 0 1 1 ${fmt(outer.x)} ${fmt(outer.y)}`,
-            `A ${fmt(outerRadius)} ${fmt(outerRadius)} 0 1 1 ${fmt(outer.x)} ${fmt(outer.y)}`,
-            `A ${fmt(innerRadius)} ${fmt(innerRadius)} 0 1 1 ${fmt(inner.x)} ${fmt(inner.y)}`,
-            `A ${fmt(innerRadius)} ${fmt(innerRadius)} 0 1 1 ${fmt(inner.x)} ${fmt(inner.y)}`,
-            'Z'
+            `M ${fmt(outer.x)} ${fmt(outer.y)} ${half(outerRadius, outer, outerFar)}`,
+            `M ${fmt(inner.x)} ${fmt(inner.y)} ${half(innerRadius, inner, innerFar)}`
         ].join(' ');
     }
 

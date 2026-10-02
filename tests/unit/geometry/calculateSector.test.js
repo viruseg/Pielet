@@ -524,14 +524,52 @@ describe('buildSectorOutlinePath', () => {
     expect(cmds[3].y).toBeCloseTo(120 + 36 * Math.sin(Math.PI / 8), 2);
   });
 
-  it('full ring (span 2π): two closed circles, no radial edges', () => {
+  it('full ring (span 2π): outer and inner circles as separate subpaths, no radial edges', () => {
     const d = buildSectorOutlinePath({ start: 0, end: Math.PI * 2, innerStart: 0, innerEnd: Math.PI * 2 }, 120, 36);
-    expect(d.endsWith('Z')).toBe(true);
     expect((d.match(/L/g) || []).length).toBe(0);
     expect((d.match(/A/g) || []).length).toBe(4);
-    for (const c of parsePath(d).filter((c) => c.cmd === 'A')) {
+    expect((d.match(/M/g) || []).length).toBe(2);
+    const cmds = parsePath(d);
+    for (const c of cmds.filter((c) => c.cmd === 'A')) {
       expect([120, 36]).toContain(c.rx);
     }
+  });
+
+  it('no arc segment has coincident endpoints — SVG silently drops those', () => {
+    // SVG 1.1 F.6.2: дуга с совпадающими концами опускается целиком. Прежний
+    // полный круг был собран из четырёх таких дуг, и браузер рисовал вместо
+    // кольца короткий обрывок (getTotalLength 216 вместо 980, bbox 84×42).
+    for (const sector of [
+      { start: 0, end: Math.PI * 2, innerStart: 0, innerEnd: Math.PI * 2 },
+      { start: 1.234, end: 1.234 + Math.PI * 2 - 1e-9, innerStart: 1.234 + 0.4, innerEnd: 1.234 + Math.PI * 2 - 0.4 },
+      { start: 0, end: Math.PI / 2, innerStart: 0, innerEnd: Math.PI / 2 },
+      { start: 1, end: 1 + Math.PI * 1.7, innerStart: 1 + 0.2, innerEnd: 1 + Math.PI * 1.7 - 0.2 }
+    ]) {
+      const cmds = parsePath(buildSectorOutlinePath(sector, 120, 36));
+      let cx = null;
+      let cy = null;
+      for (const c of cmds) {
+        if (c.cmd === 'Z') continue;
+        if (c.cmd === 'A') {
+          expect([c.x, c.y], 'arc endpoint must differ from its start').not.toEqual([cx, cy]);
+        }
+        cx = c.x;
+        cy = c.y;
+      }
+    }
+  });
+
+  it('full ring: each semicircle ends on the diametrically opposite point', () => {
+    const cmds = parsePath(buildSectorOutlinePath({ start: 0, end: Math.PI * 2, innerStart: 0, innerEnd: Math.PI * 2 }, 120, 36));
+    const [outerStart, outerMid, , innerStart, innerMid] = cmds;
+    // start 0° -> 180° -> 360°(0°) на внешней окружности
+    expect(outerStart).toMatchObject({ cmd: 'M', x: 240, y: 120 });
+    expect(outerMid.x).toBeCloseTo(0, 2);
+    expect(outerMid.y).toBeCloseTo(120, 2);
+    // и то же самое на внутренней
+    expect(innerStart).toMatchObject({ cmd: 'M', x: 156, y: 120 });
+    expect(innerMid.x).toBeCloseTo(84, 2);
+    expect(innerMid.y).toBeCloseTo(120, 2);
   });
 });
 
