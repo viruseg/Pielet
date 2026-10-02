@@ -322,6 +322,33 @@ describe('calculateSectorLayout — single item (itemCount === 1)', () => {
     near(sectors[0].mid, -Math.PI / 2, 1e-9);
   });
 
+  it('full ring keeps mid on the arcStart ray even counterclockwise', () => {
+    const arcStart = -Math.PI / 2;
+    for (const direction of ['clockwise', 'counterclockwise']) {
+      const { sectors } = calculateSectorLayout({ ...base, arcStart, direction, itemCount: 1 });
+      near(sectors[0].mid, arcStart, 1e-9);
+    }
+  });
+
+  it('partial arc puts mid on the sector axis, not on its edge', () => {
+    // Луч arcStart у частичной дуги — это её грань: контент на нём стоял
+    // вплотную к краю сектора, и clip-path срезал подпись.
+    const cases = [
+      { arcStart: 0, arcLength: Math.PI / 2, direction: 'clockwise' },
+      { arcStart: 0, arcLength: Math.PI / 2, direction: 'counterclockwise' },
+      { arcStart: Math.PI, arcLength: 1.2, direction: 'clockwise' },
+      { arcStart: Math.PI, arcLength: 1.2, direction: 'counterclockwise' }
+    ];
+    for (const c of cases) {
+      const { sectors } = calculateSectorLayout({ ...base, ...c, itemCount: 1 });
+      const s = sectors[0];
+      const label = `arcStart=${c.arcStart} arc=${c.arcLength} ${c.direction}`;
+      near(s.mid, (s.start + s.end) / 2, 1e-12);
+      expect(s.mid, label).toBeGreaterThan(Math.min(s.start, s.end));
+      expect(s.mid, label).toBeLessThan(Math.max(s.start, s.end));
+    }
+  });
+
   it('full ring gives a full-diameter content box instead of a degenerate chord', () => {
     const { sectors } = calculateSectorLayout({ ...base, itemCount: 1 });
     // circle fit: безопасная зона ограничена только кольцом (r2 вырождается)

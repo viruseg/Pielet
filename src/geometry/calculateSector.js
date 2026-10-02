@@ -155,9 +155,6 @@ export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRad
     for (let i = 0; i < itemCount; i++) {
         let start, end, innerStart, innerEnd, mid;
         if (isSingle) {
-            // Единственный сектор занимает всю дугу целиком, контент
-            // центрируется на луче arcStart (для startAngle=-90 — сверху).
-            mid = arcStart;
             // Развёртка идёт в сторону `direction`, поэтому сектор растёт от
             // arcStart на dir·arcLength. Углы хранятся по возрастанию (span > 0
             // нужен всем потребителям), а у counterclockwise дуга, посчитанная
@@ -166,6 +163,11 @@ export function calculateSectorLayout({ itemCount, arcStart, arcLength, outerRad
             end = start + arcLength;
             innerStart = start;
             innerEnd = end;
+            // Контент встаёт на середину сектора. Для полного кольца это луч
+            // arcStart (startAngle и есть его якорь: при -90 текст сверху), а для
+            // частичной дуги — её середина: луч arcStart лежал бы на грани
+            // сектора, и clip-path срезал бы края подписи.
+            mid = isFullRing ? arcStart : (start + end) / 2;
         } else {
             // mid — ось слота (центр номинальной доли дуги): сектор симметричен
             // относительно границы соседних слотов, поэтому gap-линии и центры
