@@ -79,20 +79,20 @@ export function getSelectedSector({ x, y, centerX, centerY, geometry }) {
         const a = dxe * dxe + dye * dye;
         const b = 2 * (ax * dxe + ay * dye);
         const c = ax * ax + ay * ay - rho * rho;
-        // корни; выбираем тот, что на отрезке [0,1] (s=0 при rho=inner, s=1 при rho=outer);
-        // если сегмент не достаёт до rho — берём ближайшую к rho вершину
+        // корни; выбираем тот, что на отрезке [0,1] (s=0 при rho=inner, s=1 при rho=outer)
         const disc = b * b - 4 * a * c;
-        let s;
+        // Отрезок концов ведёт от внутреннего радиуса к внешнему, поэтому по rho
+        // он достижим ровно при rho <= outerRadius. На самом outerRadius (и за ним,
+        // вgrace-зоне) точка пересечения — это внешняя вершина: при равенстве
+        // корень из-за округления то уходит в 1+eps, то попадает в [0,1].
+        const unreachable = rho >= outerRadius ? 1 : 0;
+        let s = unreachable;
         if (disc >= 0) {
             const sqrtD = Math.sqrt(disc);
             const s1 = (-b - sqrtD) / (2 * a);
             const s2 = (-b + sqrtD) / (2 * a);
             if (s1 >= 0 && s1 <= 1) s = s1;
             else if (s2 >= 0 && s2 <= 1) s = s2;
-            else if (s1 > 1 && s2 > 1) s = 1;
-            else s = 0;
-        } else {
-            s = 0;
         }
         return Math.atan2(ay + s * dye, ax + s * dxe);
     };

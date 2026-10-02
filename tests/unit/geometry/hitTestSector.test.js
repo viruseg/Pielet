@@ -225,3 +225,35 @@ describe('getSelectedSector — edge reflow arcs', () => {
     expect(r.region).toBe('sector');
   });
 });
+describe('getSelectedSector — за внешним радиусом (grace-зона)', () => {
+  // За external-радиусом отрезок боковой грани до rho не достаёт: оба корня
+  // квадратного уравнения лежат вне [0,1]. Ближайшая к rho вершина там внешняя,
+  // а прежний код брал внутреннюю — и сектор сужался на величину end − innerEnd.
+  const geometry = makeGeometry({ n: 3, gap: 8, outerRadius: 120, innerRadius: 36, closeDistance: 48 });
+  const sector = geometry.sectors[0];
+  const beyond = geometry.outerRadius + 10;
+  const at = (deg, rho) => hit(geometry, 100 + rho * Math.cos(deg * DEG), 100 + rho * Math.sin(deg * DEG));
+
+  it('reports the drawn sector edge, not the inner-arc angle', () => {
+    const endDeg = (sector.end * 180) / Math.PI;
+    const innerEndDeg = (sector.innerEnd * 180) / Math.PI;
+    expect(innerEndDeg).toBeLessThan(endDeg);
+    // Ближний крайний угол боковой грани — это end, а не innerEnd. Прежний код
+    // обрывал сектор по innerEnd, и всё между ними уходило в gap.
+    expect(at(endDeg - 0.5, beyond).itemIndex).toBe(0);
+    expect(at(innerEndDeg + 0.5, beyond).itemIndex).toBe(0);
+    expect(at(endDeg + 0.5, beyond).region).toBe('gap');
+  });
+
+  it('keeps the grace zone continuous with the ring boundary', () => {
+    const endDeg = (sector.end * 180) / Math.PI;
+    for (const rho of [geometry.outerRadius - 0.5, geometry.outerRadius, geometry.outerRadius + 0.001, beyond]) {
+      expect(at(endDeg - 0.2, rho).itemIndex, `rho=${rho}`).toBe(0);
+    }
+  });
+
+  it('still reports outside past outerRadius + closeDistance', () => {
+    const r = geometry.outerRadius + geometry.closeDistance + 1;
+    expect(at(45, r).region).toBe('outside');
+  });
+});
