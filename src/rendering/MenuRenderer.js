@@ -82,8 +82,6 @@ export class MenuRenderer {
     #innerRadius = 0;
     /** @type {number} */
     #closeDuration = DEFAULT_CLOSE_DURATION_MS;
-    /** @type {HTMLStyleElement | null} */
-    #closeStyle = null;
 
     /**
      * Корневой элемент меню (null после закрытия).
@@ -135,8 +133,9 @@ export class MenuRenderer {
         center.style.height = `${innerRadius * 2}px`;
         el.appendChild(center);
 
+        // Прежний корень уходит вместе со своим inline-guard — отдельная чистка
+        // не нужна.
         if (this.#el) this.#el.remove();
-        this.#removeCloseStyle();
         document.body.appendChild(el);
         this.#el = el;
         this.#closeDuration = parseDuration(this.#getComputedDuration());
@@ -282,16 +281,6 @@ export class MenuRenderer {
     }
 
     /**
-     * Удаляет защитный <style>, блокирующий pointer-events умирающему меню.
-     */
-    #removeCloseStyle() {
-        if (this.#closeStyle) {
-            this.#closeStyle.remove();
-            this.#closeStyle = null;
-        }
-    }
-
-    /**
      * @returns {string} computed transition-duration корневого элемента
      */
     #getComputedDuration() {
@@ -388,19 +377,18 @@ export class MenuRenderer {
             return;
         }
         const el = this.#el;
-        // Блокируем pointer-events с !important: пользовательские стили
-        // (например, `.pielet { pointer-events: auto !important }`) не смогут
-        // вернуть интерактивность умирающему меню во время fade-out.
-        this.#closeStyle = document.createElement('style');
-        this.#closeStyle.textContent = '.pielet{pointer-events:none!important}';
-        document.head.appendChild(this.#closeStyle);
+        // Гасим pointer-events прямо на элементе, а не правилом в <head>: важное
+        // объявление в style сильнее любого правила таблицы стилей (в том числе
+        // !important из пользовательских стилей), но задевает только этот элемент.
+        // Правило в <head> бьло по всем `.pielet` на странице — включая живые
+        // меню других экземпляров.
+        el.style.setProperty('pointer-events', 'none', 'important');
         el.classList.remove('pielet--open');
 
         let finished = false;
         const finish = () => {
             if (finished) return;
             finished = true;
-            this.#removeCloseStyle();
             el.removeEventListener('transitionend', onTransitionEnd);
             if (this.#el === el) {
                 this.#el = null;
@@ -408,6 +396,7 @@ export class MenuRenderer {
                 this.#captions = [];
                 this.#sectors = [];
                 this.#items = [];
+                this.#outlinePaths = [];
             }
             el.remove();
             onDone();
@@ -432,7 +421,6 @@ export class MenuRenderer {
             this.#sectors = [];
             this.#items = [];
             this.#outlinePaths = [];
-            this.#removeCloseStyle();
         }
     }
 }

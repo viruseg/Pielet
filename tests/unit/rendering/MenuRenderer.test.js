@@ -800,4 +800,51 @@ describe('MenuRenderer.animateClose', () => {
     expect(document.body.querySelector('.pielet')).toBeNull();
     expect(renderer.element).toBeNull();
   });
+
+  it('blocks pointer events on the fading element itself, not with a rule in head', async () => {
+    vi.useFakeTimers();
+    renderer.mount({ centerX: 200, centerY: 150, geometry: makeGeometry(), items });
+    await vi.advanceTimersByTimeAsync(20);
+    const el = renderer.element;
+    renderer.animateClose(vi.fn());
+    // Важное объявление в style сильнее любого правила таблицы стилей, поэтому
+    // пользовательский `.pielet { pointer-events: auto !important }` не вернёт
+    // интерактивность умирающему меню — и правилом в <head> это не достигалось
+    expect(el.style.getPropertyValue('pointer-events')).toBe('none');
+    expect(el.style.getPropertyPriority('pointer-events')).toBe('important');
+    expect([...document.head.querySelectorAll('style')].some((s) => s.textContent.includes('pointer-events'))).toBe(false);
+    await vi.advanceTimersByTimeAsync(400);
+  });
+
+  it('fading one instance does not block pointer events on another live one', async () => {
+    vi.useFakeTimers();
+    const other = new MenuRenderer();
+    renderer.mount({ centerX: 200, centerY: 150, geometry: makeGeometry(), items });
+    await vi.advanceTimersByTimeAsync(20);
+    renderer.animateClose(vi.fn());
+    const fading = renderer.element;
+
+    other.mount({ centerX: 600, centerY: 400, geometry: makeGeometry(), items });
+    await vi.advanceTimersByTimeAsync(20);
+    expect(other.element).not.toBe(fading);
+    // Прежний вариант вешал в <head> правило `.pielet{...}` — и оно било по
+    // живому меню второго экземпляра тоже.
+    expect(other.element.style.getPropertyValue('pointer-events')).toBe('');
+    await vi.advanceTimersByTimeAsync(400);
+  });
+
+  it('drops outline path references together with the faded DOM', async () => {
+    vi.useFakeTimers();
+    renderer.mount({ centerX: 200, centerY: 150, geometry: makeGeometry(), items });
+    await vi.advanceTimersByTimeAsync(20);
+    const paths = renderer.element.querySelectorAll('.pielet__outline');
+    expect(paths.length).toBeGreaterThan(0);
+    renderer.animateClose(vi.fn());
+    await vi.advanceTimersByTimeAsync(400);
+    // Каждый <path> держит свой <svg> через parentNode, а тот — удалённый корень
+    // вместе с пользовательскими node-пунктами. Без сброса renderer удерживал
+    // всё это subtree после fade-закрытия.
+    expect(document.body.contains(paths[0])).toBe(false);
+    expect(renderer.element).toBeNull();
+  });
 });
