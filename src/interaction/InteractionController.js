@@ -50,6 +50,17 @@ export class InteractionController {
     #hover = null;
     /** @type {boolean} */
     #attached = false;
+    /**
+     * pointerId указателя, завладевшего жестом, или null, если он ещё не начат.
+     *
+     * Жест принадлежит одному указателю: без этого второй палец на touch
+     * завершал его отпусканием (все touch-события дают button === 0, поэтому
+     * отслеживаемая кнопка match'ится всегда), а pointercancel и pointermove
+     * постороннего указателя переключали признак «кнопка зажата» и закрывали
+     * hold-меню. Для мыши pointerId всегда один, так что поведение не меняется.
+     * @type {number | null}
+     */
+    #pointerId = null;
     /** @type {number} */
     #openedAt = Date.now();
     /** @type {{ x: number, y: number } | null} */
@@ -131,6 +142,7 @@ export class InteractionController {
     detach() {
         if (!this.#attached) return;
         this.#attached = false;
+        this.#pointerId = null;
         this.#clearSubmenuTimer();
         window.removeEventListener('pointermove', this.#boundMove);
         window.removeEventListener('pointerup', this.#boundUp);
@@ -160,6 +172,15 @@ export class InteractionController {
     }
 
     #onMove(event) {
+        // Жест принадлежит тому указателю, который первым начал двигаться, —
+        // открыть меню из pointerdown нельзя (слушатель не увидит собственное
+        // событие), а вот движение указывает на «рабочий» палец. Чужой указатель
+        // жест не ведёт: иначе его движение с buttons = 0 закрыло бы hold-меню.
+        if (this.#pointerId === null) {
+            this.#pointerId = event.pointerId;
+        } else if (event.pointerId !== this.#pointerId) {
+            return;
+        }
         const held = this.#button === null ? event.buttons !== 0 : (event.buttons & this.#buttonBits) !== 0;
         this.#buttonHeld = held;
         this.#lastPoint = { x: event.clientX, y: event.clientY };
@@ -200,6 +221,11 @@ export class InteractionController {
     }
 
     #onUp(event) {
+        // Жест завершает только тот указатель, который его начал: у touch все
+        // pointerup дают button === 0, так что без проверки второй палец
+        // выбирал пункт и закрывал меню, пока первый ещё зажат.
+        if (this.#pointerId !== null && event.pointerId !== this.#pointerId) return;
+        this.#pointerId = null;
         this.#clearSubmenuTimer();
         // Меню реагирует только на отпускание отслеживаемой кнопки (config.button).
         // При button: null отслеживается любая, и сверять нечего.
@@ -236,7 +262,12 @@ export class InteractionController {
         }
     }
 
-    #onCancel() {
+    #onCancel(event) {
+        // pointercancel приходит и от постороннего указателя (например, браузер
+        // забрал жест под скролл у чужого пальца) — закрывать из-за него меню,
+        // открытое другим, нельзя.
+        if (this.#pointerId !== null && event.pointerId !== this.#pointerId) return;
+        this.#pointerId = null;
         this.#clearSubmenuTimer();
         this.#setHover(null);
         this.#onClose();

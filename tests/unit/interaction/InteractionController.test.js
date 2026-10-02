@@ -37,7 +37,10 @@ function pointAt(angle, dist = 65) {
 }
 
 function fire(window, type, init = {}) {
-  const event = new window.MouseEvent(type, { bubbles: true, cancelable: true, ...init });
+  const { pointerId, ...rest } = init;
+  const event = new window.MouseEvent(type, { bubbles: true, cancelable: true, ...rest });
+  // jsdom не умеет PointerEvent, поэтому pointerId задаём на событии вручную
+  if (pointerId !== undefined) Object.defineProperty(event, 'pointerId', { value: pointerId });
   window.dispatchEvent(event);
   return event;
 }
@@ -789,5 +792,87 @@ describe('InteractionController — buttonHeld', () => {
     fire(window, 'pointermove', { ...pointAt(0.3), buttons: 1 });
     fire(window, 'pointerup', { ...pointAt(0.3), button: 2 });
     expect(controller.buttonHeld).toBe(true);
+  });
+});
+
+describe('InteractionController — владение жестом указателем', () => {
+  let onHover, onClose, onSelect, controller;
+
+  const build = (mode = 'hold') => {
+    onHover = vi.fn();
+    onClose = vi.fn();
+    onSelect = vi.fn();
+    controller = new InteractionController({
+      interactionMode: mode,
+      button: 'left',
+      geometry: makeGeometry(),
+      ...CENTER,
+      onHover,
+      onClose,
+      onSelect
+    });
+    controller.attach();
+    return controller;
+  };
+
+  afterEach(() => controller.detach());
+
+  it('жест принадлежит первому указателю, который начал двигаться', () => {
+    build('hold');
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 1, pointerId: 1 });
+    // второй палец: у touch все события дают button === 0, поэтому без владения
+    // его отпускание выбирало бы пункт и закрывало меню при зажатом первом
+    fire(window, 'pointermove', { ...pointAt(0.6), buttons: 3, pointerId: 2 });
+    fire(window, 'pointerup', { ...pointAt(0.6), button: 0, pointerId: 2 });
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('отпускание указателя-владельца завершает жест', () => {
+    build('hold');
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 1, pointerId: 1 });
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 3, pointerId: 2 });
+    fire(window, 'pointerup', { ...pointAt(0.3), button: 0, pointerId: 2 });
+    fire(window, 'pointerup', { ...pointAt(0.3), button: 0, pointerId: 1 });
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it('чужой pointercancel не закрывает меню', () => {
+    build('hold');
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 1, pointerId: 7 });
+    fire(window, 'pointercancel', { pointerId: 8 });
+    expect(onClose).not.toHaveBeenCalled();
+    fire(window, 'pointercancel', { pointerId: 7 });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('чужое движение с buttons = 0 не закрывает hold-меню', () => {
+    build('hold');
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 1, pointerId: 1 });
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 0, pointerId: 2 });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(controller.buttonHeld).toBe(true);
+  });
+
+  it('тап без движения по-прежнему выбирает пункт', () => {
+    // Владелец ещё не назначен (движения не было) — отпускание проходит.
+    build('click');
+    fire(window, 'pointerup', { ...pointAt(0.3), button: 0, pointerId: 1 });
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it('detach сбрасывает владение жестом', () => {
+    build('hold');
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 1, pointerId: 1 });
+    controller.detach();
+    // после detach() прошлая кнопка не должна доигрывать жест
+    fire(window, 'pointerup', { ...pointAt(0.3), button: 0, pointerId: 1 });
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+
+    controller.attach();
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 1, pointerId: 5 });
+    fire(window, 'pointerup', { ...pointAt(0.3), button: 0, pointerId: 5 });
+    expect(onSelect).toHaveBeenCalledTimes(1);
   });
 });
