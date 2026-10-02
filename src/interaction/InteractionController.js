@@ -19,9 +19,16 @@ const CLICK_OPEN_GRACE_MS = 300;
 export class InteractionController {
     /** @type {'hold' | 'click'} */
     #mode;
-    /** @type {number} */
+    /**
+     * Код отслеживаемой кнопки; `null` — любая кнопка. `null` приходит по контракту
+     * `openSubmenu(x, y, handoff)` вместе с `handoff.button === null`: кнопка
+     * зажата, но какая именно — вызывающий код не знает и сообщить не может.
+     * Различать «любую» и «не названную» нечем, поэтому режим один, и показ с
+     * такой передачей закрывает отпускание любой кнопки.
+     * @type {number | null}
+     */
     #button;
-    /** @type {number} */
+    /** @type {number | null} */
     #buttonBits;
     /** @type {number} */
     #centerX;
@@ -64,7 +71,7 @@ export class InteractionController {
     /**
      * @param {object} options
      * @param {'hold' | 'click'} options.interactionMode
-     * @param {import('../types.js').MouseButtonName} options.button - отслеживаемая кнопка (текстовая константа)
+     * @param {import('../types.js').MouseButtonName | null} options.button - отслеживаемая кнопка (текстовая константа); `null` — любая кнопка, см. контракт `openSubmenu`
      * @param {number} options.centerX
      * @param {number} options.centerY
      * @param {object} options.geometry - полная геометрия меню (для hit-теста)
@@ -76,8 +83,8 @@ export class InteractionController {
      */
     constructor({ interactionMode, button, centerX, centerY, geometry, onHover, onClose, onSelect, submenuDelay = 0, onSubmenuOpen }) {
         this.#mode = interactionMode;
-        this.#button = BUTTON_CODES[button];
-        this.#buttonBits = BUTTON_BITS[button];
+        this.#button = button === null ? null : BUTTON_CODES[button];
+        this.#buttonBits = button === null ? null : BUTTON_BITS[button];
         this.#centerX = centerX;
         this.#centerY = centerY;
         this.#geometry = geometry;
@@ -132,7 +139,7 @@ export class InteractionController {
     }
 
     #onMove(event) {
-        const held = (event.buttons & this.#buttonBits) !== 0;
+        const held = this.#button === null ? event.buttons !== 0 : (event.buttons & this.#buttonBits) !== 0;
         this.#lastPoint = { x: event.clientX, y: event.clientY };
 
         // Выход за внешний радиус снимает hover, но меню пока живёт до
@@ -173,7 +180,8 @@ export class InteractionController {
     #onUp(event) {
         this.#clearSubmenuTimer();
         // Меню реагирует только на отпускание отслеживаемой кнопки (config.button).
-        if (event.button !== this.#button) return;
+        // При button: null отслеживается любая, и сверять нечего.
+        if (this.#button !== null && event.button !== this.#button) return;
         const dx = event.clientX - this.#centerX;
         const dy = event.clientY - this.#centerY;
         // Клик в точке за внешним радиусом (grace-зона или дальше) — клик в пустое

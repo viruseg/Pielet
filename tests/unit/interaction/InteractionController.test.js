@@ -667,3 +667,56 @@ describe('InteractionController — submenu open', () => {
     }
   });
 });
+describe('InteractionController — любая кнопка (button: null)', () => {
+  // Контракт openSubmenu умеет передать «кнопка зажата, но какая — неизвестно», и
+  // тогда `button` приходит null. Такой показ обязан работать как обычный hold с той
+  // единственной разницей, что отпускание любой кнопки его закроет.
+  function makeAny() {
+    const onClose = vi.fn();
+    const onSelect = vi.fn();
+    const controller = new InteractionController({
+      interactionMode: 'hold',
+      button: null,
+      geometry: makeGeometry(),
+      ...CENTER,
+      onHover: vi.fn(),
+      onClose,
+      onSelect
+    });
+    controller.attach();
+    return { onClose, onSelect };
+  }
+
+  it('hold: отпускание любой кнопки выбирает сектор', () => {
+    const { onClose, onSelect } = makeAny();
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 1 });
+    fire(window, 'pointerup', { ...pointAt(0.3), button: 2 });
+    expect(onSelect).toHaveBeenCalledWith(0, expect.anything());
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('hold: отпускание мимо сектора закрывает молча', () => {
+    // «Посторонней» кнопки при button: null не бывает, и отпускание любой кнопки
+    // разбирается тем же путём, что и при названной. Проверка после движения
+    // обязательна: закрыться на pointermove здесь нечем, кнопка зажата, и без неё
+    // кейс прошёл бы по другой причине, чем проверяет.
+    const { onClose, onSelect } = makeAny();
+    fire(window, 'pointermove', { ...pointAt(0, 5), buttons: 1 });
+    expect(onClose, 'зажатая кнопка держала меню').not.toHaveBeenCalled();
+    fire(window, 'pointerup', { ...pointAt(0, 5), button: 2 });
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onClose, 'отпускание закрыло').toHaveBeenCalledTimes(1);
+  });
+
+  it('hold: движение с любой зажатой кнопкой не закрывает меню', () => {
+    const { onClose } = makeAny();
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 2 });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('hold: движение без зажатых кнопок закрывает меню', () => {
+    const { onClose } = makeAny();
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 0 });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
