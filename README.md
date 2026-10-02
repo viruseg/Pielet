@@ -14,7 +14,7 @@
 ```
 
 ```js
-import Pielet from 'pielet.js';
+import Pielet from 'pielet';
 
 const menu = new Pielet({
   items: [
