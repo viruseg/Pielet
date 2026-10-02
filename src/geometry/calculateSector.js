@@ -88,25 +88,38 @@ export function contentHeightLimit(sector, innerRadius, outerRadius, contentWidt
     if (xInner < innerRadius || xOuter > outerRadius) return 0;
 
     let maxHalfHeight;
+    // Внешний угол не должен выходить за внешнюю дугу кольца — это ограничение
+    // действует при любой форме сектора.
+    const outerArcLimit = Math.sqrt(Math.max(0, outerRadius * outerRadius - xOuter * xOuter));
     if (sector.span >= TAU - EPS) {
         // Полное кольцо: боковых граней клина нет — бокс ограничен только
         // внешней окружностью (внутренняя грань гарантирована guard'ом выше).
-        maxHalfHeight = Math.sqrt(Math.max(0, outerRadius * outerRadius - xOuter * xOuter));
+        maxHalfHeight = outerArcLimit;
     } else {
-        // Верхняя грань клина (в системе сектора, mid = 0): прямая между точками
-        // внешней дуги (span/2) и внутренней дуги (spanInner/2).
+        // Верхняя грань клина (в системе сектора, mid = 0) — полуплоскость
+        // cross(D, P - B) ≤ 0, где B — точка внутренней дуги, A — внешней,
+        // D = A - B. Считается именно так, а не через наклон прямой: при
+        // вертикальной грани наклон уходит в бесконечность, и старая формула
+        // либо делила на ноль, либо путала «без ограничения» с «не влезает».
         const ax = outerRadius * Math.cos(sector.span / 2);
         const ay = outerRadius * Math.sin(sector.span / 2);
         const bx = innerRadius * Math.cos(sector.spanInner / 2);
         const by = innerRadius * Math.sin(sector.spanInner / 2);
-        const dx = bx - ax;
-        if (Math.abs(dx) < 1e-9) return 0;
-        const slope = (by - ay) / dx;
-        const lineAt = (x) => ay + slope * (x - ax);
-
-        maxHalfHeight = Math.min(lineAt(xInner), lineAt(xOuter));
-        // Внешний угол не должен выходить за внешнюю дугу кольца.
-        const outerArcLimit = Math.sqrt(Math.max(0, outerRadius * outerRadius - xOuter * xOuter));
+        const dx = ax - bx;
+        const dy = ay - by;
+        // Из углов бокса полуплоскость сильнее всего нарушает тот, что дальше
+        // от её нормали: по y — дальше от оси сектора, по x — тот, где
+        // -dy·(x - bx) больше, то есть ближний к грани при dy > 0.
+        const tightX = dy > 0 ? xInner : xOuter;
+        const room = dx * by + dy * (tightX - bx);
+        if (dx === 0) {
+            // Грань клина вертикальна: по высоте бокс она не ограничивает —
+            // ограничивает только сторона, с которой он лежит.
+            if (room < 0) return 0;
+            maxHalfHeight = Infinity;
+        } else {
+            maxHalfHeight = room / Math.abs(dx);
+        }
         maxHalfHeight = Math.min(maxHalfHeight, outerArcLimit);
     }
 

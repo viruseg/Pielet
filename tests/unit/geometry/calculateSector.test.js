@@ -455,6 +455,49 @@ describe('contentHeightLimit', () => {
     expect(h).toBeLessThan(sector.availHeight);
     expect(h).toBeGreaterThan(0);
   });
+
+  it('survives a vertical wedge edge: two items on a full circle with gap 0', () => {
+    // span = spanInner = π делает грань клина вертикальной, и старая формула
+    // через наклон возвращала 0 — fitText уходил в fontSize 1px, то есть все
+    // подписи в fit: 'square' пропадали.
+    const { sectors } = calculateSectorLayout({ ...base, itemCount: 2, gap: 0, fit: 'square' });
+    for (const sector of sectors) {
+      expect(contentHeightLimit(sector, 36, 120, 40)).toBeGreaterThan(0);
+    }
+  });
+
+  it('stays finite and non-negative on both sides of a half-circle span', () => {
+    for (const arcLength of [Math.PI - 1e-9, Math.PI, Math.PI + 1e-9, Math.PI + 0.01, Math.PI - 0.01]) {
+      for (const itemCount of [1, 2]) {
+        const { sectors } = calculateSectorLayout({ ...base, itemCount, arcLength, gap: 0, fit: 'square' });
+        for (const sector of sectors) {
+          const h = contentHeightLimit(sector, 36, 120, 40);
+          const label = `n=${itemCount} arc=${arcLength}`;
+          expect(Number.isFinite(h), label).toBe(true);
+          expect(h, label).toBeGreaterThanOrEqual(0);
+        }
+      }
+    }
+  });
+
+  it('never reports a negative or non-finite height limit', () => {
+    for (const itemCount of [1, 2, 3, 5, 8]) {
+      for (const fit of ['square', 'circle']) {
+        for (const gap of [0, 0.5, 4, 30]) {
+          for (const arcLength of [0.05, 1, Math.PI / 2, Math.PI, 1.7 * Math.PI, TAU - 0.01, TAU]) {
+            for (const direction of ['clockwise', 'counterclockwise']) {
+              const { sectors } = calculateSectorLayout({ ...base, itemCount, arcLength, gap, fit, direction });
+              for (const sector of sectors) {
+                const h = contentHeightLimit(sector, 36, 120, 40);
+                expect(Number.isFinite(h)).toBe(true);
+                expect(h).toBeGreaterThanOrEqual(0);
+              }
+            }
+          }
+        }
+      }
+    }
+  });
 });
 
 describe('buildSectorClipPath', () => {
