@@ -983,6 +983,90 @@ describe('Pielet — submenu (isSubMenu)', () => {
     expect(seen).toBe('ready');
   });
 
+
+it('hold: чужому меню передаётся живой жест', () => {
+    // Штатный hold-пайплайн: кольцо открывает сабменю по наведению, пока кнопка
+    // ещё зажата. Именно этот случай и обязан дойти до ребёнка с held: true: без
+    // него отпускание ему нечем разбирать, и меню висело бы до следующего события.
+    vi.useFakeTimers();
+    try {
+      const received = [];
+      const foreign = { openSubmenu: (x, y, handoff) => received.push(handoff) };
+      menu = new Pielet({
+        interactionMode: 'hold',
+        button: 'left',
+        items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: foreign }]
+      });
+      menu.open(300, 300);
+      window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, buttons: 1, clientX: 301, clientY: 380 }));
+      expect(received, 'до задержки ничего не открыто').toHaveLength(0);
+      vi.advanceTimersByTime(400);
+      expect(received).toEqual([{ button: 'left', held: true }]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('click: открытие по клику передаёт held: false', () => {
+    const received = [];
+    const foreign = { openSubmenu: (x, y, handoff) => received.push(handoff) };
+    menu = new Pielet({
+      interactionMode: 'click',
+      button: 'left',
+      items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: foreign }]
+    });
+    menu.open(300, 300);
+    window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, buttons: 0, clientX: 301, clientY: 380 }));
+    window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: 301, clientY: 380 }));
+    expect(received).toEqual([{ button: 'left', held: false }]);
+  });
+
+  it('click: открытие по наведению с зажатой кнопкой передаёт held: true', () => {
+    // Разница между двумя открытиями одного и того же click-меню — единственное,
+    // что ребёнок обязан узнать из handoff: по клику ничего не зажато, а по
+    // наведению кнопка ещё зажата, и во втором случае отпускание есть чем разбирать.
+    vi.useFakeTimers();
+    try {
+      const received = [];
+      const foreign = { openSubmenu: (x, y, handoff) => received.push(handoff) };
+      menu = new Pielet({
+        interactionMode: 'click',
+        button: 'left',
+        items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: foreign }]
+      });
+      menu.open(300, 300);
+      window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, buttons: 1, clientX: 301, clientY: 380 }));
+      vi.advanceTimersByTime(400);
+      expect(received).toEqual([{ button: 'left', held: true }]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('кнопка перекрытого показа передаётся дальше', () => {
+    // Меню, открытое как чужое сабменю, передаёт дальше ту кнопку, которой его
+    // открыли, а не ту, что стоит в его собственном config: иначе цепочка владения
+    // жестом рвалась бы на первом звене.
+    vi.useFakeTimers();
+    try {
+      const inner = [];
+      const foreign = { openSubmenu: (x, y, handoff) => inner.push(handoff) };
+      menu = new Pielet({
+        interactionMode: 'click',
+        button: 'left',
+        items: [{ typeContent: 'text', content: 'More', isSubMenu: true, menu: foreign }]
+      });
+      menu.openSubmenu(300, 300, { button: 'right', held: true });
+      // Первое движение открывает сабменю по наведению, и на этот раз handoff несёт
+      // уже перекрытую кнопку вместе с живым жестом.
+      window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, buttons: 2, clientX: 301, clientY: 380 }));
+      vi.advanceTimersByTime(400);
+      expect(inner).toEqual([{ button: 'right', held: true }]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('Pielet.openSubmenu открывает меню в точке', () => {
     // Публичный алиас open(x, y): контракт PieletItem.menu описывает один способ
     // открытия, и Pielet обязан его предоставлять наравне с прочими меню.

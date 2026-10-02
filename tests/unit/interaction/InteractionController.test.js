@@ -720,3 +720,55 @@ describe('InteractionController — любая кнопка (button: null)', () 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('InteractionController — buttonHeld', () => {
+  // Наблюдаемое «отслеживаемая кнопка зажата прямо сейчас» — источник значения
+  // `held` в передаваемом handoff. В hold-режиме оно верно по посылке режима, в
+  // click-режиме — только по событиям, и без наблюдения Pielet не смог бы отличить
+  // открытие по клику от открытия по наведению с зажатой кнопкой.
+  function makeTracked(mode) {
+    const controller = new InteractionController({
+      interactionMode: mode,
+      button: 'left',
+      geometry: makeGeometry(),
+      ...CENTER,
+      onHover: vi.fn(),
+      onClose: vi.fn(),
+      onSelect: vi.fn()
+    });
+    controller.attach();
+    return controller;
+  }
+
+  it('hold: зажата с момента показа', () => {
+    expect(makeTracked('hold').buttonHeld).toBe(true);
+  });
+
+  it('click: не зажата с момента показа', () => {
+    expect(makeTracked('click').buttonHeld).toBe(false);
+  });
+
+  it('следует за event.buttons при движении', () => {
+    const controller = makeTracked('click');
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 1 });
+    expect(controller.buttonHeld).toBe(true);
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 0 });
+    expect(controller.buttonHeld).toBe(false);
+  });
+
+  it('гаснет на разборе отпускания отслеживаемой кнопки', () => {
+    const controller = makeTracked('click');
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 1 });
+    fire(window, 'pointerup', { ...pointAt(0.3), button: 0 });
+    expect(controller.buttonHeld).toBe(false);
+  });
+
+  it('чужое отпускание не гасит', () => {
+    // Кнопку, которую меню не отслеживает, отпустить не значит закончить жест:
+    // пока первая зажата, жест жив, и сабменю получает held: true.
+    const controller = makeTracked('click');
+    fire(window, 'pointermove', { ...pointAt(0.3), buttons: 1 });
+    fire(window, 'pointerup', { ...pointAt(0.3), button: 2 });
+    expect(controller.buttonHeld).toBe(true);
+  });
+});

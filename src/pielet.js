@@ -402,8 +402,23 @@ export class Pielet extends EventTarget {
             open = menu.open;
         }
         if (!open) return;
+        // Описание жеста собирается ДО закрытия: `#close` обнуляет `#runtime`, а
+        // читать состояние закрытого показа уже нечем. Само кольцо при этом уходит
+        // раньше ребёнка — чужое меню в реестр активных не встаёт, и оставленное
+        // кольцо висело бы под ним.
+        //
+        // Кнопка берётся из `#runtimeButton`, а не из `config.button`: показ, открытый
+        // как чужое сабменю, отслеживает переданную ему кнопку, и передавать дальше
+        // надо её, иначе цепочка владения жестом рвётся на первом звене.
+        const runtime = this.#runtime;
+        const handoff = {
+            button: this.#runtimeButton,
+            held: runtime !== null && runtime.interaction.buttonHeld
+        };
         this.#close(true);
-        open.call(menu, point.x, point.y);
+        // Откат на `open(x, y)` получает те же три аргумента: третий у него
+        // отсутствует, и это ровно то поведение, ради которого он и запасной.
+        open.call(menu, point.x, point.y, handoff);
     }
 
     #addViewportListeners() {

@@ -58,6 +58,15 @@ export class InteractionController {
     #submenuTimer = null;
     /** @type {number | null} */
     #submenuIndex = null;
+    /**
+     * Зажата ли отслеживаемая кнопка прямо сейчас. Начальное значение — посылка
+     * режима: hold-меню живёт, пока кнопка зажата, и до первого события иначе
+     * нечем ответить. Дальше значение следует за событиями, и именно его читает
+     * Pielet, собирая `handoff` для сабменю: по клику ничего не зажато, а по
+     * наведению с зажатой кнопкой — зажато, и ребёнку это различие важно.
+     * @type {boolean}
+     */
+    #buttonHeld;
 
     /** @type {(event: PointerEvent) => void} */
     #boundMove;
@@ -93,6 +102,7 @@ export class InteractionController {
         this.#onSelect = onSelect;
         this.#submenuDelay = submenuDelay;
         this.#onSubmenuOpen = onSubmenuOpen;
+        this.#buttonHeld = interactionMode === INTERACTION_MODES.HOLD;
 
         this.#boundMove = this.#onMove.bind(this);
         this.#boundUp = this.#onUp.bind(this);
@@ -128,6 +138,17 @@ export class InteractionController {
         window.removeEventListener('contextmenu', this.#boundContextMenu);
     }
 
+    /**
+ * Зажата ли отслеживаемая кнопка по последнему событию указателя.
+ *
+ * Наблюдение наружу, а не поле для чтения изнутри: единственный читатель — Pielet,
+ * и он читает его в тот момент, когда решает, что передать сабменю.
+ * @returns {boolean}
+ */
+    get buttonHeld() {
+        return this.#buttonHeld;
+    }
+
     #hit(position) {
         return getSelectedSector({
             x: position.clientX,
@@ -140,6 +161,7 @@ export class InteractionController {
 
     #onMove(event) {
         const held = this.#button === null ? event.buttons !== 0 : (event.buttons & this.#buttonBits) !== 0;
+        this.#buttonHeld = held;
         this.#lastPoint = { x: event.clientX, y: event.clientY };
 
         // Выход за внешний радиус снимает hover, но меню пока живёт до
@@ -182,6 +204,10 @@ export class InteractionController {
         // Меню реагирует только на отпускание отслеживаемой кнопки (config.button).
         // При button: null отслеживается любая, и сверять нечего.
         if (this.#button !== null && event.button !== this.#button) return;
+        // Сброс до любых разборов: из `onSelect` синхронно зовётся открытие сабменю,
+        // и оно обязано увидеть уже погашенный жест — отпускание, которым кнопка
+        // дошла до нас, завершило её.
+        this.#buttonHeld = false;
         const dx = event.clientX - this.#centerX;
         const dy = event.clientY - this.#centerY;
         // Клик в точке за внешним радиусом (grace-зона или дальше) — клик в пустое
